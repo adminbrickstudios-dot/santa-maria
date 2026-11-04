@@ -96,6 +96,28 @@ def simplificar(r, tol):
     return s
 
 
+def recortar(p, x0, z0, x1, z1):
+    """Sutherland-Hodgman contra un rectángulo."""
+    sal = p[:-1] if p[0] == p[-1] else p
+    for lado in range(4):
+        ent_, sal = sal, []
+        if not ent_:
+            break
+        den = lambda q: (q[0] >= x0 if lado == 0 else q[0] <= x1 if lado == 1 else q[1] >= z0 if lado == 2 else q[1] <= z1)
+        for i, a in enumerate(ent_):
+            b = ent_[(i + 1) % len(ent_)]
+            da, db = den(a), den(b)
+            if da:
+                sal.append(a)
+            if da != db:
+                if lado < 2:
+                    t = ((x0 if lado == 0 else x1) - a[0]) / (b[0] - a[0])
+                else:
+                    t = ((z0 if lado == 2 else z1) - a[1]) / (b[1] - a[1])
+                sal.append((a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t))
+    return sal
+
+
 def num(v):
     if v is None:
         return None
@@ -128,13 +150,8 @@ for o in lineas("ov_lug.jsonl.gz"):
     ad = (p.get("addresses") or [{}])[0] or {}
     if str(ad.get("postcode") or "").startswith("C") or "Ciudad" in str(ad.get("locality") or "") or "CABA" in str(ad.get("locality") or ""):
         cuenta[(int(x), int(z))] += 1
-base = {k for k, v in cuenta.items() if v >= 2}
-zona = set()
-for tx, tz in base:
-    for i in (-1, 0, 1):
-        for j in (-1, 0, 1):
-            zona.add((tx + i, tz + j))
-print(" tiles", len(base), len(zona))
+zona = {k for k, v in cuenta.items() if v >= 3}
+print(" tiles", len(zona))
 
 T = collections.defaultdict(lambda: {"e": [], "l": [], "o": [], "p": [], "k": [], "v": [], "a": []})
 
@@ -258,6 +275,7 @@ for o in lineas("ov_edif.jsonl.gz"):
             str(p.get("facade_material") or tags.get("building:material") or ""),
             int(ano.group(1)) if ano else 0, nombre or "", 1 if tags.get("heritage") or tags.get("historic") else 0,
             col(p.get("roof_color") or tags.get("roof:colour")) or "",
+            str(tags.get("architect") or ""), str(tags.get("wikipedia") or ""),
         ]
         n_id += 1
         fila[0] = n_id
@@ -364,6 +382,15 @@ for o in lineas("osm_cosas.jsonl.gz"):
     elif p.get("addr:housenumber"):
         T[t]["p"].append([X, Z_, p.get("addr:housenumber"), "numero"])
 
+for o in lineas("ov_dir.jsonl.gz"):
+    q = o["properties"]
+    if o["geometry"]["type"] != "Point" or not q.get("number"):
+        continue
+    x, z = merc(*o["geometry"]["coordinates"])
+    t = (int(x), int(z))
+    if t in zona:
+        T[t]["p"].append([ent(x, t[0]), ent(z, t[1]), str(q["number"]), "numero"])
+
 # ───────── Calles, senderos y áreas ─────────
 print("red")
 AREA = {"park": "parque", "garden": "parque", "grass": "pasto", "meadow": "pasto", "forest": "bosque", "wood": "bosque", "water": "agua", "pitch": "cancha", "playground": "juegos", "recreation_ground": "parque", "cemetery": "cementerio", "village_green": "pasto", "beach": "arena", "sand": "arena", "riverbank": "agua", "scrub": "pasto", "wetland": "pasto"}
@@ -378,7 +405,15 @@ for o in lineas("osm_red.jsonl.gz"):
             xs = [q[0] for q in rs[0]]
             zs = [q[1] for q in rs[0]]
             for tx, tz in tiles_de(min(xs), min(zs), max(xs), max(zs)):
-                T[(tx, tz)]["a"].append([AREA[ty], [sum(([ent(q[0], tx), ent(q[1], tz)] for q in simplificar(r, 0.002)), []) for r in rs]])
+                hs = []
+                for q in rs:
+                    c = recortar(q, tx - MARGEN, tz - MARGEN, tx + 1 + MARGEN, tz + 1 + MARGEN)
+                    if len(c) >= 3:
+                        hs.append(sum(([ent(w[0], tx), ent(w[1], tz)] for w in simplificar(c + [c[0]], 0.002)[:-1]), []))
+                    elif not hs:
+                        break
+                if hs:
+                    T[(tx, tz)]["a"].append([AREA[ty], hs])
         continue
     if g["type"] != "LineString":
         continue

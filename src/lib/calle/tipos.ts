@@ -38,6 +38,16 @@ export interface Local {
   pz: number;
   lat?: number;
   lon?: number;
+  /** Datos reales publicados del lugar. Si falta alguno, no se muestra ni se inventa. */
+  categoria?: string;
+  telefono?: string;
+  web?: string;
+  /** Instagram o Facebook. */
+  red?: string;
+  /** Solo si el lugar publicó su WhatsApp. */
+  whatsapp?: string;
+  /** Formato opening_hours de OpenStreetMap. */
+  horario?: string;
 }
 
 export interface Cartel { slot: number; tipo: "local" | "calle"; texto: string; rubro?: Rubro }
