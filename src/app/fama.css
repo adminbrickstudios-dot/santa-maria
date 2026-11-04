@@ -7,7 +7,7 @@
 .fa-intro{display:none}
 .intro-ve:not(.intro-lista) .fa-intro{display:block;position:fixed;inset:0;z-index:100;overflow:hidden;cursor:pointer;animation:fa-fin 1ms 1.15s forwards}
 .fa-intro::before{content:"";position:absolute;inset:0;background:var(--fa-fondo);animation:fa-apaga 1ms .8s forwards}
-.fa-grilla{position:absolute;inset:0;display:grid;grid-template:1fr 1fr/1fr 1fr}
+.fa-grilla{position:absolute;inset:0;display:grid;grid-template:minmax(0,1fr) minmax(0,1fr)/minmax(0,1fr) minmax(0,1fr)}
 .fa-t{--x:-101%;--y:-101%;display:grid;place-items:center;background:var(--c);color:#fff;font-family:var(--disp);font-weight:800;font-size:min(46vw,32vh);line-height:1;will-change:transform;animation:fa-llega .42s calc(var(--n)*55ms) cubic-bezier(.2,.9,.25,1) both,fa-abre .34s calc(.8s + var(--n)*12ms) cubic-bezier(.6,0,.8,.3) forwards}
 .fa-t:nth-child(even){--x:101%}.fa-t:nth-child(n+3){--y:101%}
 @keyframes fa-llega{from{transform:translate3d(var(--x),var(--y),0)}}
@@ -52,14 +52,14 @@
 
 /* Bienvenida: una letra se prende por paso */
 .fa-bien{justify-content:center}
-.fa-pasos{display:flex;gap:6px}
+.fa-pasos{display:flex;gap:6px;margin-bottom:10px}
 .fa-pasos span{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-family:var(--disp);font-weight:800;font-size:28px;color:#9AA2A9;background:#1B1E24;transition:background .3s,color .3s,transform .4s var(--resorte)}
 .fa-pasos span.si{background:var(--c);color:#fff}
 .fa-pasos span.si:last-of-type,.fa-pasos span.si:has(+span:not(.si)){transform:scale(1.08)}
 .fa-tit{font-weight:800;font-size:clamp(34px,10vw,44px);letter-spacing:-.025em;line-height:1.05;text-wrap:balance}
 
 /* Entrada: cierre sobre la app */
-.fa-pase{position:fixed;inset:0;z-index:90;display:grid;grid-template:1fr 1fr/1fr 1fr;overflow:hidden;pointer-events:none}
+.fa-pase{position:fixed;inset:0;z-index:90;display:grid;grid-template:minmax(0,1fr) minmax(0,1fr)/minmax(0,1fr) minmax(0,1fr);overflow:hidden;pointer-events:none}
 .fa-pase span{display:grid;place-items:center;background:var(--c);color:#fff;font-family:var(--disp);font-weight:800;font-size:min(46vw,32vh);line-height:1;will-change:transform}
 
 /* Carga */
