@@ -511,12 +511,12 @@ function pintarSugerencias(){
 let datos=null;
 export function cargarDatosMapa(){
   if(!datos)datos=(async()=>{
-    const g=async u=>{const r=await fetch(u);if(!r.ok)throw new Error(u);await new Promise(ok=>(window.requestIdleCallback||setTimeout)(ok));return r.json();};
+    const g=async u=>{const r=await fetch(u);if(!r.ok)throw new Error(u);await new Promise(ok=>window.requestIdleCallback?requestIdleCallback(ok,{timeout:250}):setTimeout(ok));return r.json();};
     const [c,t,l]=await Promise.all([g('/data/calles.json'),g('/data/transporte.json'),g('/data/lugares.json')]);
     cargarCalles(c);cargarTransporte(t);Object.assign(L,l);
     L.pois.forEach(q=>{q.wx=wx(q[1]);q.wy=wy(q[2]);});
     prepararCapas();
-  })();
+  })().catch(e=>{datos=null;throw e;});
   return datos;
 }
 const SKELETON=`<div class="mp" id="m-raiz">
