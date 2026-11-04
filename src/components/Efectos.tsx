@@ -1,4 +1,5 @@
 "use client";
+import { tic } from "@/lib/tic";
 import { useEffect, useState } from "react";
 
 type Ef = { id: number; tipo: "quema" | "gana" | "listo"; texto?: string };
@@ -14,7 +15,7 @@ export function Efectos() {
       if (matchMedia("(prefers-reduced-motion:reduce)").matches) return;
       const d = (e as CustomEvent).detail, id = Date.now() + Math.random();
       setL((x) => [...x, { id, ...d }]);
-      navigator.vibrate?.(d.tipo === "gana" ? [10, 40, 10, 40, 20] : 18);
+      tic(d.tipo === "gana" ? [10, 40, 10, 40, 20] : 18);
       setTimeout(() => setL((x) => x.filter((q) => q.id !== id)), 2100);
     };
     addEventListener("sm-efecto", f);

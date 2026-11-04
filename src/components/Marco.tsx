@@ -1,8 +1,9 @@
 "use client";
+import { tic } from "@/lib/tic";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { useSesion } from "@/lib/sesion";
+import { olvidarSesion, useSesion } from "@/lib/sesion";
 import { sb } from "@/lib/sb";
 import { Icono } from "./Icono";
 import { Avatar } from "./Avatar";
@@ -14,6 +15,10 @@ const MENU = [
   ["/perfil", "usuario", "Mi perfil", "Foto, casa, carrera, colores"],
   ["/notificaciones", "campana", "Avisos", "Lo que pasó y qué te llega al celular"],
   ["/guia?v=guardados", "guardar", "Guardados", "Lo que marcaste en la guía"],
+  ["/tareas", "tilde", "Tareas", "Lo que tenés que hacer"],
+  ["/caja", "guardar", "Mi caja", "Notas, fotos y archivos tuyos"],
+  ["/compras", "regalo", "Compras", "Listas y qué conviene hoy"],
+  ["/bondi", "bus", "Bondi", "Cuánto sale y cómo pagar"],
   ["/guia", "guia", "Guía", "La ciudad, descuentos y trámites"],
   ["/facu", "facu", "Estudio y horarios", "Materias, clases y apuntes"],
   ["/facu/carreras", "brujula", "Carreras", "Explorar, comparar y test de orientación"],
@@ -26,14 +31,20 @@ export function Marco({ children }: { children: React.ReactNode }) {
   const [menu, setMenu] = useState(false);
   const enChat = ruta.startsWith("/gente/chat/"), enInicio = ruta === "/inicio", enMapa = ruta.startsWith("/mapa");
   const conten = useRef<HTMLElement>(null), [oculta, setOculta] = useState(false), ult = useRef(0);
-  const [tira, setTira] = useState(0), gesto = useRef<any>(null);
-  useEffect(() => { setOculta(false); }, [ruta]);
+  const [titulo, setTitulo] = useState(""), [tira, setTira] = useState(0), gesto = useRef<any>(null);
+  useEffect(() => { setOculta(false); setTitulo(""); }, [ruta]);
   useEffect(() => {
     const cola = () => vaciarCola();
     cola(); addEventListener("online", cola);
     return () => removeEventListener("online", cola);
   }, []);
-  function alScroll() { const y = conten.current?.scrollTop || 0; if (Math.abs(y - ult.current) > 8) { setOculta(y > ult.current && y > 60); ult.current = y; } }
+  function alScroll() {
+    const y = conten.current?.scrollTop || 0;
+    if (Math.abs(y - ult.current) > 8) { setOculta(y > ult.current && y > 60); ult.current = y; }
+    /* El título grande pasa a la barra de arriba, como en el iPhone */
+    const t = y > 44 ? (conten.current?.querySelector(".vista .titulo")?.textContent || "") : "";
+    setTitulo(t);
+  }
   /* Deslizar desde el borde para volver, y tirar para abajo para actualizar */
   function tocaIni(e: React.TouchEvent) { const t = e.touches[0]; gesto.current = { x: t.clientX, y: t.clientY, borde: t.clientX < 22 && !enInicio, arriba: (conten.current?.scrollTop || 0) <= 0 && !enMapa }; }
   function tocaMov(e: React.TouchEvent) {
@@ -49,13 +60,13 @@ export function Marco({ children }: { children: React.ReactNode }) {
     if (g.dy !== undefined) { if (g.dy * .45 > 62) refrescar(); setTira(0); }
   }
   function refrescar() {
-    navigator.vibrate?.(10);
+    tic(10);
     ["sm-agenda", "sm-plata", "sm-inicio"].forEach((x) => window.dispatchEvent(new Event(x)));
     recuentos();
     if (!["/inicio", "/agenda", "/billetera"].some((x) => ruta.startsWith(x))) location.reload();
   }
   function atras() { if (history.length > 1) r.back(); else r.push("/inicio"); }
-  const sec = ["agenda", "billetera", "mapa", "guia", "facu", "gente"].find((x) => ruta.startsWith("/" + x)) || "inicio";
+  const sec = ["agenda", "billetera", "mapa", "guia", "facu", "estudio", "gente"].find((x) => ruta.startsWith("/" + x)) || "inicio";
   const tabs = TABS.filter(([id]) => pantalla(id));
   const activa = tabs.findIndex(([id]) => ruta.startsWith("/" + id));
   const toques = useRef<Record<string, number>>({});
@@ -65,12 +76,12 @@ export function Marco({ children }: { children: React.ReactNode }) {
     toques.current[id] = ahora;
     if (ahora - antes < 320) { e.preventDefault(); abrirCaptura(id === "agenda" ? "agenda" : "plata"); }
   }
-  async function salir() { await sb.auth.signOut(); r.replace("/entrar"); }
+  async function salir() { olvidarSesion(); await sb.auth.signOut(); r.replace("/entrar"); }
   return (
-    <div className="marco" data-sec={sec} data-ini={enInicio ? 1 : 0}>
+    <div className="marco" data-sec={sec} data-ini={enInicio ? 1 : 0} data-alto={titulo ? 1 : 0}>
       <header className="barra-top">
         {enInicio ? <button className="ico-btn" onClick={() => setMenu(true)} aria-label="Abrir menú"><Icono n="menu" /></button> : <button className="ico-btn atras" onClick={atras} aria-label="Volver"><Icono n="volver" /></button>}
-        <h1><i />{enInicio ? grupo?.nombre || "Santa María" : ""}</h1>
+        <h1><i />{titulo ? <span key={titulo}>{titulo}</span> : enInicio ? grupo?.nombre || "Santa María" : ""}</h1>
         <Link className="ico-btn" href="/buscar" aria-label="Buscar"><Icono n="lupa" /></Link>
         <Link className="ico-btn" href="/notificaciones" aria-label={`Avisos, ${avisos} sin leer`}><Icono n="campana" />{avisos > 0 && <span className="punto">{avisos > 9 ? "9+" : avisos}</span>}</Link>
         <Link className="ico-btn" href="/perfil" aria-label="Mi perfil"><Avatar p={perfil} t={34} /></Link>

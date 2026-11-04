@@ -1,5 +1,6 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { tic } from "@/lib/tic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { sb } from "@/lib/sb";
@@ -47,7 +48,7 @@ export function Captura() {
 
   const reiniciar = useCallback(() => { setTxt(""); setMov(null); setEv(null); setOye(false); setPensando(false); }, []);
   useEffect(() => {
-    const f = (e: Event) => { const d = (e as CustomEvent).detail; reiniciar(); setModo(d.modo); setTipo(d.tipo || "gasto"); navigator.vibrate?.(10); if (d.texto) setTimeout(() => { setTxt(d.texto); }, 0); };
+    const f = (e: Event) => { const d = (e as CustomEvent).detail; reiniciar(); setModo(d.modo); setTipo(d.tipo || "gasto"); tic(10); if (d.texto) setTimeout(() => { setTxt(d.texto); }, 0); };
     addEventListener("sm-captura", f);
     return () => removeEventListener("sm-captura", f);
   }, [reiniciar]);
@@ -86,7 +87,7 @@ export function Captura() {
   async function microfono() {
     if (oye) { rec.current?.stop?.(); return; }
     const c = await capacidades();
-    navigator.vibrate?.(14);
+    tic(14);
     if (c.audio && typeof MediaRecorder !== "undefined") {
       try {
         const s = await navigator.mediaDevices.getUserMedia({ audio: true });

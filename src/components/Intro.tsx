@@ -16,6 +16,7 @@ function plum() {
   } catch {}
 }
 
+const RAPIDO = 1.8;
 export function Intro() {
   const [ver, setVer] = useState(false), [fin, setFin] = useState(false);
   const tms = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -25,7 +26,8 @@ export function Intro() {
     if (vista || matchMedia("(prefers-reduced-motion:reduce)").matches) { document.documentElement.classList.add("intro-lista"); return; }
     setVer(true);
     try { sessionStorage.setItem("sm-libro", "1"); } catch {}
-    tms.current = [setTimeout(plum, 520), setTimeout(() => setFin(true), 2650), setTimeout(cerrar, 3050)];
+    requestAnimationFrame(() => document.getAnimations().forEach((a) => { a.playbackRate = RAPIDO; }));
+    tms.current = [setTimeout(plum, 520 / RAPIDO), setTimeout(() => setFin(true), 2650 / RAPIDO), setTimeout(cerrar, 3050 / RAPIDO)];
     return () => tms.current.forEach(clearTimeout);
   }, []);
   function cerrar() { tms.current.forEach(clearTimeout); document.documentElement.classList.add("intro-lista"); setVer(false); }

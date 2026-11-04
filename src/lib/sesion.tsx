@@ -1,6 +1,6 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { sb } from "./sb";
 
@@ -9,6 +9,8 @@ type Ctx = {
   recargar: () => Promise<void>; recuentos: () => Promise<void>; toast: (t: string) => void; pantalla: (n: string) => boolean;
 };
 const C = createContext<Ctx>(null as any);
+const FOTO = "sm-sesion";
+export function olvidarSesion() { try { localStorage.removeItem(FOTO); } catch {} }
 export const useSesion = () => useContext(C);
 
 export function aplicarTema(tema?: string, acento?: string) {
@@ -51,9 +53,17 @@ export function Sesion({ children }: { children: ReactNode }) {
       sb.from("lugares").select("*").order("orden"),
     ]);
     setG(g); setPs(ps || []); setL(ls || []);
+    try { localStorage.setItem(FOTO, JSON.stringify({ perfil: p, grupo: g, personas: ps || [], lugares: ls || [] })); } catch {}
     recuentos();
   }, [router, recuentos]);
 
+  /* Abre al instante con lo último que vimos y se actualiza por detrás */
+  useLayoutEffect(() => {
+    try {
+      const f = JSON.parse(localStorage.getItem(FOTO) || "null");
+      if (f?.perfil) { setP(f.perfil); setG(f.grupo); setPs(f.personas || []); setL(f.lugares || []); aplicarTema(f.perfil.tema, f.perfil.preferencias?.acento); }
+    } catch {}
+  }, []);
   useEffect(() => { recargar(); }, [recargar]);
   useEffect(() => {
     if (!perfil?.id) return;

@@ -56,6 +56,7 @@ function Facu() {
   const hoy = ahoraBA().getDay();
   return <div className="pagina">
     <h2 className="titulo">Estudio y horarios</h2>
+    <Link href="/estudio" className="bloque"><span className="ic"><Icono n="reloj" t={28} /></span><span style={{ flex: 1, minWidth: 0 }}><b>Foco y repaso</b><small>Pomodoro, tarjetas, faltas, notas y plan de carrera</small></span></Link>
     <Link href="/agenda" className="mas-largo"><Icono n="calendario" t={20} /><span>Parciales y fechas en la Agenda</span><Icono n="chevron" t={18} /></Link>
     {pantalla("carreras") && <Link href="/facu/carreras" className="bloque"><span className="ic"><Icono n="brujula" t={28} /></span><span style={{ flex: 1, minWidth: 0 }}><b>Carreras</b><small>Explorá, compará y hacé el test de orientación</small></span></Link>}
     <div className="segs" role="tablist">{V.filter(([k]) => k !== "apuntes" || pantalla("apuntes")).map(([k, n]) => <button key={k} className="seg" role="tab" aria-selected={v === k} onClick={() => setV(k)}>{n}</button>)}</div>

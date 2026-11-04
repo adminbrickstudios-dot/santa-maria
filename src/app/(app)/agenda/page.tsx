@@ -1,5 +1,6 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { tic } from "@/lib/tic";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { sb } from "@/lib/sb";
@@ -60,7 +61,7 @@ function Agenda() {
   const celdas = useMemo(() => { const p = new Date(mes.a, mes.m, 1), ini = (p.getDay() + 6) % 7, n = new Date(mes.a, mes.m + 1, 0).getDate(), l: (string | null)[] = Array(ini).fill(null); for (let i = 1; i <= n; i++) l.push(diaClave(new Date(mes.a, mes.m, i))); return l; }, [mes]);
   const proximos = useMemo(() => expandir(ev.filter((e) => ["parcial", "final", "entrega", "tp"].includes(e.tipo) && !e.hecho), hoy, "2099-01-01").slice(0, 8), [ev, hoy]);
   const lista = useMemo(() => { const f = new Date(hoyD); f.setDate(f.getDate() + 60); return [...expandir([...ev, ...extra], hoy, diaClave(f)), ...ext.flatMap((x) => leerICS(x.txt, x.c.nombre, x.c.color, hoy, diaClave(f)))].sort((a, b) => a.cuando.localeCompare(b.cuando)).slice(0, 80); }, [ev, extra, ext, hoy, hoyD]);
-  function cambiarMes(d: number) { setDir(d); setMes((x) => { const n = new Date(x.a, x.m + d, 1); return { a: n.getFullYear(), m: n.getMonth() }; }); navigator.vibrate?.(6); }
+  function cambiarMes(d: number) { setDir(d); setMes((x) => { const n = new Date(x.a, x.m + d, 1); return { a: n.getFullYear(), m: n.getMonth() }; }); tic(6); }
   const toque = useRef<{ x: number; y: number } | null>(null);
   function abrir(o: Ocurrencia) { if (o.e.soloVer) router.push(o.e.soloVer); else if (o.e.externo) setAb(null); else setAb(o); }
   const dSel = new Date(sel + "T12:00"), delSel = porDia.get(sel) || [];
