@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { sb } from "@/lib/sb";
 import { useSesion } from "@/lib/sesion";
 import { Icono } from "@/components/Icono";
@@ -17,6 +17,7 @@ const MES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Ag
 const SEM = ["L", "M", "M", "J", "V", "S", "D"];
 const NOMDIA = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 const colorDe = (e: any) => e.color || TIPOS[e.tipo]?.c || "#8E8E93";
+const memo: { ev: any[]; extra: any[] } = { ev: [], extra: [] };
 function Fila({ o, abrir }: { o: Ocurrencia; abrir: (o: Ocurrencia) => void }) {
   const e = o.e, t = TIPOS[e.tipo] || TIPOS.otro;
   return <button className="ag-ev" onClick={() => abrir(o)} style={{ "--c": colorDe(e) } as React.CSSProperties}>
@@ -26,10 +27,10 @@ function Fila({ o, abrir }: { o: Ocurrencia; abrir: (o: Ocurrencia) => void }) {
   </button>;
 }
 function Agenda() {
-  const { perfil } = useSesion(), q = useSearchParams();
+  const { perfil } = useSesion(), q = useSearchParams(), router = useRouter();
   const hoyD = ahoraBA(), hoy = diaClave(hoyD);
-  const [mes, setMes] = useState({ a: hoyD.getFullYear(), m: hoyD.getMonth() }), [sel, setSel] = useState(hoy), [v, setV] = useState("mes");
-  const [ev, setEv] = useState<any[]>([]), [extra, setExtra] = useState<any[]>([]), [ext, setExt] = useState<{ txt: string; c: any }[]>([]);
+  const [mes, setMes] = useState({ a: hoyD.getFullYear(), m: hoyD.getMonth() }), [sel, setSel] = useState(hoy), [v, setV] = useState(q.get("v") || "mes");
+  const [ev, setEv] = useState<any[]>(memo.ev), [extra, setExtra] = useState<any[]>(memo.extra), [ext, setExt] = useState<{ txt: string; c: any }[]>([]);
   const [ab, setAb] = useState<Ocurrencia | null>(null), [nuevo, setNuevo] = useState<string | null>(null), [con, setCon] = useState(false), [dir, setDir] = useState(0);
   const cargar = useCallback(async () => {
     const [{ data: e }, { data: c }, { data: j }, { data: cal }] = await Promise.all([
@@ -38,13 +39,14 @@ function Agenda() {
       sb.from("juntadas").select("id,titulo,cuando,lugar_nombre,lat,lon,juntada_respuestas(perfil_id,estado)").gte("cuando", new Date(Date.now() - 60 * 864e5).toISOString()),
       sb.from("calendarios_externos").select("*"),
     ]);
-    setEv(e || []);
+    setEv(e || []); memo.ev = e || [];
     /* Las clases y juntadas también caen en el calendario */
     const lun = new Date(hoyD); lun.setMonth(lun.getMonth() - 2);
-    setExtra([
+    const ex = [
       ...(c || []).map((k: any) => { const d = new Date(lun); d.setDate(d.getDate() + ((k.dia - d.getDay() + 7) % 7)); return { id: `c${k.id}`, soloVer: "/facu", titulo: k.materias?.nombre || "Clase", tipo: "clase", color: k.materias?.color, fecha: new Date(`${diaClave(d)}T${k.hora_inicio.slice(0, 5)}:00-03:00`).toISOString(), repetir: "semanal", lugar_nombre: k.aula ? `Aula ${k.aula}` : null }; }),
       ...(j || []).filter((x: any) => x.juntada_respuestas?.some((r: any) => r.perfil_id === perfil.id && r.estado !== "no")).map((x: any) => ({ id: `j${x.id}`, soloVer: "/gente/juntadas", titulo: x.titulo, tipo: "juntada", fecha: x.cuando, repetir: "no", lugar_nombre: x.lugar_nombre })),
-    ]);
+    ];
+    setExtra(ex); memo.extra = ex;
     const { data: ses } = await sb.auth.getSession();
     const rs = await Promise.all((cal || []).map(async (x: any) => ({ c: x, txt: await fetch(`/api/cal/externo?id=${x.id}`, { headers: { Authorization: `Bearer ${ses.session?.access_token}` } }).then((r) => (r.ok ? r.text() : "")).catch(() => "") })));
     setExt(rs.filter((x) => x.txt));
@@ -60,7 +62,7 @@ function Agenda() {
   const lista = useMemo(() => { const f = new Date(hoyD); f.setDate(f.getDate() + 60); return [...expandir([...ev, ...extra], hoy, diaClave(f)), ...ext.flatMap((x) => leerICS(x.txt, x.c.nombre, x.c.color, hoy, diaClave(f)))].sort((a, b) => a.cuando.localeCompare(b.cuando)).slice(0, 80); }, [ev, extra, ext, hoy, hoyD]);
   function cambiarMes(d: number) { setDir(d); setMes((x) => { const n = new Date(x.a, x.m + d, 1); return { a: n.getFullYear(), m: n.getMonth() }; }); navigator.vibrate?.(6); }
   const toque = useRef<{ x: number; y: number } | null>(null);
-  function abrir(o: Ocurrencia) { if (o.e.soloVer) location.href = o.e.soloVer; else if (o.e.externo) setAb(null); else setAb(o); }
+  function abrir(o: Ocurrencia) { if (o.e.soloVer) router.push(o.e.soloVer); else if (o.e.externo) setAb(null); else setAb(o); }
   const dSel = new Date(sel + "T12:00"), delSel = porDia.get(sel) || [];
   return <div className="pagina">
     <div className="ag-cab">

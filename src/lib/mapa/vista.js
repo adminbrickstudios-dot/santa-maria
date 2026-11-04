@@ -552,10 +552,10 @@ export async function montarMapa(raiz,api){
   L.places=(api.lugares||[]).map((q,i)=>{const wxx=wx(q.lon),wyy=wy(q.lat),k={facu:'f',salida:'p',transporte:'t'}[q.tipo];return {k,n:q.nombre,d:q.descripcion,wx:wxx,wy:wyy,prim:!!q.destacado,place:{k:'l:'+q.id,nombre:q.nombre,x:wxx,y:wyy,tipo:'lugar',d:q.descripcion,sub:q.descripcion}};});
   L.places.sort((a,b)=>b.prim-a.prim);L.places.forEach(q=>reg(q.place));
   armarPersonas();Object.values(M.conocidos||{}).forEach(q=>REG.set(q.k,q));
-  S.desde=null;S.cercaDe=null;
+  S.desde=null;S.cercaDe=null;if(api.tab)S.tab=api.tab;if(api.q)S.buscar=api.q;
   $('carga').hidden=true;
   const me=yo();if(me&&me.x!=null)irA(me.x,me.y,.17,0);else if(L.places[0])irA(L.places[0].wx,L.places[0].wy,.1,0);
-  render();pedir();
+  render();pedir();if(api.q)pintarSugerencias();
   if(api.destino){const d=api.destino,p={nombre:d.nombre,x:wx(d.lon),y:wy(d.lat),tipo:'punto'};reg(p);if(api.soloVer){irA(p.x,p.y,.5,0);S.marca=p;abrirGlobo(p);pedir();}else irDestino(p.k);}
 }
 /* Panel que sube y baja como en Mapas del iPhone */
@@ -570,4 +570,4 @@ function hojaArrastrable(){
   a.addEventListener('pointerup',fin);a.addEventListener('pointercancel',fin);
 }
 export function desmontarMapa(){if(controladores)controladores();controladores=null;dibRuta=[];S.dest=null;S.plan=null;S.cat=null;S.cercaRes=null;if(mapa){mapa.remove();mapa=null;}marcas.clear();estiloListo=false;trid=false;}
-export {planificar,alat,alon,wx,wy,geocodificar,barrioDe};
+export {planificar,alat,alon,wx,wy,geocodificar,barrioDe,esquinaDe};

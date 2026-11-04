@@ -137,13 +137,14 @@ function Billetera() {
   const h = ahoraBA();
   const [mes, setMes] = useState({ a: h.getFullYear(), m: h.getMonth() }), [v, setV] = useState(q.get("v") || "mov");
   const [m, setM] = useState<Mov[]>(cache?.m || []), [cats, setCats] = useState<any[]>(cache?.c || []), [fijos, setFijos] = useState<any[]>(cache?.f || []), [metas, setMetas] = useState<any[]>(cache?.g || []);
+  const [cargado, setCargado] = useState(!!cache);
   const [ed, setEd] = useState<Mov | null>(null), [fj, setFj] = useState<any>(null), [mt, setMt] = useState<any>(null), [aj, setAj] = useState(false), [busca, setBusca] = useState("");
   const cargar = useCallback(async () => {
     const [{ data: a }, { data: b }, { data: c }, { data: d }] = await Promise.all([sb.from("movimientos").select("*").order("fecha", { ascending: false }).order("id", { ascending: false }).limit(5000), sb.from("plata_categorias").select("*").order("orden"), sb.from("fijos").select("*").order("dia"), sb.from("metas").select("*").order("creado_en")]);
     const mias = (b || []).filter((x: any) => x.perfil_id), comunes = (b || []).filter((x: any) => !x.perfil_id && !mias.some((y: any) => y.nombre === x.nombre && y.tipo === x.tipo));
     const cc = [...comunes, ...mias].sort((x: any, y: any) => x.orden - y.orden);
     cache = { m: a || [], c: cc, f: c || [], g: d || [] };
-    setM(cache.m); setCats(cc); setFijos(cache.f); setMetas(cache.g);
+    setM(cache.m); setCats(cc); setFijos(cache.f); setMetas(cache.g); setCargado(true);
   }, []);
   useEffect(() => { cargar(); const f = () => cargar(); addEventListener("sm-plata", f); return () => removeEventListener("sm-plata", f); }, [cargar]);
   const ini = `${mes.a}-${String(mes.m + 1).padStart(2, "0")}`;
@@ -177,7 +178,8 @@ function Billetera() {
     </div>
     {recs[0] && <button className="pl-rec" onClick={() => setV("num")}><span>{recs[0].e}</span><span className="q"><b>{recs[0].t}</b>{recs[0].d && <small>{recs[0].d}</small>}</span></button>}
     <div className="segs" role="tablist">{[["mov", "Movimientos"], ["num", "Números"], ["fijos", "Fijos"], ["metas", "Metas"]].map(([k, n]) => <button key={k} className="seg" role="tab" aria-selected={v === k || (k === "num" && v === "numeros")} onClick={() => setV(k)}>{n}</button>)}</div>
-    {v === "mov" && <>
+    {v === "mov" && !cargado && <div className="lista">{[0, 1, 2, 3].map((i) => <div key={i} className="item esq"><i /><span><b /><small /></span></div>)}</div>}
+    {v === "mov" && cargado && <>
       {m.length > 8 && <input type="search" placeholder="Buscar" aria-label="Buscar movimientos" value={busca} onChange={(e) => setBusca(e.target.value)} />}
       {dias2.length ? dias2.map(([d, l]) => { const dd = new Date(d + "T12:00"), fut = d > hoyK; return <div key={d}><div className="pl-dia"><span>{d === hoyK ? "Hoy" : `${DIA[dd.getDay()]} ${dd.getDate()}`}{fut ? ", programado" : ""}</span></div><div className="lista">{l.map((x) => { const c = catDe(x.categoria, x.tipo); return <button key={x.id} className="item pl-mov" onClick={() => setEd(x)}><span className="ic" style={{ background: `color-mix(in srgb,${c?.color || "#8E8E93"} 16%,var(--hoja))` }}>{c?.emoji || "💸"}</span><span className="q"><b>{x.nota || x.categoria}</b>{x.nota && <small>{x.categoria}</small>}</span><span className={`v ${x.tipo}`}>{x.tipo === "gasto" ? "−" : "+"}{pesos(+x.monto)}</span></button>; })}</div></div>; }) : <p className="expl" style={{ textAlign: "center", padding: 18 }}>Nada anotado este mes. Tocá dos veces Billetera abajo y anotá con voz o texto.</p>}
     </>}
@@ -187,7 +189,7 @@ function Billetera() {
       <div className="dos"><div className="mini"><span className="et">Por día</span><b>{pesos(r.gastos / Math.max(1, estamos ? h.getDate() : dias))}</b></div><div className="mini"><span className="et">Gasto más grande</span><b>{r.mayor ? pesos(+r.mayor.monto) : "-"}</b><small>{r.mayor?.nota || r.mayor?.categoria}</small></div></div>
       {recs.length > 0 && <><h3 className="sec">Para vos</h3><div className="lista">{recs.map((x, i) => <div key={i} className="item"><span className="ic">{x.e}</span><span className="q"><b style={{ fontSize: 16 }}>{x.t}</b>{x.d && <small>{x.d}</small>}</span></div>)}</div></>}
       <Dolar />
-      <Link className="btn sec2 chico" href="/guia/plata">Ver cuánto cuesta vivir acá</Link>
+      <div className="fila"><Link className="btn sec2 chico" href="/gente?v=cuentas">Cuentas con amigos</Link><Link className="btn sec2 chico" href="/guia/descuentos">Descuentos de hoy</Link><Link className="btn sec2 chico" href="/guia/plata">Cuánto cuesta vivir acá</Link></div>
     </>}
     {v === "fijos" && <>
       <div className="mini"><span className="et">Gastos fijos por mes</span><b>{pesos(totFijos)}</b></div>

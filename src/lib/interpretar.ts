@@ -133,3 +133,13 @@ export function interpretarEvento(texto: string): EventoLeido {
   t = t.replace(/^(tengo|hay|agendar?|agenda|anota(me)?|acordate( de)?|recordame( que)?|poneme|poner|sumar?|que tengo)\s+/, "").replace(/\s+/g, " ").trim();
   return { titulo: t ? mayus(restaurar(t, original)) : original, tipo, fecha: fechaISO(f || h), hora, lugar: mayus(lugar), avisos: avisosDe(tipo) };
 }
+
+/* Para la barra de Inicio: ¿es plata o es algo para la agenda? */
+export function queEs(texto: string): "plata" | "agenda" {
+  const t = limpio(texto);
+  const plata = /\b(gaste|pague|compre|cobre|me pagaron|me depositaron|me entro|me salio|me costo|lucas?|pesos|\$)\b|\$/.test(t) || CLAVES.some(([, l]) => l.some((w) => incluye(t, w)) && /\d/.test(t) && !/a las|el \d/.test(t));
+  const agenda = /\b(parcial|final|entrega|tp|turno|clase|cumple|juntada|recordame|agenda|a las|manana|lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/.test(t);
+  if (plata && !/\b(parcial|final|entrega|turno|recordame|a las)\b/.test(t)) return "plata";
+  if (agenda) return "agenda";
+  return montoDe(t).monto > 0 ? "plata" : "agenda";
+}

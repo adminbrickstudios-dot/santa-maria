@@ -24,7 +24,7 @@ function Mapa() {
         yoId: s.perfil.id, personas: s.personas, lugares: s.lugares, aportes: aportes || [], guia: guia || [], aviso: s.toast, memoria: s.perfil.preferencias?.mapa || null,
         guardarMemoria: (m: any) => sb.from("perfiles").update({ preferencias: { ...s.perfil.preferencias, mapa: m } }).eq("id", s.perfil.id),
         compartir: (d: any) => setMandar(d),
-        destino: la && lo ? { lat: +la, lon: +lo, nombre: q.get("n") || "Destino" } : null, soloVer: q.get("ver") === "1",
+        tab: q.get("tab"), q: q.get("q"), destino: la && lo ? { lat: +la, lon: +lo, nombre: q.get("n") || "Destino" } : null, soloVer: q.get("ver") === "1",
         aportar: async (a: any) => { await sb.from("aportes").insert({ ...a, grupo_id: s.perfil.grupo_id, autor_id: s.perfil.id }); s.toast("Listo, ya lo ve el grupo."); },
         proponerJuntada: (d: any) => r.push(`/gente/juntadas?lugar=${encodeURIComponent(d.lugar)}&lat=${d.lat}&lon=${d.lon}`),
       });
