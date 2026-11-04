@@ -357,3 +357,6 @@ input[type=text],input[type=search],input[type=password],input[type=time],input[
 .marco[data-sec="guia"]{--sec-c:var(--billetera)}.marco[data-sec="facu"]{--sec-c:var(--estudio)}
 .maplibregl-ctrl-bottom-left{bottom:auto!important;top:calc(env(safe-area-inset-top,0px) + 46px);left:2px}
 .maplibregl-ctrl-attrib.maplibregl-compact{background:var(--vidrio);color:var(--tinta2)}
+
+.burbuja{border:0;border-radius:20px;background:var(--hoja)}
+.burbuja.mia{background:var(--azul);color:#fff}

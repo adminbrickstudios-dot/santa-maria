@@ -7,7 +7,6 @@ import { aplicarTema, useSesion } from "@/lib/sesion";
 import { Avatar } from "@/components/Avatar";
 import { Icono } from "@/components/Icono";
 import { COLORES } from "@/lib/util";
-import { INTERESES } from "@/lib/intereses";
 
 const ACENTOS = ["#FFD21F", "#FF8A3D", "#FF6FA8", "#58D68D", "#5CC8FF", "#B79CFF"];
 
@@ -58,9 +57,6 @@ export default function Perfil() {
       <div className="dos"><div className="campo"><label htmlFor="p5">Carrera</label><input id="p5" type="text" value={f.carrera_texto || ""} onChange={set("carrera_texto")} /></div><div className="campo"><label htmlFor="p6">Año</label><input id="p6" type="number" min="1" max="7" value={f.anio_cursada || ""} onChange={set("anio_cursada")} /></div></div>
       <button className="btn pri" onClick={() => guardar()}>Guardar</button>
     </div>
-    <h3 className="sec">Qué me gusta</h3>
-    <p className="expl">Con esto armo lo que te aparece en “Para vos”.</p>
-    <div className="chipera">{Object.entries(INTERESES).map(([k, v]) => { const l: string[] = pref.intereses || [], on = l.includes(k); return <button key={k} className="chip" aria-pressed={on} onClick={() => { const p = { ...pref, intereses: on ? l.filter((x) => x !== k) : [...l, k] }; setF({ ...f, preferencias: p }); guardar({ preferencias: p }); }}>{v.nombre}</button>; })}</div>
     <h3 className="sec">Mi casa</h3>
     <div className="tarjeta">
       <p className="expl">{f.casa_lat != null ? `Está cargada en ${f.casa_barrio || "Buenos Aires"}.` : "Todavía no cargaste tu casa. Con ella el mapa sale desde ahí."}</p>

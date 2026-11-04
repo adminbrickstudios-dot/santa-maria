@@ -12,7 +12,7 @@ import { cuandoRelativo } from "@/lib/util";
 const TIPOS: [string, string, string][] = [["mensajes", "Mensajes", "Cuando alguien te escribe"], ["juntadas", "Juntadas", "Cuando proponen una"], ["avisos", "Avisos del grupo", "Salidas, pedidos y novedades"], ["agenda", "Agenda", "Recordatorios, parciales y qué tenés hoy"], ["plata", "Billetera", "Consejos, fijos, presupuesto y cierre de mes"], ["descuentos", "Descuentos", "Promos del día"]];
 function Notif() {
   const q = useSearchParams(), { perfil, recargar, recuentos, toast } = useSesion();
-  const [l, setL] = useState<any[]>([]), [est, setE] = useState<string>("default"), [n, setN] = useState<any>(perfil.notif || {});
+  const [l, setL] = useState<any[]>([]), [est, setE] = useState<string>("default"), [n, setN] = useState<any>({ agenda: true, plata: true, ...(perfil.notif || {}) });
   useEffect(() => {
     sb.from("notificaciones").select("*").order("creado_en", { ascending: false }).limit(50).then(async ({ data }: any) => {
       setL(data || []);
@@ -33,7 +33,7 @@ function Notif() {
     {est !== "granted" && <div className="grande" style={{ cursor: "pointer" }} onClick={activar} role="button" tabIndex={0}><Icono n="campana" /><span className="q"><b>Activá las notificaciones</b><small>{est === "denied" ? "Están bloqueadas: habilitalas en los permisos del navegador." : esIOS() && !estaInstalada() ? "En iPhone primero hay que instalar la app." : "Así te llegan mensajes y juntadas aunque tengas la app cerrada."}</small></span></div>}
     {!pushSoportado() && !esIOS() && <p className="expl">Este navegador no admite notificaciones.</p>}
     <h3 className="sec">Qué me llega</h3>
-    <div className="lista">{TIPOS.map(([k, t, d]) => <button key={k} className="item" role="switch" aria-checked={n[k] !== false && (n[k] || k === "agenda" || k === "plata")} onClick={() => cambiar(k)}><span className="q"><b>{t}</b><small>{d}</small></span><span className="ic" style={{ color: n[k] ? "var(--ok)" : "var(--tinta3)" }}><Icono n={n[k] ? "ok" : "x"} /></span></button>)}</div>
+    <div className="lista">{TIPOS.map(([k, t, d]) => <button key={k} className="item" role="switch" aria-checked={!!n[k]} onClick={() => cambiar(k)}><span className="q"><b>{t}</b><small>{d}</small></span><span className="ic" style={{ color: n[k] ? "var(--ok)" : "var(--tinta3)" }}><Icono n={n[k] ? "ok" : "x"} /></span></button>)}</div>
     {q.get("v") !== "ajustes" && <><h3 className="sec">Lo último</h3>
     {l.length ? <div className="lista">{l.map((a) => <Link key={a.id} href={a.enlace || "/inicio"} className="item"><span className="q"><b>{a.titulo}</b>{a.cuerpo && <small>{a.cuerpo}</small>}<small>{cuandoRelativo(a.creado_en)}</small></span></Link>)}</div> : <p className="expl">Todavía no pasó nada. Acá van a aparecer mensajes, juntadas y avisos.</p>}</>}
   </div>;
