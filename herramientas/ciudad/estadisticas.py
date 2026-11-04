@@ -10,7 +10,7 @@ def dentro(g):
 for n,cl in (('crudo/ov_edif.jsonl',('height','num_floors','roof_shape','roof_color','facade_color','facade_material','roof_material','class','min_height','names')),('crudo/osm_edif.jsonl',('height','building:levels','roof:shape','roof:levels','building:colour','building:material','roof:colour','start_date','name','architect','heritage','building:part'))):
     t=z=0;a=collections.Counter();b=collections.Counter();fu=collections.Counter()
     for l in open(n):
-        f=json.loads(l);t+=1
+        f=json.loads(l.strip('\x1e\n '));t+=1
         if not dentro(f['geometry']):continue
         z+=1;p=f['properties']
         for k in cl:
@@ -25,7 +25,7 @@ for n,cl in (('crudo/ov_edif.jsonl',('height','num_floors','roof_shape','roof_co
     print(n,'total',t,'zona',z,dict(a));print(' tipos',b.most_common(10),' fuentes',fu.most_common(5))
 t=z=0;a=collections.Counter();c=collections.Counter()
 for l in open('crudo/ov_lug.jsonl'):
-    f=json.loads(l);t+=1
+    f=json.loads(l.strip('\x1e\n '));t+=1
     if not dentro(f['geometry']):continue
     z+=1;p=f['properties']
     for k in ('websites','socials','phones','emails','brand','addresses'):
@@ -38,7 +38,7 @@ for l in open('crudo/ov_lug.jsonl'):
 print('lugares',t,'zona',z,dict(a));print(c.most_common(25))
 t=collections.Counter();k=collections.Counter()
 for l in open('crudo/osm_cosas.jsonl'):
-    f=json.loads(l);p=f['properties']
+    f=json.loads(l.strip('\x1e\n '));p=f['properties']
     if not dentro(f['geometry']):continue
     for q in ('entrance','door','shop','amenity','tourism','natural','highway','man_made','barrier'):
         if q in p:t[q+'='+str(p[q])]+=1

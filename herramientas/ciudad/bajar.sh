@@ -16,6 +16,6 @@ f nwr/building nwr/building:part; osmium export t.pbf -O -f geojsonseq --add-uni
 f n/entrance n/door n/shop n/amenity n/tourism n/office n/leisure n/craft n/healthcare n/historic n/natural=tree n/highway=street_lamp,traffic_signals,crossing,bus_stop n/man_made n/railway=subway_entrance n/emergency n/barrier w/shop w/amenity w/tourism w/office w/leisure w/historic r/amenity r/tourism r/leisure r/historic
 osmium export t.pbf -O -f geojsonseq --add-unique-id=type_id -o crudo/osm_cosas.jsonl
 f w/highway w/barrier w/railway w/waterway nwr/landuse nwr/natural nwr/leisure=park,garden,pitch,playground; osmium export t.pbf -O -f geojsonseq --add-unique-id=type_id -o crudo/osm_red.jsonl
-python3 herramientas/ciudad/estadisticas.py > recon/estadisticas.txt
+python3 herramientas/ciudad/estadisticas.py > recon/estadisticas.txt 2> recon/estadisticas.err || true
 pigz -9 crudo/*.jsonl
 ls -la crudo > recon/tam.txt
