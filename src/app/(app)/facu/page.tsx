@@ -9,7 +9,7 @@ import { Hoja } from "@/components/Hoja";
 import { Icono } from "@/components/Icono";
 import { COLORES, DIAS, ahoraBA, faltan, fechaLarga, horaDe } from "@/lib/util";
 
-const V = [["horario", "Horario"], ["materias", "Materias"], ["fechas", "Fechas"], ["apuntes", "Apuntes"]];
+const V = [["horario", "Horario"], ["materias", "Materias"], ["apuntes", "Apuntes"]];
 const TIPOS: Record<string, string> = { parcial: "Parcial", final: "Final", tp: "Trabajo práctico", vencimiento: "Vencimiento", otro: "Otro" };
 const ESTADOS: Record<string, string> = { cursando: "Cursando", regular: "Regular, falta el final", aprobada: "Aprobada", pendiente: "Por cursar" };
 
@@ -55,7 +55,8 @@ function Facu() {
   const aprob = mats.filter((m) => m.estado === "aprobada" && m.nota != null), prom = aprob.length ? aprob.reduce((a, m) => a + Number(m.nota), 0) / aprob.length : null;
   const hoy = ahoraBA().getDay();
   return <div className="pagina">
-    <h2 className="titulo">Tu facu</h2>
+    <h2 className="titulo">Estudio y horarios</h2>
+    <Link href="/agenda" className="mas-largo"><Icono n="calendario" t={20} /><span>Parciales y fechas en la Agenda</span><Icono n="chevron" t={18} /></Link>
     {pantalla("carreras") && <Link href="/facu/carreras" className="bloque"><span className="ic"><Icono n="brujula" t={28} /></span><span style={{ flex: 1, minWidth: 0 }}><b>Carreras</b><small>Explorá, compará y hacé el test de orientación</small></span></Link>}
     <div className="segs" role="tablist">{V.filter(([k]) => k !== "apuntes" || pantalla("apuntes")).map(([k, n]) => <button key={k} className="seg" role="tab" aria-selected={v === k} onClick={() => setV(k)}>{n}</button>)}</div>
     {v === "horario" && <>

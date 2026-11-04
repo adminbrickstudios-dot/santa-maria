@@ -134,9 +134,10 @@ function toque(e){
 }
 async function crearMapa(contenedor){
   maplibre=(await import('maplibre-gl')).default;
-  mapa=new maplibre.Map({container:contenedor,style:estiloBase(),center:[-58.40,-34.60],zoom:13,minZoom:9,maxZoom:19,maxBounds:[[-59.3,-35.25],[-57.6,-34.0]],attributionControl:{compact:true},fadeDuration:120,maxPitch:60,pitchWithRotate:false,dragRotate:false});
-  mapa.touchZoomRotate.disableRotation();mapa.touchPitch.disable();mapa.keyboard.disableRotation();
+  mapa=new maplibre.Map({container:contenedor,style:estiloBase(),center:[-58.40,-34.60],zoom:13,minZoom:9,maxZoom:19,maxBounds:[[-59.3,-35.25],[-57.6,-34.0]],attributionControl:false,fadeDuration:120,maxPitch:60,pitchWithRotate:false,dragRotate:false});
+  mapa.addControl(new maplibre.AttributionControl({compact:true}),'bottom-left');mapa.touchZoomRotate.disableRotation();mapa.touchPitch.disable();mapa.keyboard.disableRotation();
   mapa.on('style.load',()=>{estiloListo=false;instalarCapas();});
+  mapa.once('idle',()=>{document.querySelector('.maplibregl-compact-show')?.classList.remove('maplibregl-compact-show');});
   mapa.on('click',toque);
   mapa.on('error',e=>{if(!mapa.isStyleLoaded()&&!S.avisoRed){S.avisoRed=1;aviso('El mapa de fondo tarda en cargar. Revisá tu conexión.');}});
 }
@@ -553,7 +554,7 @@ export async function montarMapa(raiz,api){
   S.desde=null;S.cercaDe=null;
   $('carga').hidden=true;
   const me=yo();if(me&&me.x!=null)irA(me.x,me.y,.17,0);else if(L.places[0])irA(L.places[0].wx,L.places[0].wy,.1,0);
-  instalarCapas();render();pedir();
+  render();pedir();
   if(api.destino){const d=api.destino,p={nombre:d.nombre,x:wx(d.lon),y:wy(d.lat),tipo:'punto'};reg(p);if(api.soloVer){irA(p.x,p.y,.5,0);S.marca=p;abrirGlobo(p);pedir();}else irDestino(p.k);}
 }
 /* Panel que sube y baja como en Mapas del iPhone */
