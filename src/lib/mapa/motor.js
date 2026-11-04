@@ -4,19 +4,31 @@ const wx=l=>(l-LON0)*KX, wy=l=>-(l-LAT0)*KY, alon=x=>x/KX+LON0, alat=y=>-y/KY+LA
 export const G={},T={},L={};
 const sinTilde=s=>(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
 
-function cargarCalles(d){
+/* Busca en una grilla guardada en arreglos planos: se puede mandar entre hilos sin copiar objetos. */
+function grilla(gk,go,gv){
+  return {get(k){let a=0,b=gk.length-1;while(a<=b){const m=(a+b)>>1,v=gk[m];if(v===k)return gv.subarray(go[m],go[m+1]);if(v<k)a=m+1;else b=m-1;}return undefined;}};
+}
+function aplanarGrilla(mapa){
+  const ks=[...mapa.keys()].sort((a,b)=>a-b),gk=new Int32Array(ks),go=new Int32Array(ks.length+1);
+  let tot=0;ks.forEach((k,i)=>{go[i]=tot;tot+=mapa.get(k).length;});go[ks.length]=tot;
+  const gv=new Int32Array(tot);ks.forEach((k,i)=>gv.set(mapa.get(k),go[i]));
+  return {gk,go,gv};
+}
+function indexarCalles(d){
   const [ox,oy]=d.o, N=d.n.length/2, nx=new Float64Array(N), ny=new Float64Array(N);
   for(let i=0;i<N;i++){nx[i]=wx((d.n[2*i]+ox)/1e5);ny[i]=wy((d.n[2*i+1]+oy)/1e5);}
   const E=d.e.length, ea=new Int32Array(E), eb=new Int32Array(E), ec=new Uint8Array(E), en=new Int32Array(E),
-        e0=new Int32Array(E), e1=new Int32Array(E), el=new Float32Array(E), eba=new Int16Array(E), ep=new Array(E);
-  const grid=new Map(), put=(k,i)=>{let a=grid.get(k);if(!a)grid.set(k,a=[]);if(a[a.length-1]!==i)a.push(i);};
+        e0=new Int32Array(E), e1=new Int32Array(E), el=new Float32Array(E), eba=new Int16Array(E), po=new Int32Array(E+1);
+  for(let i=0;i<E;i++)po[i+1]=po[i]+4+d.e[i][7].length;
+  const todos=new Float32Array(po[E]);
+  const celdas=new Map(), put=(k,i)=>{let a=celdas.get(k);if(!a)celdas.set(k,a=[]);if(a[a.length-1]!==i)a.push(i);};
   const deg=new Int32Array(N+1);
   for(let i=0;i<E;i++){
     const e=d.e[i],a=e[0],b=e[1];ea[i]=a;eb[i]=b;ec[i]=e[2];en[i]=e[3];e0[i]=e[4];e1[i]=e[5];eba[i]=e[6];
-    const m=e[7],pts=new Float32Array(4+m.length);pts[0]=nx[a];pts[1]=ny[a];
+    const m=e[7],pts=todos.subarray(po[i],po[i+1]);pts[0]=nx[a];pts[1]=ny[a];
     let px=d.n[2*a]+ox,py=d.n[2*a+1]+oy;
     for(let j=0;j<m.length;j+=2){px+=m[j];py+=m[j+1];pts[2+j]=wx(px/1e5);pts[3+j]=wy(py/1e5);}
-    pts[pts.length-2]=nx[b];pts[pts.length-1]=ny[b];ep[i]=pts;
+    pts[pts.length-2]=nx[b];pts[pts.length-1]=ny[b];
     let len=0;
     for(let j=2;j<pts.length;j+=2){
       const sx=pts[j]-pts[j-2],sy=pts[j+1]-pts[j-1],s=Math.hypot(sx,sy);len+=s;
@@ -28,24 +40,43 @@ function cargarCalles(d){
   const st=new Int32Array(N+1);for(let i=0;i<N;i++)st[i+1]=st[i]+deg[i];
   const fill=st.slice(),ad=new Int32Array(2*E);
   for(let i=0;i<E;i++){ad[fill[ea[i]]++]=i;ad[fill[eb[i]]++]=i;}
-  Object.assign(G,{N,E,nx,ny,ea,eb,ec,en,e0,e1,el,eba,ep,grid,st,ad,names:d.names,barrios:d.barrios});
+  return {N,E,nx,ny,ea,eb,ec,en,e0,e1,el,eba,po,todos,st,ad,...aplanarGrilla(celdas),names:d.names,barrios:d.barrios};
 }
+function adoptarCalles(x){
+  const ep=new Array(x.E);for(let i=0;i<x.E;i++)ep[i]=x.todos.subarray(x.po[i],x.po[i+1]);
+  Object.assign(G,x,{ep,grid:grilla(x.gk,x.go,x.gv),cl:null,porN:null});
+}
+function cargarCalles(d){adoptarCalles(indexarCalles(d));}
 function ckey(x,y){return (Math.floor(x/200)+5000)*100000+(Math.floor(y/200)+5000);}
 
-function cargarTransporte(d){
-  const S=d.stops.length,sx=new Float64Array(S),sy=new Float64Array(S),sn=new Int32Array(S);
-  d.stops.forEach((s,i)=>{sx[i]=wx(s[0]/1e5);sy[i]=wy(s[1]/1e5);sn[i]=s[2];});
-  const por=Array.from({length:S},()=>[]);
-  const pats=d.pats.map((p,i)=>{
-    const g=new Float32Array(p.g.length);let x=0,y=0;
-    for(let j=0;j<p.g.length;j+=2){x=j?x+p.g[j]:p.g[0];y=j?y+p.g[j+1]:p.g[1];g[j]=wx(x/1e5);g[j+1]=wy(y/1e5);}
-    p.s.forEach((s,k)=>por[s].push(i,k));
-    return {l:p.l,h:p.h,s:p.s,p:p.p,g,w:p.w||1,sub:!!p.sub};
+function indexarTransporte(d){
+  const S=d.stops.length,sx=new Float64Array(S),sy=new Float64Array(S),sn=new Int32Array(S),nom=new Array(S),lin={},est=[];
+  d.stops.forEach((s,i)=>{sx[i]=wx(s[0]/1e5);sy[i]=wy(s[1]/1e5);sn[i]=s[2];nom[i]=s[3]||'';if(s.length>4){lin[i]=s[4];est.push(i);}});
+  const P=d.pats.length,pso=new Int32Array(P+1),pgo=new Int32Array(P+1);
+  for(let i=0;i<P;i++){pso[i+1]=pso[i]+d.pats[i].s.length;pgo[i+1]=pgo[i]+d.pats[i].g.length;}
+  const pss=new Int32Array(pso[P]),psp=new Float64Array(pso[P]),pgg=new Float32Array(pgo[P]);
+  const cuenta=new Int32Array(S+1);
+  d.pats.forEach((p,i)=>{
+    pss.set(p.s,pso[i]);psp.set(p.p,pso[i]);
+    let x=0,y=0;const o=pgo[i];
+    for(let j=0;j<p.g.length;j+=2){x=j?x+p.g[j]:p.g[0];y=j?y+p.g[j+1]:p.g[1];pgg[o+j]=wx(x/1e5);pgg[o+j+1]=wy(y/1e5);}
+    p.s.forEach(s=>{cuenta[s+1]+=2;});
   });
-  const sg=new Map();
-  for(let i=0;i<S;i++){const k=Math.floor(sx[i]/300)*100000+Math.floor(sy[i]/300);let a=sg.get(k);if(!a)sg.set(k,a=[]);a.push(i);}
-  Object.assign(T,{S,sx,sy,sn,por,pats,sg,stops:d.stops,meta:d.meta});
+  for(let i=0;i<S;i++)cuenta[i+1]+=cuenta[i];
+  const fill=cuenta.slice(),porV=new Int32Array(cuenta[S]);
+  d.pats.forEach((p,i)=>p.s.forEach((s,k)=>{porV[fill[s]++]=i;porV[fill[s]++]=k;}));
+  const celdas=new Map();
+  for(let i=0;i<S;i++){const k=Math.floor(sx[i]/300)*100000+Math.floor(sy[i]/300);let a=celdas.get(k);if(!a)celdas.set(k,a=[]);a.push(i);}
+  const g=aplanarGrilla(celdas);
+  return {S,sx,sy,sn,nom,lin,est:new Int32Array(est),porO:cuenta,porV,pso,pgo,pss,psp,pgg,sgk:g.gk,sgo:g.go,sgv:g.gv,
+    pl:d.pats.map(p=>p.l),ph:d.pats.map(p=>p.h),pw:d.pats.map(p=>p.w||1),psub:d.pats.map(p=>!!p.sub),meta:d.meta};
 }
+function adoptarTransporte(x){
+  const por=new Array(x.S);for(let i=0;i<x.S;i++)por[i]=x.porV.subarray(x.porO[i],x.porO[i+1]);
+  const pats=x.pl.map((l,i)=>({l,h:x.ph[i],s:x.pss.subarray(x.pso[i],x.pso[i+1]),p:x.psp.subarray(x.pso[i],x.pso[i+1]),g:x.pgg.subarray(x.pgo[i],x.pgo[i+1]),w:x.pw[i],sub:x.psub[i]}));
+  Object.assign(T,x,{por,pats,sg:grilla(x.sgk,x.sgo,x.sgv)});
+}
+function cargarTransporte(d){adoptarTransporte(indexarTransporte(d));}
 
 /* ───── punto → calle más cercana ───── */
 function enganchar(x,y,sirve){
@@ -251,7 +282,7 @@ function recortaTraza(p,i,j){
   const i0=cerca(a,0),i1=cerca(b,i0),o=[a[0],a[1]];
   for(let k=i0;k<=i1;k+=2)o.push(g[k],g[k+1]);o.push(b[0],b[1]);return o;
 }
-const nomParada=s=>T.stops[s][3]||'la parada';
+const nomParada=s=>T.nom[s]||'la parada';
 
 function tarifaColectivo(m){const km=m/1000;return km<3?956:km<6?1063:km<12?1145:1227;}
 function piernaPie(r,dest,de,ha,c){
@@ -369,33 +400,56 @@ function variantesPie(o,d,c){
   }
   return out;
 }
+/* Nombres de calle ya normalizados y qué tramos tiene cada una: se arma una vez y evita recorrer todo en cada letra. */
+const claveCalle=s=>sinTilde(s).replace(/\bav(da|enida)?\.?\s+/g,'').replace(/\bgral\.?\s+/g,'general ').replace(/\bdr\.?\s+/g,'doctor ').replace(/\bpte\.?\s+/g,'presidente ').replace(/\s+/g,' ').trim();
+function indiceCalles(){
+  if(G.cl)return;
+  const porN=G.names.map(()=>[]);for(let e=0;e<G.E;e++)porN[G.en[e]].push(e);
+  G.porN=porN;G.cl=G.names.map(claveCalle);
+}
+function callesQue(c){
+  indiceCalles();const r=[];
+  for(let i=0;i<G.cl.length;i++){const n=G.cl[i];if(!n||!G.porN[i].length)continue;const p=n===c?0:n.startsWith(c)?1:n.includes(' '+c)?2:n.includes(c)?3:-1;if(p>=0)r.push([p,G.porN[i].length>40?0:1,i]);}
+  return r.sort((a,b)=>a[0]-b[0]||a[1]-b[1]).map(x=>x[2]);
+}
 function geocodificar(q){
-  q=q.trim();const out=[];if(q.length<3)return out;
-  const y=q.match(/^(.+?)\s+(?:y|e|esq\.?|esquina)\s+(.+)$/i),n=q.match(/^(.+?)\s+(\d{1,5})$/);
-  const clave=s=>sinTilde(s).replace(/\bav(da|enida)?\.?\s/g,'').trim();
+  q=q.trim().replace(/,\s*(caba|capital( federal)?|buenos aires)\s*$/i,'');const out=[];if(q.length<3||!G.E)return out;
+  const y=q.match(/^(.+?)\s+(?:y|e|esq\.?|esquina|con)\s+(.+)$/i),n=q.match(/^(.+?)\s+(?:al\s+)?(\d{1,5})$/i);
   if(y){
-    const a=clave(y[1]),b=clave(y[2]);
-    const lista=new Map();
-    for(let e=0;e<G.E&&out.length<4;e++){
-      const m=clave(G.names[G.en[e]]);if(!m.includes(a))continue;
-      for(const u of [G.ea[e],G.eb[e]]){
-        for(let i=G.st[u];i<G.st[u+1];i++){const f=G.ad[i],nm=clave(G.names[G.en[f]]);
-          if(nm.includes(b)&&!lista.has(u)){lista.set(u,1);out.push({nombre:`${G.names[G.en[e]]} y ${G.names[G.en[f]]}`,x:G.nx[u],y:G.ny[u],tipo:'dir'});}}
+    const a=callesQue(claveCalle(y[1])).slice(0,6),bb=new Set(callesQue(claveCalle(y[2])).slice(0,8)),vistos=new Set();
+    for(const na of a){
+      for(const e of G.porN[na]){
+        for(const u of [G.ea[e],G.eb[e]]){
+          for(let i=G.st[u];i<G.st[u+1];i++){
+            const f=G.ad[i],nb=G.en[f];if(!bb.has(nb)||nb===na)continue;
+            const k=`${na}|${nb}|${Math.round(G.nx[u]/400)}|${Math.round(G.ny[u]/400)}`;if(vistos.has(k))continue;vistos.add(k);
+            out.push({nombre:`${G.names[na]} y ${G.names[nb]}`,x:G.nx[u],y:G.ny[u],tipo:'esquina',sub:G.barrios[G.eba[e]]||''});
+            if(out.length>3)return out;
+          }
+        }
       }
     }
     return out;
   }
   if(n){
-    const a=clave(n[1]),h=+n[2];const vistos=new Set();
-    for(let e=0;e<G.E;e++){
-      if(!(G.e0[e]<=h&&h<=G.e1[e]))continue;
-      const nm=G.names[G.en[e]],m=clave(nm);if(!m.includes(a)||vistos.has(nm))continue;vistos.add(nm);
-      const t=(h-G.e0[e])/Math.max(1,G.e1[e]-G.e0[e]),p=G.ep[e],k=Math.floor((p.length/2-1)*t)*2;
-      const x=G.nx[G.ea[e]]+(G.nx[G.eb[e]]-G.nx[G.ea[e]])*t,y2=G.ny[G.ea[e]]+(G.ny[G.eb[e]]-G.ny[G.ea[e]])*t;
-      out.push({nombre:`${nm} ${h}`,x,y:y2,tipo:'dir',sub:G.barrios[G.eba[e]]});if(out.length>3)break;
+    const h=+n[2];
+    for(const na of callesQue(claveCalle(n[1])).slice(0,6)){
+      let be=-1,bd=1e9;
+      for(const e of G.porN[na]){if(!G.e1[e])continue;const d=h<G.e0[e]?G.e0[e]-h:h>G.e1[e]?h-G.e1[e]:0;if(d<bd){bd=d;be=e;}if(!d)break;}
+      if(be<0||bd>150)continue;
+      const e=be,t=Math.max(0,Math.min(1,(h-G.e0[e])/Math.max(1,G.e1[e]-G.e0[e])));
+      out.push({nombre:`${G.names[na]} ${h}`,x:G.nx[G.ea[e]]+(G.nx[G.eb[e]]-G.nx[G.ea[e]])*t,y:G.ny[G.ea[e]]+(G.ny[G.eb[e]]-G.ny[G.ea[e]])*t,tipo:'dir',sub:G.barrios[G.eba[e]]||''});
+      if(out.length>3)break;
     }
   }
   return out;
+}
+/* Una calle entera: el punto central de sus tramos */
+function centroCalle(na){
+  indiceCalles();const l=G.porN[na];if(!l||!l.length)return null;
+  let sx=0,sy=0;for(const e of l){sx+=G.nx[G.ea[e]];sy+=G.ny[G.ea[e]];}sx/=l.length;sy/=l.length;
+  let b=l[0],bd=1e18;for(const e of l){const d=(G.nx[G.ea[e]]-sx)**2+(G.ny[G.ea[e]]-sy)**2;if(d<bd){bd=d;b=e;}}
+  return {nombre:G.names[na],x:G.nx[G.ea[b]],y:G.ny[G.ea[b]],tipo:'calle',sub:G.barrios[G.eba[b]]||''};
 }
 function barrioDe(x,y){const m=enganchar(x,y);return m?G.barrios[G.eba[m.e]]||'':'';}
 function esquinaDe(x,y){
@@ -405,4 +459,99 @@ function esquinaDe(x,y){
   return s.slice(0,2).join(' y ');
 }
 
-export {LON0,LAT0,wx,wy,alon,alat,sinTilde,cargarCalles,cargarTransporte,enganchar,perfil,dijkstra,semillas,camino,pasos,franja,frecuencia,subteAbierto,subteFrec,vecinas,esperaDe,rideSeg,planificar,km,cuadras,variantesPie,geocodificar,barrioDe,esquinaDe,nomParada,VBUS,FRANJA};
+/* ───── Tiempos en masa: una persona a todos lados (para la juntada) ───── */
+function raptorTodo(aO,c){
+  const S2=T.S,best=aO.slice();let marc=[];for(let s=0;s<S2;s++)if(aO[s]<Infinity)marc.push(s);
+  let tau=aO;
+  for(let k=1;k<=2;k++){
+    const t=tau.slice(),nu=new Set(),q=new Map();
+    for(const s of marc){const l=T.por[s];for(let i=0;i<l.length;i+=2){const p=l[i],ix=l[i+1];if(!q.has(p)||q.get(p)>ix)q.set(p,ix);}}
+    for(const [pi,ini] of q){const p=T.pats[pi],es=esperaDe(p,c);if(!es)continue;let base=Infinity,bi=-1;
+      for(let i=ini;i<p.s.length;i++){const s=p.s[i];if(bi>=0){const ar=base+rideSeg(p,bi,i,c);if(ar<t[s]&&ar<best[s]){t[s]=ar;best[s]=ar;nu.add(s);}}
+        const pr=tau[s];if(pr<Infinity){const c2=pr+es.w+(k>1?60:0);if(bi<0||c2<base+rideSeg(p,bi,i,c)){base=c2;bi=i;}}}}
+    for(const s of [...nu]){const v=vecinas(s);for(let i=0;i<v.length;i+=2){const n=v[i],ar=t[s]+v[i+1]*1.25/1.3+20;if(ar<t[n]&&ar<best[n]){t[n]=ar;best[n]=ar;nu.add(n);}}}
+    tau=t;marc=[...nu];if(!marc.length)break;
+  }
+  return best;
+}
+function tablaDesde(p,ctx){
+  const W=perfil('pie',ctx),r=dijkstra(semillas(p,W,cl=>cl!==4).sem,W),a=new Float32Array(T.S).fill(Infinity);
+  for(let s=0;s<T.S;s++){const n=T.sn[s];if(n>=0&&r.dist[n]<=800)a[s]=r.dist[n]+6;}
+  return {r,best:raptorTodo(a,ctx)};
+}
+function tiempoA(tab,q){
+  const {sem}=semillas(q,tab.r.W,cl=>cl!==4);if(!sem.length)return {seg:Infinity,modo:'a pie'};
+  const pie=Math.min(tab.r.dist[sem[0].n]+sem[0].c,tab.r.dist[sem[1].n]+sem[1].c);
+  let tr=Infinity;const cxx=Math.floor(q.x/300),cyy=Math.floor(q.y/300);
+  for(let i=-2;i<=2;i++)for(let j=-2;j<=2;j++){const a=T.sg.get((cxx+i)*100000+cyy+j);if(!a)continue;for(const s of a){const d=Math.hypot(T.sx[s]-q.x,T.sy[s]-q.y);if(d<650){const v=tab.best[s]+d*1.28/1.35;if(v<tr)tr=v;}}}
+  return pie<=tr?{seg:pie,modo:'a pie'}:{seg:tr,modo:'en transporte'};
+}
+function juntaCalc(gente,cand,ctx){
+  const tabs=gente.map(p=>[p,tablaDesde(p,ctx)]);
+  return cand.map(c=>{
+    const t=tabs.map(([p,tb])=>{if(c.casa===p.id)return {id:p.id,seg:0,modo:'es su casa'};const v=tiempoA(tb,c);return {id:p.id,seg:v.seg,modo:v.modo};});
+    const max=Math.max(...t.map(x=>x.seg)),sum=t.reduce((a,x)=>a+x.seg,0);
+    return {c,t:t.sort((a,b)=>b.seg-a.seg),max,prom:sum/t.length,score:sum/t.length*.6+max*.4};
+  }).sort((a,b)=>a.score-b.score).slice(0,5);
+}
+
+/* ───── Caminar entre puntos: medir, punto medio y recorridos ───── */
+function caminar(a,b){
+  const W=perfil('pie',{dia:'hab',min:720}),r=dijkstra(semillas(a,W,cl=>cl!==4).sem,W),w=camino(r,b,cl=>cl!==4);
+  if(!w)return null;
+  return {len:w.len,seg:w.len/1.35+w.tramos.length*12,pts:[a.x,a.y,...w.pts,b.x,b.y]};
+}
+function puntoMedio(a,b){
+  const w=caminar(a,b);if(!w)return null;
+  const p=w.pts;let tot=0;for(let i=2;i<p.length;i+=2)tot+=Math.hypot(p[i]-p[i-2],p[i+1]-p[i-1]);
+  let acc=0,x=p[0],y=p[1];
+  for(let i=2;i<p.length;i+=2){const s=Math.hypot(p[i]-p[i-2],p[i+1]-p[i-1]);if(acc+s>=tot/2){const t=s?(tot/2-acc)/s:0;x=p[i-2]+(p[i]-p[i-2])*t;y=p[i-1]+(p[i+1]-p[i-1])*t;break;}acc+=s;}
+  return {x,y,len:w.len,seg:w.seg,pts:w.pts};
+}
+function recorrido(l){
+  const pts=[],tramos=[];let len=0,seg=0;
+  for(let i=1;i<l.length;i++){const w=caminar(l[i-1],l[i]);if(!w)continue;pts.push(...w.pts);len+=w.len;seg+=w.seg;tramos.push({len:w.len,seg:w.seg});}
+  return {pts,len,seg,tramos};
+}
+
+/* ───── Lugares: los deja listos para la vista, cada uno con su barrio ───── */
+const anillo=r=>{const o=[];for(let i=0;i<r.length;i+=2)o.push([r[i]/1e5,r[i+1]/1e5]);return o;};
+function prepararLugares(l){
+  const pois=l.pois.map(q=>{const x=wx(q[1]),y=wy(q[2]);return {c:q[0],lon:q[1],lat:q[2],n:q[3],d:q[4],wx:x,wy:y,b:barrioDe(x,y)};});
+  const parks=l.parks.map(p=>{const x=wx(p[2]),y=wy(p[3]);return {n:p[0],area:p[1],lon:p[2],lat:p[3],x,y,b:barrioDe(x,y)};});
+  const verdes={type:'FeatureCollection',features:l.parks.map(p=>({type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:p[4].map(anillo)}}))};
+  return {paraVista:{pois,parks,barrios:l.barrios},verdes,land:l.land,agua:l.agua};
+}
+/* El plano de la app, hecho solo con datos propios: se usa si no llega el mapa de internet */
+function planoBase(lw){
+  const lin={};
+  const red=v=>Math.round(v*1e5)/1e5;
+  for(let e=0;e<G.E;e++){
+    const c=G.ec[e],p=G.ep[e],l=[];for(let i=0;i<p.length;i+=2)l.push([red(alon(p[i])),red(alat(p[i+1]))]);
+    (lin[c]||(lin[c]=[])).push(l);
+  }
+  const f=Object.keys(lin).map(c=>({type:'Feature',properties:{k:'calle',c:+c},geometry:{type:'MultiLineString',coordinates:lin[c]}}));
+  if(lw.land)f.unshift({type:'Feature',properties:{k:'tierra'},geometry:{type:'Polygon',coordinates:[anillo(lw.land)]}});
+  if(lw.agua)f.unshift({type:'Feature',properties:{k:'agua'},geometry:{type:'Polygon',coordinates:[anillo(lw.agua)]}});
+  if(lw.verdes)f.push(...lw.verdes.features.map(q=>({...q,properties:{k:'verde'}})));
+  return {type:'FeatureCollection',features:f};
+}
+/* Datos reales de un barrio, contados desde los archivos de la app */
+let barrioParada=null;
+function fichaBarrio(b,lw){
+  const v=lw.paraVista||lw;
+  if(!barrioParada){barrioParada=new Array(T.S);for(let s=0;s<T.S;s++)barrioParada[s]=barrioDe(T.sx[s],T.sy[s]);}
+  const lineas=new Set(),vistas=new Set(),est=[];
+  for(let s=0;s<T.S;s++){
+    if(barrioParada[s]!==b)continue;
+    const nom=T.nom[s];
+    if(T.lin[s]!=null){const k=nom+T.lin[s];if(!vistas.has(k)){vistas.add(k);est.push({nom,lin:T.lin[s],x:T.sx[s],y:T.sy[s]});}continue;}
+    const l=T.por[s];for(let i=0;i<l.length;i+=2){const p=T.pats[l[i]];if(!p.sub)lineas.add(p.l);}
+  }
+  const cuenta={f:0,a:0,c:0,h:0},cafes=[];
+  for(const q of v.pois){if(q.b!==b)continue;cuenta[q.c]=(cuenta[q.c]||0)+1;if(q.c==='c')cafes.push(q);}
+  const pl=v.parks.filter(p=>p.b===b);
+  return {b,lineas:lineas.size,est,cuenta,cafes:cafes.slice(0,6),plazas:pl.filter(p=>p.n).sort((x,y)=>y.area-x.area).slice(0,6),nPlazas:pl.length,verde:Math.round(pl.reduce((a,p)=>a+p.area,0)/10000)};
+}
+
+export {LON0,LAT0,wx,wy,alon,alat,sinTilde,indexarCalles,adoptarCalles,cargarCalles,indexarTransporte,adoptarTransporte,cargarTransporte,enganchar,juntaCalc,caminar,puntoMedio,recorrido,prepararLugares,planoBase,fichaBarrio,claveCalle,indiceCalles,centroCalle,perfil,dijkstra,semillas,camino,pasos,franja,frecuencia,subteAbierto,subteFrec,vecinas,esperaDe,rideSeg,planificar,km,cuadras,variantesPie,geocodificar,barrioDe,esquinaDe,nomParada,VBUS,FRANJA};
