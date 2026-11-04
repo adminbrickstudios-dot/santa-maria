@@ -57,7 +57,7 @@ end $$;
 revoke all on function public.calcular_proximo_aviso(public.eventos,timestamptz) from public, anon, authenticated;
 
 create function public.evento_fijar_aviso() returns trigger
-language plpgsql set search_path = public, pg_temp as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 begin
   new.proximo_aviso := public.calcular_proximo_aviso(new,now());
   return new;

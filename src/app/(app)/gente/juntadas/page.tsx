@@ -11,14 +11,14 @@ import { Icono } from "@/components/Icono";
 import { fechaLarga, horaDe } from "@/lib/util";
 
 function Juntadas() {
-  const q = useSearchParams(), { perfil, personas, toast } = useSesion();
+  const q = useSearchParams(), { perfil, personas, toast, asegurarPersonas } = useSesion();
   const [l, setL] = useState<any[]>([]), [rs, setR] = useState<any[]>([]), [n, setN] = useState(false), [f, setF] = useState<any>({});
   const cargar = useCallback(async () => {
-    const { data } = await sb.from("juntadas").select("*").gte("cuando", new Date(Date.now() - 864e5).toISOString()).order("cuando");
+    const { data } = await sb.from("juntadas").select("*").gte("cuando", new Date(Date.now() - 864e5).toISOString()).order("cuando").limit(100);
     setL(data || []);
     const ids = (data || []).map((j: any) => j.id);
-    if (ids.length) { const r = await sb.from("juntada_respuestas").select("*").in("juntada_id", ids); setR(r.data || []); }
-  }, []);
+    if (ids.length) { const r = await sb.from("juntada_respuestas").select("*").in("juntada_id", ids).limit(1000); setR(r.data || []); asegurarPersonas((r.data || []).map((x: any) => x.perfil_id)); }
+  }, [asegurarPersonas]);
   useEffect(() => { cargar(); if (q.get("lugar")) { setF({ lugar: q.get("lugar"), lat: q.get("lat"), lon: q.get("lon") }); setN(true); } else if (q.get("nuevo") === "1") setN(true); }, [cargar, q]);
   async function responder(id: number, estado: string) { await sb.from("juntada_respuestas").upsert({ juntada_id: id, perfil_id: perfil.id, estado }); cargar(); }
   async function crear() {

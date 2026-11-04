@@ -13,14 +13,15 @@ const nor = (t: string) => (t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").to
 const ATAJOS = [["SUBE", "SUBE"], ["Guardia", "guardia"], ["Alquiler", "alquiler"], ["Beca", "beca"], ["Descuento", "descuento"], ["Bodegón", "bodegón"]];
 export default function Buscar() {
   const { personas, lugares } = useSesion();
-  const [q, setQ] = useState(""), [g, setG] = useState<any[]>([]), [c, setC] = useState<any[]>([]), [item, setItem] = useState<any>(null), [ev, setEv] = useState<any[]>([]), [mv, setMv] = useState<any[]>([]), [rs, setRs] = useState<any[]>([]);
+  const [mas, setMas] = useState<any[]>([]), [q, setQ] = useState(""), [g, setG] = useState<any[]>([]), [c, setC] = useState<any[]>([]), [item, setItem] = useState<any>(null), [ev, setEv] = useState<any[]>([]), [mv, setMv] = useState<any[]>([]), [rs, setRs] = useState<any[]>([]);
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => { ref.current?.focus(); }, []);
   useEffect(() => {
     const t = q.trim();
-    if (t.length < 2) { setG([]); setC([]); setEv([]); setMv([]); setRs([]); return; }
+    if (t.length < 2) { setG([]); setC([]); setEv([]); setMv([]); setRs([]); setMas([]); return; }
     const id = setTimeout(async () => {
       const a = await sb.rpc("buscar_guia", { q: t }); setG(a.data || []);
+      const pe = await sb.rpc("buscar_personas", { q: t, p_limite: 10 }); setMas(pe.data || []);
       const b = await sb.from("carreras").select("id,nombre,universidad_id").ilike("nombre", `%${t}%`).limit(6); setC(b.data || []);
       const lk = `%${t.replace(/[%_,()]/g, " ")}%`;
       const [e1, m1, r1] = await Promise.all([sb.from("eventos").select("id,titulo,fecha").ilike("titulo", lk).order("fecha", { ascending: false }).limit(5), sb.from("movimientos").select("id,tipo,monto,categoria,nota,fecha").ilike("nota", lk).order("fecha", { ascending: false }).limit(5), sb.from("resumenes").select("id,titulo,materia").ilike("titulo", lk).limit(5)]);
@@ -28,7 +29,7 @@ export default function Buscar() {
     }, 220);
     return () => clearTimeout(id);
   }, [q]);
-  const n = nor(q.trim()), ps = n.length > 1 ? personas.filter((p) => nor(p.nombre).includes(n)) : [], ls = n.length > 1 ? lugares.filter((l) => nor(l.nombre).includes(n)) : [];
+  const n = nor(q.trim()), ps = n.length > 1 ? [...personas.filter((p) => nor(p.nombre).includes(n)), ...mas.filter((m) => !personas.some((p) => p.id === m.id))] : [], ls = n.length > 1 ? lugares.filter((l) => nor(l.nombre).includes(n)) : [];
   const vacio = n.length > 1 && !ps.length && !ls.length && !g.length && !c.length && !ev.length && !mv.length && !rs.length;
   return <div className="pagina">
     <div className="campo"><label htmlFor="bq" className="titulo-m">¿Qué buscás?</label><input ref={ref} id="bq" type="search" placeholder="Gente, lugares, agenda, gastos, guía" value={q} onChange={(e) => setQ(e.target.value)} /></div>

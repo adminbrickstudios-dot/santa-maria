@@ -235,7 +235,7 @@ begin
   if new.tipo not in ('aviso','salida','pedido') or public.grupo_masivo(new.grupo_id) then return new; end if;
   select nombre into a from perfiles where id=new.autor_id;
   insert into notificaciones(perfil_id,tipo,titulo,cuerpo,enlace)
-  select p.id,'aviso',a||': '||new.titulo,new.nota,'/gente'
+  select p.id,'aviso',a||': '||new.titulo,new.nota,'/gente?v=grupo'
   from perfiles p where p.grupo_id=new.grupo_id and p.id<>new.autor_id and coalesce((p.notif->>'avisos')::boolean,true);
   return new;
 end $$;
@@ -258,6 +258,31 @@ begin
   return c;
 end $$;
 
+-- El rol salía de los datos que manda quien se registra: cualquiera podía pedir admin.
+-- Ahora solo vale app_metadata, que solo el servidor puede escribir.
+create or replace function public.crear_perfil_nuevo() returns trigger
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  m jsonb := coalesce(new.raw_user_meta_data,'{}');
+  g uuid;
+  cod text := nullif(m->>'codigo','');
+  usu text := public.normalizar_usuario(coalesce(m->>'usuario', split_part(new.email,'@',1)));
+begin
+  if cod is not null then select id into g from grupos where upper(codigo_invitacion)=upper(cod); end if;
+  if g is null then
+    if cod is not null then raise exception 'codigo_invalido'; end if;
+    select id into g from grupos where abierto order by creado_en limit 1;
+  end if;
+  if g is null then raise exception 'sin_grupo'; end if;
+  insert into perfiles(id,grupo_id,usuario,nombre,debe_cambiar_clave,color,rol,casa_lat,casa_lon,casa_barrio)
+  values (new.id,g,usu,coalesce(nullif(m->>'nombre',''),usu),coalesce((m->>'debe_cambiar_clave')::boolean,false),
+    coalesce(m->>'color','#0B4F9E'),coalesce(new.raw_app_meta_data->>'rol','miembro'),(m->>'lat')::double precision,(m->>'lon')::double precision,m->>'barrio');
+  insert into conversacion_miembros(conversacion_id,perfil_id)
+    select id,new.id from conversaciones where grupo_id=g and tipo='grupo' on conflict do nothing;
+  return new;
+end $$;
+revoke all on function public.crear_perfil_nuevo() from public, anon, authenticated;
+
 -- Registro abierto: cupo por dirección de red para que nadie cree miles de cuentas con un script.
 -- La dirección se guarda como hash y se borra sola a los 3 días. Permite a un aula entera detrás de una misma red.
 create or replace function public.registrar_usuario(p_usuario text, p_nombre text, p_clave text, p_codigo text default null)
@@ -267,7 +292,7 @@ begin
   if length(u) < 3 or length(u) > 24 then return 'usuario_invalido'; end if;
   if length(coalesce(p_clave,'')) < 8 then return 'clave_corta'; end if;
   ip := nullif(trim(split_part(coalesce((nullif(current_setting('request.headers',true),'')::json)->>'x-forwarded-for',''),',',1)),'');
-  if ip is not null and not public.cupo_interno('registro:'||md5(ip),15,150) then return 'muchos_intentos'; end if;
+  if ip is not null and not public.cupo_interno('registro:'||md5(ip||coalesce((select valor from config_interna where clave='push_secreto'),'')),15,150) then return 'muchos_intentos'; end if;
   if exists(select 1 from perfiles where usuario=u) then return 'usuario_ocupado'; end if;
   if nullif(trim(coalesce(p_codigo,'')),'') is not null and not exists(select 1 from grupos where upper(codigo_invitacion)=upper(trim(p_codigo))) then return 'codigo_invalido'; end if;
   correo := u||'@cuentas.santa-maria.app';

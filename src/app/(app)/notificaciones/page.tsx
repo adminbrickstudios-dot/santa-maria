@@ -12,14 +12,18 @@ import { cuandoRelativo } from "@/lib/util";
 const TIPOS: [string, string, string][] = [["mensajes", "Mensajes", "Cuando alguien te escribe"], ["juntadas", "Juntadas", "Cuando proponen una"], ["avisos", "Avisos del grupo", "Salidas, pedidos y novedades"], ["agenda", "Agenda", "Recordatorios, parciales y qué tenés hoy"], ["plata", "Billetera", "Consejos, fijos, presupuesto y cierre de mes"], ["descuentos", "Descuentos", "Promos del día"]];
 function Notif() {
   const q = useSearchParams(), { perfil, recargar, recuentos, toast } = useSesion();
-  const [l, setL] = useState<any[]>([]), [est, setE] = useState<string>("default"), [n, setN] = useState<any>({ agenda: true, plata: true, ...(perfil.notif || {}) });
+  const [l, setL] = useState<any[]>([]), [hayMas, setHayMas] = useState(false), [est, setE] = useState<string>("default"), [n, setN] = useState<any>({ agenda: true, plata: true, ...(perfil.notif || {}) });
   useEffect(() => {
-    sb.from("notificaciones").select("*").order("creado_en", { ascending: false }).limit(50).then(async ({ data }: any) => {
-      setL(data || []);
+    sb.from("notificaciones").select("id,titulo,cuerpo,enlace,creado_en").order("creado_en", { ascending: false }).limit(50).then(async ({ data }: any) => {
+      setL(data || []); setHayMas((data || []).length === 50);
       await sb.from("notificaciones").update({ leida: true }).eq("leida", false).eq("perfil_id", perfil.id); recuentos();
     });
     if ("Notification" in window) setE(Notification.permission); else setE("no");
   }, [perfil.id, recuentos]);
+  async function anteriores() {
+    const { data } = await sb.from("notificaciones").select("id,titulo,cuerpo,enlace,creado_en").lt("creado_en", l[l.length - 1].creado_en).order("creado_en", { ascending: false }).limit(50);
+    setL((x) => [...x, ...(data || [])]); setHayMas((data || []).length === 50);
+  }
   async function activar() {
     const r = await activarPush(perfil.id);
     if (r === "ok") { setE("granted"); toast("Listo, te van a llegar al celular."); }
@@ -35,7 +39,7 @@ function Notif() {
     <h3 className="sec">Qué me llega</h3>
     <div className="lista">{TIPOS.map(([k, t, d]) => <button key={k} className="item" role="switch" aria-checked={!!n[k]} onClick={() => cambiar(k)}><span className="q"><b>{t}</b><small>{d}</small></span><span className="ic" style={{ color: n[k] ? "var(--ok)" : "var(--tinta3)" }}><Icono n={n[k] ? "ok" : "x"} /></span></button>)}</div>
     {q.get("v") !== "ajustes" && <><h3 className="sec">Lo último</h3>
-    {l.length ? <div className="lista">{l.map((a) => <Link key={a.id} href={a.enlace || "/inicio"} className="item"><span className="q"><b>{a.titulo}</b>{a.cuerpo && <small>{a.cuerpo}</small>}<small>{cuandoRelativo(a.creado_en)}</small></span></Link>)}</div> : <p className="expl">Todavía no pasó nada. Acá van a aparecer mensajes, juntadas y avisos.</p>}</>}
+    {l.length ? <div className="lista">{l.map((a) => <Link key={a.id} href={a.enlace || "/inicio"} className="item"><span className="q"><b>{a.titulo}</b>{a.cuerpo && <small>{a.cuerpo}</small>}<small>{cuandoRelativo(a.creado_en)}</small></span></Link>)}{hayMas && <button className="btn sec2 chico" style={{ justifySelf: "center" }} onClick={anteriores}>Ver anteriores</button>}</div> : <p className="expl">Todavía no pasó nada. Acá van a aparecer mensajes, juntadas y avisos.</p>}</>}
   </div>;
 }
 export default function P() { return <Suspense><Notif /></Suspense>; }

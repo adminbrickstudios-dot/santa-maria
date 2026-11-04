@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { sb } from "@/lib/sb";
+import { sb, traerTodo } from "@/lib/sb";
 import { useSesion } from "@/lib/sesion";
 import { Hoja } from "@/components/Hoja";
 import { Icono } from "@/components/Icono";
@@ -124,8 +124,8 @@ export function Tarjetas({ materias }: { materias: any[] }) {
   const [mazos, setM] = useState<any[]>([]), [cartas, setC] = useState<any[]>([]), [cargado, setCargado] = useState(false);
   const [nuevo, setNuevo] = useState(false), [abierto, setAbierto] = useState<number | null>(null), [repaso, setRepaso] = useState<{ mazo: any; cartas: any[] } | null>(null);
   const cargar = useCallback(async () => {
-    const [a, b] = await Promise.all([sb.from("mazos").select("*").order("creado_en"), sb.from("tarjetas").select("*").order("id").limit(5000)]);
-    setM(a.data || []); setC(b.data || []); setCargado(true);
+    const [a, b] = await Promise.all([sb.from("mazos").select("*").order("creado_en"), traerTodo((d, h) => sb.from("tarjetas").select("*").order("id").range(d, h))]);
+    setM(a.data || []); setC(b); setCargado(true);
   }, []);
   useEffect(() => { cargar(); addEventListener("sm-tarjetas", cargar); return () => removeEventListener("sm-tarjetas", cargar); }, [cargar]);
   const hoy = hoyK(), mz = mazos.find((m) => m.id === abierto);

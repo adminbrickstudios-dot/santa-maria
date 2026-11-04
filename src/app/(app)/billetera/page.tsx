@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { sb } from "@/lib/sb";
+import { sb, traerTodo } from "@/lib/sb";
 import { useSesion } from "@/lib/sesion";
 import { Hoja } from "@/components/Hoja";
 import { Icono } from "@/components/Icono";
@@ -140,7 +140,7 @@ function Billetera() {
   const [cargado, setCargado] = useState(!!cache);
   const [ed, setEd] = useState<Mov | null>(null), [fj, setFj] = useState<any>(null), [mt, setMt] = useState<any>(null), [aj, setAj] = useState(false), [busca, setBusca] = useState("");
   const cargar = useCallback(async () => {
-    const [{ data: a }, { data: b }, { data: c }, { data: d }] = await Promise.all([sb.from("movimientos").select("*").order("fecha", { ascending: false }).order("id", { ascending: false }).limit(5000), sb.from("plata_categorias").select("*").order("orden"), sb.from("fijos").select("*").order("dia"), sb.from("metas").select("*").order("creado_en")]);
+    const [a, { data: b }, { data: c }, { data: d }] = await Promise.all([traerTodo((i, h) => sb.from("movimientos").select("*").order("fecha", { ascending: false }).order("id", { ascending: false }).range(i, h)), sb.from("plata_categorias").select("*").order("orden"), sb.from("fijos").select("*").order("dia"), sb.from("metas").select("*").order("creado_en")]);
     const mias = (b || []).filter((x: any) => x.perfil_id), comunes = (b || []).filter((x: any) => !x.perfil_id && !mias.some((y: any) => y.nombre === x.nombre && y.tipo === x.tipo));
     const cc = [...comunes, ...mias].sort((x: any, y: any) => x.orden - y.orden);
     cache = { m: a || [], c: cc, f: c || [], g: d || [] };

@@ -21,7 +21,7 @@ grant execute on function public.dentro_de_cupo_archivos() to authenticated;
 do $$ begin
   if to_regclass('storage.buckets') is not null then
     -- Nunca SVG ni HTML: se pueden abrir como página y ejecutar código.
-    update storage.buckets set file_size_limit=26214400, allowed_mime_types=array['image/png','image/jpeg','image/webp','image/heic','image/heif','image/gif','application/pdf','text/plain',
+    update storage.buckets set file_size_limit=26214400, allowed_mime_types=array['image/png','image/jpeg','image/webp','image/heic','image/heif','image/gif','application/pdf','text/plain','text/csv','application/zip','application/octet-stream','audio/mpeg','audio/mp4','video/mp4',
       'application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation',
       'application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'

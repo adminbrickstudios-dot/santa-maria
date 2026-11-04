@@ -3,7 +3,7 @@
 import "@/app/organizar.css";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { sb } from "@/lib/sb";
+import { sb, traerTodo } from "@/lib/sb";
 import { useSesion } from "@/lib/sesion";
 import { Icono } from "@/components/Icono";
 import { lanzarEfecto } from "@/components/Efectos";
@@ -23,8 +23,8 @@ function Tareas() {
   const [txt, setTxt] = useState(""), [marcando, setMarcando] = useState<number[]>([]), [ed, setEd] = useState<any>(null), [lh, setLh] = useState<any>(null);
   const tiempos = useRef<any[]>([]);
   const cargar = useCallback(async () => {
-    const [a, b, c] = await Promise.all([sb.from("tareas").select("*").order("id").limit(3000), sb.from("tarea_listas").select("*").order("creado_en"), sb.from("tarea_lista_miembros").select("*")]);
-    setL(a.data || []); setListas(b.data || []); setMiembros(c.data || []); setCargado(true);
+    const [a, b, c] = await Promise.all([traerTodo((d, h) => sb.from("tareas").select("*").order("id").range(d, h), 3000), sb.from("tarea_listas").select("*").order("creado_en"), sb.from("tarea_lista_miembros").select("*")]);
+    setL(a); setListas(b.data || []); setMiembros(c.data || []); setCargado(true);
   }, []);
   useEffect(() => {
     cargar();

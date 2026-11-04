@@ -11,38 +11,52 @@ import { horaDe } from "@/lib/util";
 
 export default function Chat() {
   const { id } = useParams<{ id: string }>();
-  const { perfil, personas, recuentos, toast } = useSesion();
-  const [ms, setM] = useState<any[]>([]), [c, setC] = useState<any>(null), [t, setT] = useState(""), [env, setEnv] = useState(false);
-  const fin = useRef<HTMLDivElement>(null);
+  const { perfil, personas, recuentos, toast, asegurarPersonas } = useSesion();
+  const [ms, setM] = useState<any[]>([]), [c, setC] = useState<any>(null), [t, setT] = useState(""), [env, setEnv] = useState(false), [hayMas, setHayMas] = useState(false);
+  const fin = useRef<HTMLDivElement>(null), alFinal = useRef(true);
+  const POR_TANDA = 50;
+  async function anteriores() {
+    if (!ms.length) return;
+    const { data } = await sb.from("mensajes").select("id,autor_id,texto,adjunto,creado_en").eq("conversacion_id", id).lt("creado_en", ms[0].creado_en).order("creado_en", { ascending: false }).limit(POR_TANDA);
+    alFinal.current = false;
+    setHayMas((data || []).length === POR_TANDA);
+    setM((m) => [...(data || []).reverse(), ...m]);
+  }
   const quien = (i: string) => personas.find((p) => p.id === i);
   useEffect(() => {
     let vivo = true;
     const cargar = async () => {
-      const { data } = await sb.from("mensajes").select("*").eq("conversacion_id", id).order("creado_en", { ascending: false }).limit(100);
-      if (vivo) setM((data || []).reverse());
+      const { data } = await sb.from("mensajes").select("id,autor_id,texto,adjunto,creado_en").eq("conversacion_id", id).order("creado_en", { ascending: false }).limit(POR_TANDA);
+      if (vivo) { setM((data || []).reverse()); setHayMas((data || []).length === POR_TANDA); }
       await sb.rpc("marcar_leido", { c: id }); recuentos();
     };
-    sb.rpc("mis_conversaciones").then(({ data }: any) => setC((data || []).find((x: any) => x.id === id) || null));
+    sb.rpc("mis_conversaciones", { p_limite: 1, p_id: id }).then(({ data }: any) => setC(data?.[0] || null));
     cargar();
+    /* Marcar leído como mucho cada 5 segundos, aunque lleguen muchos mensajes */
+    let espera: any = null;
+    const leido = () => { if (!espera) espera = setTimeout(() => { espera = null; sb.rpc("marcar_leido", { c: id }); }, 5000); };
     const ca = sb.channel(`chat-${id}`).on("postgres_changes", { event: "INSERT", schema: "public", table: "mensajes", filter: `conversacion_id=eq.${id}` }, (p: any) => {
-      setM((m) => m.some((x) => x.id === p.new.id) ? m : [...m, p.new]); sb.rpc("marcar_leido", { c: id });
+      alFinal.current = true;
+      setM((m) => m.some((x) => x.id === p.new.id) ? m : [...m, p.new]); leido();
     }).subscribe();
-    return () => { vivo = false; sb.removeChannel(ca); };
+    return () => { vivo = false; clearTimeout(espera); sb.removeChannel(ca); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
-  useEffect(() => { fin.current?.scrollIntoView({ block: "end" }); }, [ms.length]);
+  useEffect(() => { if (alFinal.current) fin.current?.scrollIntoView({ block: "end" }); }, [ms.length]);
+  useEffect(() => { asegurarPersonas(ms.map((m) => m.autor_id)); }, [ms, asegurarPersonas]);
   async function enviar(e: React.FormEvent) {
     e.preventDefault(); const x = t.trim(); if (!x) return;
-    setEnv(true); setT("");
+    setEnv(true); setT(""); alFinal.current = true;
     const { data, error } = await sb.from("mensajes").insert({ conversacion_id: id, autor_id: perfil.id, texto: x }).select().single();
     setEnv(false);
-    if (error) { setT(x); toast("No se pudo mandar. Puede que te hayan bloqueado o no tengas conexión."); return; }
+    if (error) { setT(x); toast(error.code === "PT429" ? "Mandaste muchos seguidos. Esperá un minuto." : "No se pudo mandar. Puede que te hayan bloqueado o no tengas conexión."); return; }
     setM((m) => m.some((y) => y.id === data.id) ? m : [...m, data]);
   }
   const titulo = c ? (c.tipo === "grupo" ? c.titulo : c.otro_nombre) : "Mensajes";
   return <div className="chat">
     <div className="chat-cab"><Link className="ico-btn" href="/gente" aria-label="Volver"><Icono n="volver" /></Link>{c?.tipo === "directa" && <Avatar p={{ nombre: c.otro_nombre, color: c.otro_color, avatar_url: c.otro_avatar }} t={38} />}{c?.otro_id ? <Link href={`/gente?persona=${c.otro_id}`}><b>{titulo}</b></Link> : <b>{titulo}</b>}</div>
     <div className="chat-lista">
+      {hayMas && <button className="btn sec2 chico" style={{ justifySelf: "center" }} onClick={anteriores}>Ver anteriores</button>}
       {!ms.length && <p className="vacio">Mandá el primer mensaje. Solo lo ven quienes están en esta charla.</p>}
       {ms.map((m) => { const mia = m.autor_id === perfil.id; return <div key={m.id} className={`burbuja ${mia ? "mia" : ""}`}>{c?.tipo === "grupo" && !mia && <span className="quien">{quien(m.autor_id)?.nombre}</span>}{m.texto}{m.adjunto?.lat != null && <Link href={`/mapa?lat=${m.adjunto.lat}&lon=${m.adjunto.lon}&n=${encodeURIComponent(m.adjunto.nombre || "Destino")}`} style={{ display: "block", fontWeight: 800, textDecoration: "underline", marginTop: 4 }}>Ver cómo llego</Link>}<small>{horaDe(m.creado_en)}</small></div>; })}
       <div ref={fin} />

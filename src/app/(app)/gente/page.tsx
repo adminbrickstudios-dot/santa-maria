@@ -12,14 +12,23 @@ import { cuandoRelativo, pesos } from "@/lib/util";
 
 function Gente() {
   const r = useRouter(), q = useSearchParams(), s = useSesion();
-  const { perfil, personas, toast, recuentos, pantalla } = s;
+  const { perfil, personas, toast, recuentos, pantalla, asegurarPersonas } = s;
   const [v, setV] = useState(q.get("v") || "mensajes");
   const [conv, setConv] = useState<any[]>([]), [aps, setAps] = useState<any[]>([]), [cuentas, setCu] = useState<any[]>([]);
   const [ver, setVer] = useState<any>(null), [nuevo, setN] = useState(false), [f, setF] = useState<any>({}), [cu, setCuAb] = useState<any>(null), [gastos, setGa] = useState<any[]>([]), [ncu, setNcu] = useState(false);
   const cargar = useCallback(async () => {
-    const [a, b, c] = await Promise.all([sb.rpc("mis_conversaciones"), sb.from("aportes").select("*").order("creado_en", { ascending: false }).limit(60), sb.from("cuentas").select("*").order("creado_en", { ascending: false })]);
+    const [a, b, c] = await Promise.all([sb.rpc("mis_conversaciones"), sb.from("aportes").select("*").order("creado_en", { ascending: false }).limit(60), sb.from("cuentas").select("*").order("creado_en", { ascending: false }).limit(100)]);
     setConv(a.data || []); setAps(b.data || []); setCu(c.data || []); recuentos();
-  }, [recuentos]);
+    asegurarPersonas([...(b.data || []).map((x: any) => x.autor_id), ...(c.data || []).flatMap((x: any) => x.miembros || [])]);
+  }, [recuentos, asegurarPersonas]);
+  /* Buscar a alguien sin bajarse la lista entera */
+  const [busca, setBusca] = useState(""), [halladas, setHalladas] = useState<any[] | null>(null);
+  useEffect(() => {
+    const t = busca.trim();
+    if (t.length < 2) { setHalladas(null); return; }
+    const id = setTimeout(() => sb.rpc("buscar_personas", { q: t }).then(({ data }: any) => setHalladas(data || [])), 250);
+    return () => clearTimeout(id);
+  }, [busca]);
   useEffect(() => { cargar(); if (q.get("nuevo") === "1") { setF({ tipo: "aviso" }); setN(true); } }, [cargar, q]);
   useEffect(() => { const id = q.get("persona"); if (id) { const p = personas.find((x) => x.id === id); if (p) { setV("personas"); setVer(p); } } }, [q, personas]);
   const nombre = (id: string) => personas.find((p) => p.id === id)?.nombre || "Alguien";
@@ -67,7 +76,8 @@ function Gente() {
       </Link>)}</div>}
       <button className="btn pri" onClick={() => setV("personas")}><Icono n="chat" />Escribirle a alguien</button>
     </>}
-    {v === "personas" && <div className="grilla-gente">{personas.filter((p) => p.id !== yo).map((p) => <button key={p.id} className="persona" onClick={() => setVer(p)}><Avatar p={p} t={46} /><span className="q"><b>{p.nombre}</b><small>{p.carrera_texto || p.barrio || ""}</small></span></button>)}</div>}
+    {v === "personas" && <div className="campo"><label htmlFor="bp">Buscar por nombre o usuario</label><input id="bp" type="search" value={busca} onChange={(e) => setBusca(e.target.value)} /></div>}
+    {v === "personas" && <div className="grilla-gente">{(halladas || personas).filter((p: any) => p.id !== yo).map((p: any) => <button key={p.id} className="persona" onClick={() => setVer(p)}><Avatar p={p} t={46} /><span className="q"><b>{p.nombre}</b><small>{p.carrera_texto || p.barrio || ""}</small></span></button>)}</div>}
     {v === "grupo" && <>
       <button className="btn pri" onClick={() => { setF({ tipo: "aviso" }); setN(true); }}><Icono n="mas" />Publicar</button>
       {aps.length ? <div className="lista">{aps.map((a) => <div key={a.id} className="item"><Avatar p={personas.find((p) => p.id === a.autor_id)} t={38} /><span className="q"><b>{a.titulo}</b>{a.nota && <small>{a.nota}</small>}<small>{nombre(a.autor_id)} · {TX[a.tipo]} · {cuandoRelativo(a.creado_en)}</small></span>{a.lat != null && <Link className="ico-btn" aria-label="Ver en el mapa" href={`/mapa?lat=${a.lat}&lon=${a.lon}&n=${encodeURIComponent(a.titulo)}&ver=1`}><Icono n="mapa" t={20} /></Link>}{(a.autor_id === yo || perfil.rol === "admin") && <button className="ico-btn" aria-label="Borrar" onClick={async () => { await sb.from("aportes").delete().eq("id", a.id); cargar(); }}><Icono n="x" t={18} /></button>}</div>)}</div> : <p className="expl">Avisos, atajos, lugares y pedidos del tipo “¿alguien tiene el libro de…?”.</p>}

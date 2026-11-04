@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useState } from "react";
-import { sb } from "@/lib/sb";
+import { sb, traerTodo } from "@/lib/sb";
 import { useSesion } from "@/lib/sesion";
 import { Hoja } from "@/components/Hoja";
 import { Icono } from "@/components/Icono";
@@ -52,7 +52,7 @@ function Necesito({ m, notas }: { m: any; notas: any[] }) {
 
 export function Notas({ materias, irACarrera }: { materias: any[]; irACarrera: () => void }) {
   const [cal, setCal] = useState<any[]>([]), [form, setForm] = useState<{ m: any; x?: any } | null>(null);
-  const cargar = useCallback(async () => { const { data } = await sb.from("calificaciones").select("*").order("fecha").limit(3000); setCal(data || []); }, []);
+  const cargar = useCallback(async () => { setCal(await traerTodo((d, h) => sb.from("calificaciones").select("*").order("fecha").order("id").range(d, h), 3000)); }, []);
   useEffect(() => { cargar(); }, [cargar]);
   const conNotas = new Set(cal.map((c) => c.materia_id));
   const lista = materias.filter((m) => m.estado === "cursando" || conNotas.has(m.id));

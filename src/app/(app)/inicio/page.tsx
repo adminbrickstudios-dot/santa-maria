@@ -72,7 +72,7 @@ function Proximo() {
   useEffect(() => {
     const leer = async () => {
       const ya = new Date(), hoy = ahoraBA(), man = new Date(hoy); man.setDate(man.getDate() + 1);
-      const [{ data: e }, { data: c }] = await Promise.all([sb.from("eventos").select("*").eq("hecho", false).limit(800), sb.from("clases").select("*, materias(nombre)")]);
+      const [{ data: e }, { data: c }] = await Promise.all([sb.from("eventos").select("id,titulo,tipo,fecha,todo_dia,repetir,repetir_hasta,excepciones,viaje_min,lugar_nombre,lat,lon").eq("hecho", false).or(`repetir.neq.no,and(fecha.gte.${new Date(ya.getTime() - 864e5).toISOString()},fecha.lte.${new Date(ya.getTime() + 2 * 864e5).toISOString()})`).limit(500), sb.from("clases").select("*, materias(nombre)")]);
       const oc = expandir(e || [], diaClave(hoy), diaClave(man)).filter((o) => o.e.todo_dia ? o.dia === diaClave(hoy) : new Date(o.cuando) > ya);
       const clases = (c || []).flatMap((k: any) => [0, 1].map((i) => { const d = new Date(hoy); d.setDate(d.getDate() + i); return d.getDay() === k.dia ? { clase: k, cuando: new Date(`${diaClave(d)}T${k.hora_inicio.slice(0, 5)}:00-03:00`).toISOString() } : null; })).filter((x: any) => x && new Date(x.cuando) > ya);
       const todo = [...oc.map((o) => ({ ev: o.e, cuando: o.cuando, todo: o.e.todo_dia })), ...clases].sort((a: any, b: any) => (a.todo === b.todo ? a.cuando.localeCompare(b.cuando) : a.todo ? 1 : -1));
