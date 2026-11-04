@@ -75,6 +75,8 @@ function estiloBase(){
   if(vistaBase==='satelite')return {version:8,glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',sources:{sat:{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],tileSize:256,maxzoom:19,attribution:'Imágenes de Esri'},nombres:{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'],tileSize:256,maxzoom:19}},layers:[{id:'sat',type:'raster',source:'sat'},{id:'nombres',type:'raster',source:'nombres',minzoom:12}]};
   return 'https://tiles.openfreemap.org/styles/'+(COL.oscuro?'dark':'liberty');
 }
+// Si el estilo todavía está cambiando, addSource tira error antes de tocar nada: se reintenta cuando termina.
+function intentarCapas(){try{instalarCapas();}catch{mapa?.once('style.load',intentarCapas);}}
 function instalarCapas(){
   if(!mapa||mapa.getSource('ruta'))return;
   const subte=[...new Set(T.pats.filter(p=>p.sub).map(p=>p.l))].map(l=>{const q=T.pats.filter(p=>p.sub&&p.l===l).sort((a,b)=>b.g.length-a.g.length)[0];return linea(q.g,{col:T.meta.subteCol[l]||COL.bondi});});
@@ -89,7 +91,8 @@ function instalarCapas(){
   mapa.addLayer({id:'ruta',type:'line',source:'ruta',filter:['all',['==',['get','alt'],0],['==',['get','pie'],0]],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':['get','col'],'line-width':['get','ancho']}});
   mapa.addLayer({id:'ruta-pie',type:'line',source:'ruta',filter:['all',['==',['get','alt'],0],['==',['get','pie'],1]],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':COL.bondi,'line-width':['get','ancho'],'line-dasharray':[.1,2]}});
   mapa.addLayer({id:'puntos',type:'circle',source:'puntos',paint:{'circle-radius':['get','r'],'circle-color':['get','col'],'circle-stroke-color':'#fff','circle-stroke-width':2}});
-  mapa.addLayer({id:'edificios-3d',type:'fill-extrusion',source:Object.keys(mapa.getStyle().sources).find(k=>/openmaptiles/i.test(k))||'openmaptiles','source-layer':'building',minzoom:14,layout:{visibility:'none'},paint:{'fill-extrusion-color':COL.oscuro?'#33363B':'#E4E6EA','fill-extrusion-height':['coalesce',['get','render_height'],9],'fill-extrusion-base':['coalesce',['get','render_min_height'],0],'fill-extrusion-opacity':.9}},'ruta-alt');
+  const baseVec=Object.keys(mapa.getStyle().sources).find(k=>/openmaptiles/i.test(k));
+  if(baseVec)mapa.addLayer({id:'edificios-3d',type:'fill-extrusion',source:baseVec,'source-layer':'building',minzoom:14,layout:{visibility:'none'},paint:{'fill-extrusion-color':COL.oscuro?'#33363B':'#E4E6EA','fill-extrusion-height':['coalesce',['get','render_height'],9],'fill-extrusion-base':['coalesce',['get','render_min_height'],0],'fill-extrusion-opacity':.9}},'ruta-alt');
   estiloListo=true;sincronizar();
 }
 function marcador(k,el,lng){
@@ -136,7 +139,7 @@ async function crearMapa(contenedor){
   maplibre=(await import('maplibre-gl')).default;
   mapa=new maplibre.Map({container:contenedor,style:estiloBase(),center:[-58.40,-34.60],zoom:13,minZoom:9,maxZoom:19,maxBounds:[[-59.3,-35.25],[-57.6,-34.0]],attributionControl:false,fadeDuration:120,maxPitch:60,pitchWithRotate:false,dragRotate:false});
   mapa.addControl(new maplibre.AttributionControl({compact:true}),'bottom-left');mapa.touchZoomRotate.disableRotation();mapa.touchPitch.disable();mapa.keyboard.disableRotation();
-  mapa.on('style.load',()=>{estiloListo=false;if(CAPAS)instalarCapas();});
+  mapa.on('style.load',()=>{estiloListo=false;if(CAPAS)intentarCapas();});
   mapa.once('idle',()=>{document.querySelector('.maplibregl-compact-show')?.classList.remove('maplibregl-compact-show');});
   mapa.on('click',toque);
   mapa.on('error',e=>{console.error('mapa',e.error?.message||e);});
@@ -548,7 +551,7 @@ export async function montarMapa(raiz,api){
   const mq=matchMedia('(prefers-color-scheme:dark)');mq.addEventListener('change',tema);
   $('z-gps').onclick=gps;
   controladores=()=>{raiz.removeEventListener('click',clic);raiz.removeEventListener('input',entra);raiz.removeEventListener('change',cambia);mo.disconnect();mq.removeEventListener('change',tema);obs&&obs.disconnect();};
-  try{await crearMapa($('mapa'));$('carga').hidden=true;$('panel').innerHTML='<div class="pila"><p class="expl">Cargando las rutas…</p></div>';await cargarDatosMapa();if(mapa&&!estiloListo&&mapa.isStyleLoaded())instalarCapas();}catch(e){$('carga').hidden=false;$('carga').textContent='No pude cargar el mapa. Revisá la conexión y volvé a entrar.';return;}
+  try{await crearMapa($('mapa'));$('carga').hidden=true;$('panel').innerHTML='<div class="pila"><p class="expl">Cargando las rutas…</p></div>';await cargarDatosMapa();if(mapa&&!estiloListo&&mapa.isStyleLoaded())intentarCapas();}catch(e){$('carga').hidden=false;$('carga').textContent='No pude cargar el mapa. Revisá la conexión y volvé a entrar.';return;}
   L.places=(api.lugares||[]).map((q,i)=>{const wxx=wx(q.lon),wyy=wy(q.lat),k={facu:'f',salida:'p',transporte:'t'}[q.tipo];return {k,n:q.nombre,d:q.descripcion,wx:wxx,wy:wyy,prim:!!q.destacado,place:{k:'l:'+q.id,nombre:q.nombre,x:wxx,y:wyy,tipo:'lugar',d:q.descripcion,sub:q.descripcion}};});
   L.places.sort((a,b)=>b.prim-a.prim);L.places.forEach(q=>reg(q.place));
   armarPersonas();Object.values(M.conocidos||{}).forEach(q=>REG.set(q.k,q));
