@@ -11,13 +11,13 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
-      - run: bash herramientas/ciudad/recon.sh
+      - run: bash herramientas/ciudad/bajar.sh
       - name: Guardar resultado en la rama datos
         run: |
           git config user.name "adminbrickstudios-dot"
           git config user.email "adminbrickstudios@gmail.com"
           git checkout --orphan datos
           git rm -rfq --cached .
-          git add recon
+          git add recon crudo
           git commit -qm "Datos de la ciudad"
           git push -f origin datos
