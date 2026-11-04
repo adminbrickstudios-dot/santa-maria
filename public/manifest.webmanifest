@@ -1,0 +1,20 @@
+{
+  "name": "Santa María",
+  "short_name": "Santa María",
+  "description": "Tu vida en Buenos Aires organizada: cómo llegar, facu, guía de la ciudad y tu gente.",
+  "start_url": "/inicio",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#15181C",
+  "theme_color": "#15181C",
+  "lang": "es-AR",
+  "icons": [
+    { "src": "/iconos/192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/iconos/512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/iconos/512-mascara.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Cómo llego", "url": "/mapa", "icons": [{ "src": "/iconos/192.png", "sizes": "192x192" }] },
+    { "name": "Mensajes", "url": "/gente", "icons": [{ "src": "/iconos/192.png", "sizes": "192x192" }] }
+  ]
+}
