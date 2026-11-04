@@ -139,7 +139,8 @@ async function crearMapa(contenedor){
   mapa.on('style.load',()=>{estiloListo=false;instalarCapas();});
   mapa.once('idle',()=>{document.querySelector('.maplibregl-compact-show')?.classList.remove('maplibregl-compact-show');});
   mapa.on('click',toque);
-  mapa.on('error',e=>{if(!mapa.isStyleLoaded()&&!S.avisoRed){S.avisoRed=1;aviso('El mapa de fondo tarda en cargar. Revisá tu conexión.');}});
+  mapa.on('error',e=>{console.error('mapa',e.error?.message||e);});
+  if(process.env.NEXT_PUBLIC_DEMO)window.__m=mapa;
 }
 function cambiarBase(v){if(v===vistaBase||!mapa)return;vistaBase=v;estiloListo=false;for(const [,m] of marcas)m.remove();marcas.clear();mapa.setStyle(estiloBase(),{diff:false});pintarCapas();}
 function alternar3D(){trid=!trid;if(trid&&vistaBase==='satelite'){cambiarBase('mapa');}mapa.easeTo({pitch:trid?58:0,zoom:trid?Math.max(mapa.getZoom(),15.5):mapa.getZoom(),duration:700});pedir();pintarCapas();}
