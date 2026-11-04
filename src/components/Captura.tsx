@@ -1,19 +1,30 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { sb } from "@/lib/sb";
 import { useSesion } from "@/lib/sesion";
 import { Hoja } from "./Hoja";
 import { Icono } from "./Icono";
 import { lanzarEfecto } from "./Efectos";
-import { avisosDe, fechaISO, hoyBA, interpretarEvento, interpretarPlata } from "@/lib/interpretar";
+import { avisosDe, fechaISO, hoyBA, interpretarEvento, interpretarPlata, queEs } from "@/lib/interpretar";
 import { aISO, TIPOS } from "@/lib/agenda";
 import { pesos } from "@/lib/util";
 
-type Modo = "plata" | "agenda";
-export function abrirCaptura(modo: Modo, tipo?: "gasto" | "ingreso") { window.dispatchEvent(new CustomEvent("sm-captura", { detail: { modo, tipo } })); }
+type Modo = "plata" | "agenda" | "auto";
+export function abrirCaptura(modo: Modo, tipo?: "gasto" | "ingreso", texto?: string) { window.dispatchEvent(new CustomEvent("sm-captura", { detail: { modo, tipo, texto } })); }
 
+/* Si no hay internet, lo guardo acá y lo subo cuando vuelve */
+const COLA = "sm-cola";
+function aCola(tabla: string, fila: any) { try { localStorage.setItem(COLA, JSON.stringify([...JSON.parse(localStorage.getItem(COLA) || "[]"), { tabla, fila }])); } catch {} }
+export async function vaciarCola() {
+  let l: any[] = []; try { l = JSON.parse(localStorage.getItem(COLA) || "[]"); } catch {}
+  if (!l.length || !navigator.onLine) return;
+  const quedan: any[] = [];
+  for (const x of l) { const { error } = await sb.from(x.tabla).insert(x.fila); if (error) quedan.push(x); }
+  try { localStorage.setItem(COLA, JSON.stringify(quedan)); } catch {}
+  window.dispatchEvent(new Event("sm-plata")); window.dispatchEvent(new Event("sm-agenda"));
+}
 let capac: { audio: boolean; ia: boolean } | null = null;
 async function capacidades() {
   if (!capac) capac = await fetch("/api/voz").then((r) => r.json()).catch(() => ({ audio: false, ia: false }));
@@ -28,7 +39,7 @@ async function pedirIA(modo: Modo, texto: string, audio: Blob | null, categorias
   return r.ok ? r.json() : null;
 }
 export function Captura() {
-  const q = useSearchParams(), { perfil, toast } = useSesion();
+  const q = useSearchParams(), { perfil, toast } = useSesion(), router = useRouter();
   const [modo, setModo] = useState<Modo | null>(null), [tipo, setTipo] = useState<"gasto" | "ingreso">("gasto");
   const [txt, setTxt] = useState(""), [oye, setOye] = useState(false), [pensando, setPensando] = useState(false);
   const [mov, setMov] = useState<any>(null), [ev, setEv] = useState<any>(null), [cats, setCats] = useState<any[]>([]);
@@ -36,7 +47,7 @@ export function Captura() {
 
   const reiniciar = useCallback(() => { setTxt(""); setMov(null); setEv(null); setOye(false); setPensando(false); }, []);
   useEffect(() => {
-    const f = (e: Event) => { const d = (e as CustomEvent).detail; reiniciar(); setModo(d.modo); setTipo(d.tipo || "gasto"); navigator.vibrate?.(10); };
+    const f = (e: Event) => { const d = (e as CustomEvent).detail; reiniciar(); setModo(d.modo); setTipo(d.tipo || "gasto"); navigator.vibrate?.(10); if (d.texto) setTimeout(() => { setTxt(d.texto); }, 0); };
     addEventListener("sm-captura", f);
     return () => removeEventListener("sm-captura", f);
   }, [reiniciar]);
@@ -44,25 +55,32 @@ export function Captura() {
     if (q.get("rapido") === "1") abrirCaptura(location.pathname.startsWith("/agenda") ? "agenda" : "plata");
   }, [q]);
   useEffect(() => {
-    if (modo === "plata" && !cats.length) sb.from("plata_categorias").select("*").order("orden").then(({ data }: any) => setCats(data || []));
+    if ((modo === "plata" || modo === "auto") && !cats.length) sb.from("plata_categorias").select("*").order("orden").then(({ data }: any) => setCats(data || []));
   }, [modo, cats.length]);
   const lista = cats.filter((c) => c.tipo === tipo);
 
-  async function procesar(texto: string, audio: Blob | null = null) {
-    if (!modo) return;
+  async function procesar(texto: string, audio: Blob | null = null, forzado?: Modo) {
+    let md = forzado || modo;
+    if (!md) return;
     const t = texto.trim();
+    if (md === "auto" && t) {
+      const dest = t.match(/^(?:c[oó]mo llego|como voy|ir|llevame|quiero ir) (?:a |al |hasta )?(.+)$/i);
+      if (dest) { setModo(null); router.push(`/mapa?q=${encodeURIComponent(dest[1])}`); return; }
+      md = queEs(t); setModo(md);
+      if (md === "plata") { const c = interpretarPlata(t); setTipo(c.tipo); setMov({ ...c, monto: String(c.monto) }); return; }
+    }
     if (t) {
-      if (modo === "plata") { const p = interpretarPlata(t, tipo); setMov({ ...p, monto: p.monto ? String(p.monto) : "" }); }
+      if (md === "plata") { const p = interpretarPlata(t, tipo); setMov({ ...p, monto: p.monto ? String(p.monto) : "" }); }
       else setEv(interpretarEvento(t));
     }
     const c = await capacidades();
     if (!(c.ia || (audio && c.audio))) return;
     setPensando(true);
-    const r = await pedirIA(modo, t, audio, lista.map((x) => x.nombre).join(", ")).catch(() => null);
+    const r = await pedirIA(md === "auto" ? "agenda" : md, t, audio, lista.map((x) => x.nombre).join(", ")).catch(() => null);
     setPensando(false);
     if (r?.texto && !t) { setTxt(r.texto); await procesar(r.texto); return; }
     if (!r?.datos) return;
-    if (modo === "plata") { setTipo(r.datos.tipo || tipo); setMov((m: any) => ({ ...m, ...r.datos, monto: String(r.datos.monto || m?.monto || "") })); }
+    if (md === "plata") { setTipo(r.datos.tipo || tipo); setMov((m: any) => ({ ...m, ...r.datos, monto: String(r.datos.monto || m?.monto || "") })); }
     else setEv((e: any) => ({ ...e, ...r.datos, avisos: avisosDe(r.datos.tipo || e?.tipo) }));
   }
   async function microfono() {
@@ -95,28 +113,28 @@ export function Captura() {
     setModo(null);
     lanzarEfecto(tipo === "gasto" ? "quema" : "gana", `${tipo === "gasto" ? "−" : "+"}${pesos(n)}`);
     const { error } = await sb.from("movimientos").insert(fila);
-    if (error) toast("No se pudo guardar. Probá de nuevo."); else window.dispatchEvent(new Event("sm-plata"));
+    if (error) { aCola("movimientos", fila); toast("Sin conexión: lo subo cuando vuelva."); } else window.dispatchEvent(new Event("sm-plata"));
   }
   async function guardarEv() {
     if (!ev.titulo?.trim()) return toast("Poné qué es.");
     const fila = { perfil_id: perfil.id, tipo: ev.tipo, titulo: ev.titulo.trim(), fecha: aISO(ev.fecha, ev.hora), todo_dia: !ev.hora, lugar_nombre: ev.lugar || null, avisos: ev.avisos };
     setModo(null); lanzarEfecto("listo");
     const { error } = await sb.from("eventos").insert(fila);
-    if (error) toast("No se pudo guardar. Probá de nuevo."); else window.dispatchEvent(new Event("sm-agenda"));
+    if (error) { aCola("eventos", fila); toast("Sin conexión: lo subo cuando vuelva."); } else window.dispatchEvent(new Event("sm-agenda"));
   }
   if (!modo) return null;
   const esPlata = modo === "plata", yaLeido = esPlata ? mov : ev;
-  return <Hoja titulo={esPlata ? "Anotar" : "Sumar a la agenda"} cerrar={() => setModo(null)}>
-    {esPlata && <div className="cap-tipo" data-i={tipo === "gasto" ? 0 : 1}><button onClick={() => { setTipo("gasto"); setMov((m: any) => m && { ...m, categoria: "Otros" }); }}>Gasto</button><button onClick={() => { setTipo("ingreso"); setMov((m: any) => m && { ...m, categoria: "Otros" }); }}>Ingreso</button></div>}
+  return <Hoja titulo={modo === "auto" ? "Decime" : esPlata ? "Anotar" : "Sumar a la agenda"} cerrar={() => setModo(null)}>
+    {esPlata && (mov || !yaLeido) && <div className="cap-tipo" data-i={tipo === "gasto" ? 0 : 1}><button onClick={() => { setTipo("gasto"); setMov((m: any) => m && { ...m, categoria: "Otros" }); }}>Gasto</button><button onClick={() => { setTipo("ingreso"); setMov((m: any) => m && { ...m, categoria: "Otros" }); }}>Ingreso</button></div>}
     {!yaLeido && <>
       <button className={`cap-mic ${esPlata ? "plata" : ""} ${oye ? "oye" : ""}`} onClick={microfono} aria-label={oye ? "Terminar" : "Hablar"}><Icono n={oye ? "ok" : "mic"} t={36} /></button>
-      <p className="expl" style={{ textAlign: "center" }}>{oye ? "Te escucho…" : esPlata ? (tipo === "gasto" ? "Decí algo como “5 lucas en el súper”" : "Decí algo como “cobré 200 mil de la changa”") : "Decí algo como “parcial de Mate el jueves a las 10”"}</p>
+      <p className="expl" style={{ textAlign: "center" }}>{oye ? "Te escucho…" : modo === "auto" ? "Un gasto, un parcial o a dónde vas. Yo lo acomodo." : esPlata ? (tipo === "gasto" ? "Decí algo como “5 lucas en el súper”" : "Decí algo como “cobré 200 mil de la changa”") : "Decí algo como “parcial de Mate el jueves a las 10”"}</p>
       <form className="cap-txt" onSubmit={(e) => { e.preventDefault(); if (txt.trim()) procesar(txt); }}>
         <input type="text" value={txt} onChange={(e) => setTxt(e.target.value)} placeholder="O escribilo acá" aria-label="Escribir" enterKeyHint="done" />
         <button className="cap-ok" aria-label="Seguir" style={{ "--sec-c": esPlata ? "var(--billetera)" : "var(--agenda)" } as React.CSSProperties}><Icono n="flecha" t={22} /></button>
       </form>
-      {esPlata && <button className="btn sec2 chico" onClick={() => setMov({ monto: "", categoria: lista[0]?.nombre || "Otros", nota: "", fecha: fechaISO(hoyBA()) })}>Elegir a mano</button>}
-      {!esPlata && <button className="btn sec2 chico" onClick={() => setEv({ titulo: "", tipo: "personal", fecha: fechaISO(hoyBA()), hora: null, lugar: "", avisos: avisosDe("personal") })}>Completar a mano</button>}
+      {modo === "plata" && <button className="btn sec2 chico" onClick={() => setMov({ monto: "", categoria: lista[0]?.nombre || "Otros", nota: "", fecha: fechaISO(hoyBA()) })}>Elegir a mano</button>}
+      {modo === "agenda" && <button className="btn sec2 chico" onClick={() => setEv({ titulo: "", tipo: "personal", fecha: fechaISO(hoyBA()), hora: null, lugar: "", avisos: avisosDe("personal") })}>Completar a mano</button>}
     </>}
     {esPlata && mov && <>
       <label className="cap-monto"><span>$</span><input inputMode="numeric" autoFocus={!mov.monto} value={mov.monto} onChange={(e) => setMov({ ...mov, monto: e.target.value.replace(/[^\d.,]/g, "") })} aria-label="Monto" placeholder="0" /></label>

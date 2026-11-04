@@ -6,14 +6,16 @@ import { sb } from "@/lib/sb";
 import { aplicarTema, useSesion } from "@/lib/sesion";
 import { Avatar } from "@/components/Avatar";
 import { Icono } from "@/components/Icono";
+import dynamic from "next/dynamic";
+import type { Lugar } from "@/components/ElegirLugar";
+const ElegirLugar = dynamic(() => import("@/components/ElegirLugar").then((m) => m.ElegirLugar), { ssr: false });
 import { COLORES } from "@/lib/util";
-import { INTERESES } from "@/lib/intereses";
 
 const ACENTOS = ["#FFD21F", "#FF8A3D", "#FF6FA8", "#58D68D", "#5CC8FF", "#B79CFF"];
 
 export default function Perfil() {
   const { perfil, recargar, toast } = useSesion();
-  const [f, setF] = useState<any>(perfil), [us, setU] = useState<any[]>([]), [dir, setDir] = useState(""), [c1, setC1] = useState(""), [c2, setC2] = useState(""), [sub, setSub] = useState(false);
+  const [f, setF] = useState<any>(perfil), [us, setU] = useState<any[]>([]), [elegir, setElegir] = useState(false), [c1, setC1] = useState(""), [c2, setC2] = useState(""), [sub, setSub] = useState(false);
   useEffect(() => { sb.from("universidades").select("id,nombre").order("nombre").then(({ data }: any) => setU(data || [])); }, []);
   const set = (k: string) => (e: any) => setF({ ...f, [k]: e.target.value });
   const pref = f.preferencias || {};
@@ -23,13 +25,7 @@ export default function Perfil() {
     if (error) return toast("No pude guardar.");
     await recargar(); toast("Guardado.");
   }
-  async function casa() {
-    const m = await import("@/lib/mapa/vista"); await m.cargarDatosMapa();
-    const g = m.geocodificar(dir)[0];
-    if (!g) return toast("No la encontré. Probá calle y altura, por ejemplo Juncal 1500.");
-    const x = { casa_lat: m.alat(g.y), casa_lon: m.alon(g.x), casa_barrio: m.barrioDe(g.x, g.y) };
-    setF({ ...f, ...x }); await guardar(x); setDir("");
-  }
+  async function casa(l: Lugar) { const x = { casa_lat: l.lat, casa_lon: l.lon, casa_barrio: l.barrio }; setF({ ...f, ...x }); setElegir(false); await guardar(x); }
   async function foto(e: any) {
     const a = e.target.files?.[0]; if (!a) return;
     setSub(true);
@@ -48,6 +44,7 @@ export default function Perfil() {
     setC1(""); setC2(""); toast("Contraseña cambiada.");
   }
   return <div className="pagina">
+    {elegir && <ElegirLugar titulo="Tu casa" inicial={{ lat: f.casa_lat, lon: f.casa_lon }} boton="Vivo acá" cerrar={() => setElegir(false)} listo={casa} />}
     <h2 className="titulo">Mi perfil</h2>
     <div style={{ display: "flex", gap: 14, alignItems: "center" }}><Avatar p={f} t={84} /><div style={{ display: "grid", gap: 6 }}><p className="chico">Tu usuario: @{perfil.usuario}</p><label className="btn sec2 chico"><input type="file" accept="image/*" hidden onChange={foto} />{sub ? "Subiendo…" : "Cambiar foto"}</label></div></div>
     <div className="tarjeta">
@@ -58,14 +55,10 @@ export default function Perfil() {
       <div className="dos"><div className="campo"><label htmlFor="p5">Carrera</label><input id="p5" type="text" value={f.carrera_texto || ""} onChange={set("carrera_texto")} /></div><div className="campo"><label htmlFor="p6">Año</label><input id="p6" type="number" min="1" max="7" value={f.anio_cursada || ""} onChange={set("anio_cursada")} /></div></div>
       <button className="btn pri" onClick={() => guardar()}>Guardar</button>
     </div>
-    <h3 className="sec">Qué me gusta</h3>
-    <p className="expl">Con esto armo lo que te aparece en “Para vos”.</p>
-    <div className="chipera">{Object.entries(INTERESES).map(([k, v]) => { const l: string[] = pref.intereses || [], on = l.includes(k); return <button key={k} className="chip" aria-pressed={on} onClick={() => { const p = { ...pref, intereses: on ? l.filter((x) => x !== k) : [...l, k] }; setF({ ...f, preferencias: p }); guardar({ preferencias: p }); }}>{v.nombre}</button>; })}</div>
     <h3 className="sec">Mi casa</h3>
     <div className="tarjeta">
       <p className="expl">{f.casa_lat != null ? `Está cargada en ${f.casa_barrio || "Buenos Aires"}.` : "Todavía no cargaste tu casa. Con ella el mapa sale desde ahí."}</p>
-      <div className="campo"><label htmlFor="d1">Mudarme a</label><input id="d1" type="text" placeholder="Ej: Juncal 1500" value={dir} onChange={(e) => setDir(e.target.value)} /></div>
-      <button className="btn sec2 chico" disabled={!dir} onClick={casa}>Actualizar dirección</button>
+      <button className="btn sec2 chico" onClick={() => setElegir(true)}><Icono n="pin" t={20} />{f.casa_lat != null ? "Cambiar en el mapa" : "Elegir en el mapa"}</button>
       <div className="campo"><label htmlFor="d2">Quién ve dónde vivo</label><select id="d2" value={f.casa_visibilidad} onChange={(e) => { setF({ ...f, casa_visibilidad: e.target.value }); guardar({ casa_visibilidad: e.target.value }); }}><option value="exacta">Mi grupo ve el punto en el mapa</option><option value="barrio">Mi grupo ve solo el barrio</option><option value="oculta">Nadie lo ve</option></select></div>
     </div>
     <h3 className="sec">Cómo se ve</h3>
