@@ -72,8 +72,8 @@ revoke all on function public.cupo_interno(text,int,int) from public, anon, auth
 create function public.consumir_cupo(p_accion text, p_por_minuto int, p_por_dia int) returns boolean
 language plpgsql security definer set search_path = public, pg_temp as $$
 begin
-  if auth.uid() is null then return false; end if;
-  return public.cupo_interno(left(p_accion,30)||':'||auth.uid(),p_por_minuto,p_por_dia);
+  if auth.uid() is null or p_accion not in ('voz','cal') then return false; end if;
+  return public.cupo_interno(p_accion||':'||auth.uid(),p_por_minuto,p_por_dia);
 end $$;
 revoke all on function public.consumir_cupo(text,int,int) from public, anon;
 grant execute on function public.consumir_cupo(text,int,int) to authenticated;
