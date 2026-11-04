@@ -12,8 +12,10 @@ import { ahoraBA } from "@/lib/util";
 import { sumarDias } from "@/components/estudio/logica";
 import { Tilde, Vacio } from "@/components/organizar/Comun";
 import { agruparTareas, fechaTarea } from "@/components/organizar/logica";
-import { ListaHoja, TareaHoja } from "@/components/organizar/TareaHojas";
+import dynamic from "next/dynamic";
 
+const TareaHoja = dynamic(() => import("@/components/organizar/TareaHojas").then((m) => m.TareaHoja), { ssr: false });
+const ListaHoja = dynamic(() => import("@/components/organizar/TareaHojas").then((m) => m.ListaHoja), { ssr: false });
 const V: [string, string][] = [["hoy", "Hoy"], ["proximas", "Próximas"], ["hechas", "Hechas"]];
 
 function Tareas() {

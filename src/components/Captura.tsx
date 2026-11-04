@@ -8,24 +8,11 @@ import { useSesion } from "@/lib/sesion";
 import { Hoja } from "./Hoja";
 import { Icono } from "./Icono";
 import { lanzarEfecto } from "./Efectos";
+import { aCola, abrirCaptura, type DetalleCaptura, type Modo } from "@/lib/captura";
 import { avisosDe, fechaISO, hoyBA, interpretarEvento, interpretarPlata, queEs } from "@/lib/interpretar";
 import { aISO, TIPOS } from "@/lib/agenda";
 import { pesos } from "@/lib/util";
 
-type Modo = "plata" | "agenda" | "auto";
-export function abrirCaptura(modo: Modo, tipo?: "gasto" | "ingreso", texto?: string) { window.dispatchEvent(new CustomEvent("sm-captura", { detail: { modo, tipo, texto } })); }
-
-/* Si no hay internet, lo guardo acá y lo subo cuando vuelve */
-const COLA = "sm-cola";
-function aCola(tabla: string, fila: any) { try { localStorage.setItem(COLA, JSON.stringify([...JSON.parse(localStorage.getItem(COLA) || "[]"), { tabla, fila }])); } catch {} }
-export async function vaciarCola() {
-  let l: any[] = []; try { l = JSON.parse(localStorage.getItem(COLA) || "[]"); } catch {}
-  if (!l.length || !navigator.onLine) return;
-  const quedan: any[] = [];
-  for (const x of l) { const { error } = await sb.from(x.tabla).insert(x.fila); if (error) quedan.push(x); }
-  try { localStorage.setItem(COLA, JSON.stringify(quedan)); } catch {}
-  window.dispatchEvent(new Event("sm-plata")); window.dispatchEvent(new Event("sm-agenda"));
-}
 let capac: { audio: boolean; ia: boolean } | null = null;
 async function capacidades() {
   if (!capac) capac = await fetch("/api/voz").then((r) => r.json()).catch(() => ({ audio: false, ia: false }));
@@ -39,7 +26,7 @@ async function pedirIA(modo: Modo, texto: string, audio: Blob | null, categorias
   const r = await fetch("/api/voz", { method: "POST", headers: { Authorization: `Bearer ${data.session?.access_token}` }, body: f });
   return r.ok ? r.json() : null;
 }
-export function Captura() {
+export function Captura({ inicial }: { inicial?: DetalleCaptura | null }) {
   const q = useSearchParams(), { perfil, toast } = useSesion(), router = useRouter();
   const [modo, setModo] = useState<Modo | null>(null), [tipo, setTipo] = useState<"gasto" | "ingreso">("gasto");
   const [txt, setTxt] = useState(""), [oye, setOye] = useState(false), [pensando, setPensando] = useState(false);
@@ -48,10 +35,13 @@ export function Captura() {
 
   const reiniciar = useCallback(() => { setTxt(""); setMov(null); setEv(null); setOye(false); setPensando(false); }, []);
   useEffect(() => {
-    const f = (e: Event) => { const d = (e as CustomEvent).detail; reiniciar(); setModo(d.modo); setTipo(d.tipo || "gasto"); tic(10); if (d.texto) setTimeout(() => { setTxt(d.texto); }, 0); };
+    const abrir = (d: DetalleCaptura) => { reiniciar(); setModo(d.modo); setTipo(d.tipo || "gasto"); tic(10); if (d.texto) setTimeout(() => { setTxt(d.texto!); }, 0); };
+    const f = (e: Event) => abrir((e as CustomEvent).detail);
     addEventListener("sm-captura", f);
+    /* El toque que hizo cargar este componente */
+    if (inicial) abrir(inicial);
     return () => removeEventListener("sm-captura", f);
-  }, [reiniciar]);
+  }, [reiniciar, inicial]);
   useEffect(() => {
     if (q.get("rapido") === "1") abrirCaptura(location.pathname.startsWith("/agenda") ? "agenda" : "plata");
   }, [q]);

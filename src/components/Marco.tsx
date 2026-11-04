@@ -4,14 +4,16 @@ import { tic } from "@/lib/tic";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ViewTransition, useEffect, useLayoutEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { olvidarSesion, useSesion } from "@/lib/sesion";
 import { sb } from "@/lib/sb";
 import { MARCA } from "@/lib/marca";
 import { Icono } from "./Icono";
 import { Avatar } from "./Avatar";
-import { Captura, abrirCaptura, vaciarCola } from "./Captura";
+import { abrirCaptura, vaciarCola, type DetalleCaptura } from "@/lib/captura";
 import { Efectos } from "./Efectos";
 
+const Captura = dynamic(() => import("./Captura").then((m) => m.Captura), { ssr: false });
 const TABS = [["inicio", "Inicio", "inicio"], ["agenda", "Agenda", "calendario"], ["billetera", "Billetera", "billetera"], ["mapa", "Mapa", "mapa"], ["gente", "Gente", "gente"]];
 const MENU = [
   ["/perfil", "usuario", "Mi perfil", "Foto, casa, carrera, colores"],
@@ -31,6 +33,19 @@ const PRINCIPALES = ["/agenda", "/billetera", "/mapa", "/gente", "/facu", "/mas"
 const CURVA = "cubic-bezier(.32,.72,0,1)";
 const pocoMovimiento = () => matchMedia("(prefers-reduced-motion:reduce)").matches;
 const conVistas = () => "startViewTransition" in document && !!CSS.supports?.("view-transition-class", "a");
+
+/* Anotar rápido carga recién cuando hace falta, y se adelanta cuando el celular está libre */
+function CapturaDiferida() {
+  const [ver, setVer] = useState(false), [ini, setIni] = useState<DetalleCaptura | null>(null);
+  useEffect(() => {
+    const f = (e: Event) => { setIni((e as CustomEvent).detail); setVer(true); };
+    addEventListener("sm-captura", f, { once: true });
+    const q = new URLSearchParams(location.search).get("rapido") === "1";
+    const id = setTimeout(() => setVer(true), q ? 0 : 3500);
+    return () => { clearTimeout(id); removeEventListener("sm-captura", f); };
+  }, []);
+  return ver ? <Captura inicial={ini} /> : null;
+}
 
 export function Marco({ children }: { children: React.ReactNode }) {
   const ruta = usePathname(), r = useRouter();
@@ -158,7 +173,7 @@ export function Marco({ children }: { children: React.ReactNode }) {
         <div ref={tiraEl} className="tira" aria-hidden="true"><i /></div>
         <ViewTransition key={ruta} name="vista" share="vista" enter="vista" exit="vista" update="none" default="none"><div ref={vista} className="vista">{children}</div></ViewTransition>
       </main>
-      <Captura /><Efectos />
+      <CapturaDiferida /><Efectos />
       {!enInicio && !enChat && !enMapa && <Link href="/inicio" className={`casa-flota ${oculta ? "fuera" : ""}`} aria-label="Ir a Inicio"><Icono n="inicio" t={24} /></Link>}
       {enInicio && <nav className="tabs5" aria-label="Secciones" style={{ "--n": tabs.length, "--i": Math.max(0, activa) } as React.CSSProperties}>
         {activa >= 0 && <span className="tab-bola" aria-hidden="true" />}

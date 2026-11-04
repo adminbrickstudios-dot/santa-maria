@@ -40,7 +40,8 @@ export function Version() {
     };
     const alFallar = (e: ErrorEvent | PromiseRejectionEvent) => {
       const t = String((e as ErrorEvent).message || (e as PromiseRejectionEvent).reason?.message || (e as PromiseRejectionEvent).reason || "");
-      if (FALTA_CHUNK.test(t)) { nueva = nueva || `sin-chunk-${Date.now()}`; recargarSiSePuede(); }
+      /* Fijo por versión: si el chunk falta de verdad, se reintenta una sola vez y no entra en bucle */
+      if (FALTA_CHUNK.test(t) && navigator.onLine) { nueva = nueva || `sin-chunk-${MIA}`; recargarSiSePuede(); }
     };
     sw.addEventListener("message", alMensaje);
     sw.addEventListener("controllerchange", preguntar);

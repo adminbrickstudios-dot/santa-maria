@@ -8,7 +8,7 @@ import { MARCA } from "@/lib/marca";
 import localFont from "next/font/local";
 
 const txt = localFont({ src: "../../node_modules/@fontsource-variable/sofia-sans/files/sofia-sans-latin-wght-normal.woff2", weight: "100 900", variable: "--f-txt", display: "swap" });
-const dis = localFont({ src: "../../node_modules/@fontsource-variable/sofia-sans-extra-condensed/files/sofia-sans-extra-condensed-latin-wght-normal.woff2", weight: "100 900", variable: "--f-dis", display: "swap", preload: false });
+const dis = localFont({ src: "../../node_modules/@fontsource-variable/sofia-sans-extra-condensed/files/sofia-sans-extra-condensed-latin-wght-normal.woff2", weight: "100 900", variable: "--f-dis", display: "swap" });
 
 export const metadata: Metadata = {
   title: MARCA.nombre,

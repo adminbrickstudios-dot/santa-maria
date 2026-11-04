@@ -9,7 +9,7 @@ import { useSesion } from "@/lib/sesion";
 import { sb } from "@/lib/sb";
 import { Icono } from "@/components/Icono";
 import { expandirBoton } from "@/lib/transicion";
-import { abrirCaptura } from "@/components/Captura";
+import { abrirCaptura } from "@/lib/captura";
 import { DibuBilletera, DibuCalendario, DibuLibro, DibuMapa, IconoCielo } from "@/components/Animados";
 import { aMin, ahoraBA, DIAS, faltan, pesos, MESES } from "@/lib/util";
 import { activarPush, estaInstalada, pushSoportado } from "@/lib/push";

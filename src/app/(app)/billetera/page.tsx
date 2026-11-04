@@ -7,7 +7,7 @@ import { sb } from "@/lib/sb";
 import { useSesion } from "@/lib/sesion";
 import { Hoja } from "@/components/Hoja";
 import { Icono } from "@/components/Icono";
-import { abrirCaptura } from "@/components/Captura";
+import { abrirCaptura } from "@/lib/captura";
 import { lanzarEfecto } from "@/components/Efectos";
 import { ahoraBA, pesos } from "@/lib/util";
 import { recomendar, resumen, type Mov } from "@/lib/plata";

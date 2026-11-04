@@ -59,14 +59,16 @@ const esHtml = (r) => (r.headers.get("content-type") || "").includes("text/html"
 async function guardarHtml(c, clave, r) {
   try { if (esDeEstaVersion(await r.clone().text())) await c.put(clave, r); } catch {}
 }
+/* Se engancha antes de responder: si la respuesta se va por lo guardado, igual llega a guardarse */
+function guardarAlLlegar(e, c, clave, red) {
+  e.waitUntil(red.then((r) => (r.ok && !r.redirected && esHtml(r) ? guardarHtml(c, clave, r.clone()) : undefined)).catch(() => {}));
+}
 
 /* Pantallas: primero la red. Lo guardado solo si no hay red, o si la red tarda más que ESPERA_HTML */
 async function pagina(e, u) {
   const c = await caches.open(HTML), h = await c.match(u.pathname);
-  const red = fetch(e.request).then((r) => {
-    if (r.ok && !r.redirected && esHtml(r)) e.waitUntil(guardarHtml(c, u.pathname, r.clone()));
-    return r;
-  });
+  const red = fetch(e.request);
+  guardarAlLlegar(e, c, u.pathname, red);
   if (!h) return red.catch(sinRed);
   if (self.navigator.onLine === false) { red.catch(() => {}); return h; }
   let tm;
