@@ -1,8 +1,9 @@
 import type { NextConfig } from "next";
 
 /* Un valor por deploy: lo usan Next para detectar versiones mezcladas y el service worker para sus caches.
+   Tiene que ser igual en el build y al servir: si cambiara, Next recargaría la página en cada navegación.
    Queda en el entorno para que todos los procesos del build vean el mismo. */
-const version = process.env.NEXT_PUBLIC_VERSION || process.env.VERCEL_DEPLOYMENT_ID || process.env.VERCEL_GIT_COMMIT_SHA || process.env.NEXT_DEPLOYMENT_ID || `local-${Date.now().toString(36)}`;
+const version = process.env.NEXT_PUBLIC_VERSION || process.env.VERCEL_DEPLOYMENT_ID || process.env.VERCEL_GIT_COMMIT_SHA || process.env.NEXT_DEPLOYMENT_ID || "local";
 process.env.NEXT_PUBLIC_VERSION = version;
 
 const nextConfig: NextConfig = {

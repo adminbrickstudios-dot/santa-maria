@@ -43,7 +43,7 @@
 .fa-clave input{padding-right:84px}
 .fa-clave button{position:absolute;right:4px;top:5px;min-height:44px;padding:0 12px;color:#D9DEE2;font-weight:700;font-size:15.5px}
 @media (min-width:820px),(orientation:landscape) and (max-height:520px){
-  .fa-portada{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);align-items:center;gap:clamp(18px,4vw,56px);max-width:1040px;margin:0 auto}
+  .fa-portada{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);align-items:center;gap:clamp(18px,4vw,56px);padding-inline:max(16px,calc((100% - 1040px)/2))}
   .fa-cuatro{max-width:none}
   .fa-c{height:clamp(120px,36svh,270px);padding:14px 18px}
   .fa-c b{font-size:clamp(70px,20svh,150px)}
