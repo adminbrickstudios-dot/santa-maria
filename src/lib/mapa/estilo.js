@@ -29,7 +29,7 @@ export function instalarCapas(m,o){
   m.addSource('sat',{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],tileSize:256,maxzoom:19,attribution:'Imágenes de Esri'});
   m.addSource('nombres',{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'],tileSize:256,maxzoom:19});
   m.addSource('verdes',{type:'geojson',data:vacio()});
-  for(const f of FUENTES)m.addSource(f,f==='ruta'?{type:'geojson',data:vacio(),lineMetrics:true}:f==='pois'?{type:'geojson',data:vacio(),cluster:true,clusterRadius:46,clusterMaxZoom:15.5,clusterProperties:{}}:{type:'geojson',data:vacio()});
+  for(const f of FUENTES)m.addSource(f,f==='ruta'?{type:'geojson',data:vacio(),lineMetrics:true}:f==='pois'?{type:'geojson',data:vacio(),cluster:true,clusterRadius:46,clusterMaxZoom:15}:{type:'geojson',data:vacio()});
   m.addLayer({id:'sat',type:'raster',source:'sat',layout:{visibility:'none'},paint:{'raster-fade-duration':180}},simbolo);
   m.addLayer({id:'nombres',type:'raster',source:'nombres',minzoom:12,layout:{visibility:'none'}},simbolo);
   m.addLayer({id:'verdes',type:'fill',source:'verdes',layout:{visibility:'none'},paint:{'fill-color':'#22B455','fill-opacity':.32}},simbolo);
