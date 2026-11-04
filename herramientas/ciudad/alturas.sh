@@ -2,6 +2,10 @@
 # Alturas estimadas abiertas (CC BY 4.0) para la Ciudad: 3D-GloBFP por edificio y GHSL por zona.
 set -eu
 mkdir -p recon crudo
+pip install -q overturemaps >/dev/null
+overturemaps download --bbox=-58.535,-34.705,-58.33,-34.525 -f geojsonseq --type=address -o crudo/ov_dir.jsonl || true
+gzip -9 crudo/ov_dir.jsonl || true
+rm -f crudo/*.state
 pip install -q pyshp pyproj rasterio numpy >/dev/null
 curl -sSL -m 60 "https://api.figshare.com/v2/articles/28881749/files?page_size=1000" -o recon/figshare.json
 python3 - <<'P'
@@ -34,7 +38,7 @@ P
 Q=https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/GHS_BUILT_H_GLOBE_R2023A/GHS_BUILT_H_ANBH_E2018_GLOBE_R2023A_54009_100/V1-0/tiles
 python3 - <<'P' > recon/ghsl_tile.txt
 from pyproj import Transformer
-t=Transformer.from_crs(4326,54009,always_xy=True)
+t=Transformer.from_crs('EPSG:4326','ESRI:54009',always_xy=True)
 x,y=t.transform(-58.43,-34.61)
 print(int((x+18041000)//1000000)+1, int((9000000-y)//1000000)+1, x, y)
 P
@@ -45,7 +49,7 @@ import zipfile,glob,json,gzip,rasterio,numpy as np
 from pyproj import Transformer
 zipfile.ZipFile('gh.zip').extractall('gh')
 f=glob.glob('gh/*.tif')[0]
-t=Transformer.from_crs(4326,54009,always_xy=True)
+t=Transformer.from_crs('EPSG:4326','ESRI:54009',always_xy=True)
 r=rasterio.open(f)
 paso=0.0009
 sal={'lon0':-58.535,'lat0':-34.705,'paso':paso,'filas':[]}
