@@ -1,0 +1,12 @@
+total 98140
+drwxr-xr-x  2 runner runner     4096 Nov  4 23:09 .
+drwxr-xr-x 11 runner runner     4096 Nov  4 23:08 ..
+-rw-r--r--  1 runner runner  6201475 Nov  4 23:08 osm_cosas.jsonl.gz
+-rw-r--r--  1 runner runner  5806083 Nov  4 23:08 osm_edif.jsonl.gz
+-rw-r--r--  1 runner runner  8161141 Nov  4 23:08 osm_red.jsonl.gz
+-rw-r--r--  1 runner runner 60147465 Nov  4 23:07 ov_edif.jsonl.gz
+-rw-r--r--  1 runner runner      335 Nov  4 23:07 ov_edif.jsonl.state
+-rw-r--r--  1 runner runner 20024570 Nov  4 23:07 ov_lug.jsonl.gz
+-rw-r--r--  1 runner runner      328 Nov  4 23:07 ov_lug.jsonl.state
+-rw-r--r--  1 runner runner   119706 Nov  4 23:07 ov_part.jsonl.gz
+-rw-r--r--  1 runner runner      340 Nov  4 23:07 ov_part.jsonl.state
