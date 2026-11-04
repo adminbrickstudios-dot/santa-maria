@@ -9,7 +9,8 @@ type Ctx = {
   recargar: () => Promise<void>; recuentos: () => Promise<void>; toast: (t: string) => void; pantalla: (n: string) => boolean;
 };
 const C = createContext<Ctx>(null as any);
-const FOTO = "sm-sesion";
+/* Copia para abrir rápido. No confundir con "sm-sesion", donde Supabase guarda el inicio de sesión. */
+const FOTO = "sm-foto";
 export function olvidarSesion() { try { localStorage.removeItem(FOTO); } catch {} }
 export const useSesion = () => useContext(C);
 
@@ -39,9 +40,14 @@ export function Sesion({ children }: { children: ReactNode }) {
     setA(count || 0);
   }, []);
   const recargar = useCallback(async () => {
-    const { data: u } = await sb.auth.getSession();
+    const { data: u, error } = await sb.auth.getSession();
     const uid = u?.session?.user?.id;
-    if (!uid) { router.replace("/entrar"); return; }
+    if (!uid) {
+      /* Sin internet no se puede renovar la sesión: no es lo mismo que haberla perdido */
+      if (error && !navigator.onLine) return;
+      router.replace("/entrar");
+      return;
+    }
     const { data: p } = await sb.from("perfiles").select("*").eq("id", uid).single();
     if (!p) { await sb.auth.signOut(); router.replace("/entrar"); return; }
     if (p.debe_cambiar_clave) { router.replace("/entrar?paso=clave"); return; }
