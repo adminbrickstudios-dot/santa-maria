@@ -1,4 +1,6 @@
-# Santa María
+# FAMA
+
+**Facu, Agenda, Mapa y Ahorro.**
 
 Organizador de vida en Buenos Aires para universitarios: mapa con rutas reales, guía de la ciudad, facu, mensajes y notificaciones.
 Next.js + Supabase, instalable en el celular.

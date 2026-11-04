@@ -13,11 +13,6 @@
 .or-barra i{display:block;height:100%;border-radius:5px;background:var(--c,var(--sec-c));transition:width .8s var(--hoja-curva)}
 .or-tapa .or-barra{background:rgba(255,255,255,.28);margin-top:10px}
 .or-tapa .or-barra i{background:#fff}
-.or-vacio{display:grid;justify-items:center;gap:8px;padding:26px 18px;border-radius:24px;background:var(--hoja);text-align:center}
-.or-vacio>span{font-size:44px;line-height:1;animation:or-entra .7s var(--resorte) backwards}
-.or-vacio b{font-size:19px;font-weight:800;letter-spacing:-.01em}
-.or-vacio p{color:var(--tinta2);font-size:16px;line-height:1.3;max-width:34ch}
-.or-vacio .btn{margin-top:6px;width:100%;max-width:300px}
 @keyframes or-entra{from{opacity:0;transform:scale(.5) translateY(10px)}}
 .or-aviso{display:flex;gap:10px;align-items:flex-start;padding:11px 14px;border-radius:20px;background:color-mix(in srgb,#FFB400 16%,var(--hoja));font-size:15px;line-height:1.3}
 .or-aviso>span:first-child{font-size:20px;line-height:1.2;flex:none}

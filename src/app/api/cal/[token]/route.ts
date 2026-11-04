@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from "@supabase/supabase-js";
+import { MARCA } from "@/lib/marca";
 
 /* Calendario privado de cada persona, para que Google o Apple lo lean. */
 const esc = (s: string) => String(s || "").replace(/\\/g, "\\\\").replace(/([,;])/g, "\\$1").replace(/\r?\n/g, "\\n");
@@ -13,7 +14,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ token: str
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false } });
   const { data } = await sb.rpc("agenda_feed", { p_token: token.replace(/\.ics$/, "") });
   if (!data) return new Response("No existe", { status: 404 });
-  const l = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Santa Maria//Agenda//ES", "CALSCALE:GREGORIAN", "X-WR-CALNAME:Santa María", "X-WR-TIMEZONE:America/Argentina/Buenos_Aires", "REFRESH-INTERVAL;VALUE=DURATION:PT1H"];
+  const l = ["BEGIN:VCALENDAR", "VERSION:2.0", `PRODID:-//${MARCA.nombre}//Agenda//ES`, "CALSCALE:GREGORIAN", `X-WR-CALNAME:${MARCA.nombre}`, "X-WR-TIMEZONE:America/Argentina/Buenos_Aires", "REFRESH-INTERVAL;VALUE=DURATION:PT1H"];
   for (const e of data as any[]) {
     l.push("BEGIN:VEVENT", `UID:evento-${e.id}@santa-maria`, `DTSTAMP:${utc(new Date())}`, dobla(`SUMMARY:${esc(e.titulo)}`));
     if (e.todo_dia) l.push(`DTSTART;VALUE=DATE:${dia(e.fecha)}`, `DTEND;VALUE=DATE:${dia(e.fecha, 1)}`);

@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useSesion } from "@/lib/sesion";
 import { Icono } from "@/components/Icono";
+import { MARCA } from "@/lib/marca";
 
 const T: [string, string, string, string, string, string?][] = [
   ["/tareas", "tilde", "#FF8A1F", "Tareas", "Lo que tenés que hacer"],
@@ -23,7 +24,7 @@ const T: [string, string, string, string, string, string?][] = [
 export default function Mas() {
   const { pantalla, grupo, toast } = useSesion();
   async function invitar() {
-    const texto = `Sumate a Santa María, la app para organizar tu vida en Buenos Aires.${grupo?.codigo_invitacion ? ` El código del grupo es ${grupo.codigo_invitacion}.` : ""} ${location.origin}`;
+    const texto = `Sumate a ${MARCA.nombre} (${MARCA.sigla}), la app para organizar tu vida en Buenos Aires.${grupo?.codigo_invitacion ? ` El código del grupo es ${grupo.codigo_invitacion}.` : ""} ${location.origin}`;
     try { if (navigator.share) await navigator.share({ text: texto }); else { await navigator.clipboard.writeText(texto); toast("Invitación copiada."); } } catch {}
   }
   return <div className="pagina">

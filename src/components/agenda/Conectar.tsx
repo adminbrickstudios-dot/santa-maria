@@ -5,6 +5,7 @@ import { sb } from "@/lib/sb";
 import { useSesion } from "@/lib/sesion";
 import { Hoja } from "@/components/Hoja";
 import { Icono } from "@/components/Icono";
+import { MARCA } from "@/lib/marca";
 
 export function Conectar({ cerrar }: { cerrar: () => void }) {
   const { perfil, toast } = useSesion();
@@ -29,7 +30,7 @@ export function Conectar({ cerrar }: { cerrar: () => void }) {
     setF({ nombre: "", url: "" }); cargar(); window.dispatchEvent(new Event("sm-agenda"));
   }
   return <Hoja titulo="Conectar calendarios" cerrar={cerrar}>
-    <h3 className="sec">Ver Santa María en tu calendario</h3>
+    <h3 className="sec">Ver {MARCA.nombre} en tu calendario</h3>
     <p className="expl">Tu agenda aparece en Google o Apple y se actualiza sola. Google puede tardar unas horas en mostrar los cambios.</p>
     <div className="fila">
       <a className="btn sec2 chico" href={webcal}><Icono n="calendario" t={20} />Apple</a>

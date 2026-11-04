@@ -1,7 +1,14 @@
 import type { NextConfig } from "next";
 
+/* Un valor por deploy: lo usan Next para detectar versiones mezcladas y el service worker para sus caches.
+   Queda en el entorno para que todos los procesos del build vean el mismo. */
+const version = process.env.NEXT_PUBLIC_VERSION || process.env.VERCEL_DEPLOYMENT_ID || process.env.VERCEL_GIT_COMMIT_SHA || process.env.NEXT_DEPLOYMENT_ID || `local-${Date.now().toString(36)}`;
+process.env.NEXT_PUBLIC_VERSION = version;
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  deploymentId: version,
+  env: { NEXT_PUBLIC_VERSION: version },
   async headers() {
     return [
       {
@@ -13,8 +20,10 @@ const nextConfig: NextConfig = {
           { key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=(self)" },
         ],
       },
-      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }] },
-      { source: "/data/:file*", headers: [{ key: "Cache-Control", value: "public, max-age=604800" }] },
+      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] },
+      /* Sin hash en el nombre: un día fresco y después revalida, para que un dato corregido llegue */
+      { source: "/data/:file*", headers: [{ key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }] },
+      { source: "/ciudad/:file*", headers: [{ key: "Cache-Control", value: "public, max-age=604800" }] },
     ];
   },
 };

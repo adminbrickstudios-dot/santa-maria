@@ -116,7 +116,6 @@ textarea{min-height:88px;resize:vertical}
 .barrita i{display:block;height:100%;background:var(--taxi)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 76px);background:var(--cartel);color:var(--cartel-t);padding:10px 16px;border-radius:10px;font-weight:700;z-index:60;max-width:90%;text-align:center}
 .cargando{height:100dvh;display:grid;place-items:center;background:var(--cartel)}
-.sello{font-family:var(--disp);font-weight:800;font-size:44px;text-transform:uppercase;color:#fff;letter-spacing:.02em}
 
 /* Hojas */
 .hoja-fondo{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40;display:flex;align-items:flex-end;justify-content:center}
@@ -138,11 +137,7 @@ textarea{min-height:88px;resize:vertical}
 
 /* Portada */
 .portada{min-height:100dvh;background:#101317;color:#fff;position:relative;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden}
-.ciudad{position:absolute;inset:0;width:100%;height:100%}
-.portada::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(16,19,23,.1) 25%,rgba(16,19,23,.82) 58%,#101317 82%)}
 .portada-cu{position:relative;z-index:2;padding-block:40px calc(env(safe-area-inset-bottom,0px) + 26px);padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));display:grid;gap:14px;width:100%;max-width:460px;margin:0 auto}
-.marca-p{font-family:var(--disp);font-weight:800;font-size:clamp(66px,20vw,96px);line-height:.88;text-transform:uppercase;letter-spacing:.005em}
-.marca-p em{font-style:normal;color:#FFD21F}
 .lema{font-size:19px;color:#D9DEE2}
 .portada input{background:#1D2125;border-color:#3A4147;color:#fff}
 .portada input::placeholder{color:#8D969C}
@@ -280,7 +275,6 @@ textarea{min-height:88px;resize:vertical}
 .grande{background:var(--sec);color:var(--sec-t);border-radius:20px;box-shadow:0 10px 24px -12px var(--sec)}
 .grande svg{color:inherit}.grande small{opacity:.92}
 .btn.pri{background:var(--sec);color:var(--sec-t)}
-.portada .btn.pri{background:#FFD21F;color:#15181C}
 .btn,.chip,.seg,.item,.bloque,.persona,.mini,.tarjeta,.grande,.ico-btn,.tab5,.op-cab{transition:transform .14s cubic-bezier(.3,.7,.4,1),background .2s,box-shadow .2s}
 button:active,a:active{transform:scale(.97)}
 .seg[aria-selected="true"]{background:var(--sec);border-color:var(--sec);color:var(--sec-t)}
@@ -300,10 +294,7 @@ button:active,a:active{transform:scale(.97)}
 .titulo{font-size:40px}
 
 /* Pase de página y aparición suave */
-.vista{height:100%;animation:pasar .32s cubic-bezier(.2,.75,.25,1) both;transform-origin:left center}
-@keyframes pasar{from{opacity:0;transform:translateX(16px)}}
-.pagina>*{animation:sube .4s cubic-bezier(.2,.8,.2,1) both}
-.pagina>*:nth-child(2){animation-delay:.04s}.pagina>*:nth-child(3){animation-delay:.08s}.pagina>*:nth-child(4){animation-delay:.12s}.pagina>*:nth-child(5){animation-delay:.16s}.pagina>*:nth-child(n+6){animation-delay:.2s}
+.vista{height:100%}
 @keyframes sube{from{opacity:0;transform:translateY(10px)}}
 .hoja{animation:hoja-s .3s cubic-bezier(.2,.85,.25,1)}
 .hoja-fondo{animation:apar .2s}
@@ -315,68 +306,9 @@ button:active,a:active{transform:scale(.97)}
 @keyframes lat{from{transform:translateX(-30px);opacity:.3}}
 .burbuja{animation:sube .22s}
 .cargando{background:#101317}
-.sello.chico-s{font-size:44px}
 
-/* Portada: el nombre y los campos entran después del libro */
-.marca-p span{display:inline-block;opacity:0}
-.intro-lista .marca-p span{animation:letra .55s cubic-bezier(.2,1.2,.3,1) forwards;animation-delay:calc(var(--i)*38ms)}
-@keyframes letra{from{opacity:0;transform:translateY(46%) rotate(5deg)}to{opacity:1;transform:none}}
-.entra{opacity:0}
-.intro-lista .entra{animation:sube2 .5s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:calc(.34s + var(--i,0)*70ms)}
-@keyframes sube2{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 .temblar{animation:temblar .4s}
 @keyframes temblar{20%{transform:translateX(-8px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(3px)}}
-.portada .btn.pri{position:relative;overflow:hidden}
-.portada .btn.pri::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.65) 50%,transparent 65%);transform:translateX(-120%)}
-.intro-lista .portada .btn.pri::after{animation:brillo 3.6s 1.3s infinite}
-@keyframes brillo{0%{transform:translateX(-120%)}26%,100%{transform:translateX(120%)}}
-.pase{position:fixed;inset:0;z-index:80;background:#FFD21F;transform-origin:right center;animation:pase .5s cubic-bezier(.6,0,.3,1) forwards}
-@keyframes pase{from{transform:perspective(1400px) rotateY(-96deg)}to{transform:perspective(1400px) rotateY(0)}}
-
-/* El libro */
-.intro{position:fixed;inset:0;z-index:100;background:radial-gradient(circle at 50% 42%,#20262B 0,#101317 62%);display:grid;place-items:center;overflow:hidden;animation:golpe .32s .54s;cursor:pointer}
-.intro.fin{animation:salir .4s .02s forwards}
-@keyframes salir{to{opacity:0}}
-@keyframes golpe{0%{transform:translateY(0)}25%{transform:translateY(7px)}55%{transform:translateY(-3px)}100%{transform:none}}
-.escena{perspective:1500px;transform:translateX(0);animation:centrar .62s .72s cubic-bezier(.3,.8,.3,1) forwards}
-@keyframes centrar{to{transform:translateX(calc(var(--lw,220px)*.46))}}
-.intro.fin .escena{animation:zoom .42s cubic-bezier(.6,0,.8,.4) forwards}
-@keyframes zoom{from{transform:translateX(calc(var(--lw,220px)*.46)) scale(1)}to{transform:translateX(0) scale(4.4)}}
-.intro{--lw:min(43vw,230px)}
-.intro .sello{color:#15181C}
-.libro{position:relative;width:var(--lw);height:calc(var(--lw)*1.38);transform-style:preserve-3d;transform:rotateX(14deg);animation:caer .56s cubic-bezier(.55,0,.9,.55) both,aplasta .36s .54s cubic-bezier(.3,1.4,.5,1)}
-@keyframes caer{from{transform:translateY(-120vh) rotateX(40deg) rotateZ(-16deg)}to{transform:rotateX(14deg)}}
-@keyframes aplasta{0%{transform:rotateX(14deg) scale(1.1,.86)}55%{transform:rotateX(14deg) scale(.97,1.05)}100%{transform:rotateX(14deg)}}
-.sombra{position:absolute;left:-6%;right:-6%;bottom:-13%;height:17%;border-radius:50%;background:rgba(0,0,0,.65);filter:blur(13px);animation:sombra .56s ease-in both}
-@keyframes sombra{from{opacity:0;transform:scale(.3)}}
-.contra,.lomo{position:absolute;inset:0;background:#0B0D0F;border-radius:3px 9px 9px 3px}
-.lomo{right:auto;width:14px;left:-6px;background:#FFD21F;border-radius:5px 0 0 5px}
-.bloque-hojas{position:absolute;inset:5px 7px 6px 0;background:repeating-linear-gradient(90deg,#F4F2EA 0 2px,#E4E1D6 2px 3px);border-radius:0 5px 5px 0}
-.pagina-der{position:absolute;inset:5px 7px 6px 0;background:#F8F7F1;border-radius:0 5px 5px 0;display:flex;flex-direction:column;justify-content:center;padding:0 9%;color:#15181C;overflow:hidden;box-shadow:inset 18px 0 22px -18px rgba(0,0,0,.4)}
-.sello{font-family:var(--disp);font-weight:800;text-transform:uppercase;font-size:calc(var(--lw)*.26);line-height:.9;display:grid;opacity:0;animation:sellar .36s 1.5s cubic-bezier(.2,1.5,.4,1) forwards}
-.sello span:last-child{color:#E0A800}
-@keyframes sellar{from{opacity:0;transform:scale(2.2) rotate(-6deg);filter:blur(3px)}to{opacity:1;transform:rotate(-2deg)}}
-.sello-sub{font-size:calc(var(--lw)*.062);font-weight:700;margin-top:7px;opacity:0;animation:apar2 .3s 1.85s forwards}
-@keyframes apar2{to{opacity:.7}}
-.garabato{width:80%;margin-top:6px;stroke-dasharray:200;stroke-dashoffset:200;animation:trazo .55s 1.8s forwards}
-@keyframes trazo{to{stroke-dashoffset:0}}
-.tapa{position:absolute;inset:0;transform-origin:left center;transform-style:preserve-3d;animation:abrir .78s .72s cubic-bezier(.35,.1,.25,1.08) forwards;z-index:10}
-@keyframes abrir{to{transform:rotateY(-168deg)}}
-.tapa-frente,.tapa-dorso{position:absolute;inset:0;border-radius:3px 9px 9px 3px;backface-visibility:hidden}
-.tapa-frente{background:linear-gradient(135deg,#23282D,#15181C 55%);color:#fff;padding:13% 11%;display:flex;flex-direction:column;justify-content:flex-end;box-shadow:inset 3px 0 0 rgba(255,255,255,.08),inset -1px -1px 0 rgba(255,255,255,.06);overflow:hidden}
-.tapa-frente b{font-family:var(--disp);font-weight:800;text-transform:uppercase;font-size:calc(var(--lw)*.2);line-height:.92;position:relative}
-.tapa-frente small{font-size:calc(var(--lw)*.055);opacity:.7;margin-top:6px;position:relative}
-.banda{position:absolute;left:0;right:0;top:15%;height:13%;background:#FFD21F}
-.elastico{position:absolute;right:9%;top:0;bottom:0;width:4px;background:#FFD21F;opacity:.9}
-.tapa-dorso{background:#FFD21F;transform:rotateY(180deg);border-radius:9px 3px 3px 9px}
-.hojita{position:absolute;inset:5px 7px 6px 0;transform-origin:left center;background:#FBFAF5;border-radius:0 5px 5px 0;animation:hoja .46s cubic-bezier(.4,.1,.3,1) both;backface-visibility:hidden;padding:12% 10%;display:grid;gap:7%;align-content:start;box-shadow:inset 14px 0 18px -14px rgba(0,0,0,.35)}
-.hojita i{display:block;height:4px;background:#DEDBCF;border-radius:2px}
-.hojita i:nth-child(2){width:78%}.hojita i:nth-child(4){width:58%}
-@keyframes hoja{0%{transform:rotateY(0)}100%{transform:rotateY(-176deg);visibility:hidden}}
-.polvo{position:absolute;left:50%;top:60%}
-.polvo i{position:absolute;width:7px;height:7px;border-radius:50%;background:#C8CDC6;opacity:0;animation:polvo var(--t) .54s ease-out forwards}
-@keyframes polvo{0%{opacity:.75;transform:rotate(var(--a)) translateX(30px) scale(.5)}100%{opacity:0;transform:rotate(var(--a)) translateX(var(--d)) scale(1.7)}}
-@media (prefers-reduced-motion:reduce){.marca-p span,.entra{opacity:1}}
 .ruta-cab .ico-btn svg{width:26px;height:26px}
 .rapido{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 74px);z-index:30;display:grid;justify-items:end;gap:8px}
 .rapido-b{width:58px;height:58px;border-radius:50%;background:var(--tinta);color:var(--suelo);display:grid;place-items:center;box-shadow:0 8px 22px rgba(0,0,0,.28);transition:transform .22s cubic-bezier(.3,1.5,.5,1)}
@@ -386,6 +318,5 @@ button:active,a:active{transform:scale(.97)}
 .fiesta{position:fixed;inset:0;pointer-events:none;z-index:70;overflow:hidden}
 .fiesta i{position:absolute;top:-16px;width:9px;height:14px;border-radius:2px;animation:cae 1.7s cubic-bezier(.3,.5,.6,1) forwards}
 @keyframes cae{to{transform:translateY(105vh) rotate(720deg)}}
-.pagina>.rapido{animation:none}
 
 .dato-item{display:inline-block;align-self:flex-start;margin-top:6px;max-width:100%;white-space:normal;line-height:1.3}

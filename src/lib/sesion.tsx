@@ -1,8 +1,9 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { sb } from "./sb";
+import { Cargando } from "@/components/Cargando";
 
 type Ctx = {
   perfil: any; grupo: any; personas: any[]; sinLeer: number; avisos: number; lugares: any[];
@@ -12,6 +13,8 @@ const C = createContext<Ctx>(null as any);
 const FOTO = "sm-sesion";
 export function olvidarSesion() { try { localStorage.removeItem(FOTO); } catch {} }
 export const useSesion = () => useContext(C);
+/* Si lo que llegó es igual a la foto, se conserva el objeto: así no se redibuja toda la app por nada */
+const igual = <T,>(a: T, b: T) => (JSON.stringify(a) === JSON.stringify(b) ? a : b);
 
 export function aplicarTema(tema?: string, acento?: string) {
   const r = document.documentElement;
@@ -22,7 +25,7 @@ export function aplicarTema(tema?: string, acento?: string) {
 }
 
 export function Sesion({ children }: { children: ReactNode }) {
-  const router = useRouter(), ruta = usePathname();
+  const router = useRouter();
   const [perfil, setP] = useState<any>(null), [grupo, setG] = useState<any>(null), [personas, setPs] = useState<any[]>([]), [lugares, setL] = useState<any[]>([]);
   const [sinLeer, setS] = useState(0), [avisos, setA] = useState(0), [msg, setMsg] = useState<string | null>(null);
   const tm = useRef<any>(null);
@@ -46,13 +49,13 @@ export function Sesion({ children }: { children: ReactNode }) {
     if (!p) { await sb.auth.signOut(); router.replace("/entrar"); return; }
     if (p.debe_cambiar_clave) { router.replace("/entrar?paso=clave"); return; }
     if (!p.onboarding_hecho) { router.replace("/bienvenida"); return; }
-    setP(p); aplicarTema(p.tema, p.preferencias?.acento);
+    setP((a: any) => igual(a, p)); aplicarTema(p.tema, p.preferencias?.acento);
     const [{ data: g }, { data: ps }, { data: ls }] = await Promise.all([
       sb.from("grupos").select("*").eq("id", p.grupo_id).single(),
       sb.rpc("personas_del_grupo"),
       sb.from("lugares").select("*").order("orden"),
     ]);
-    setG(g); setPs(ps || []); setL(ls || []);
+    setG((a: any) => igual(a, g)); setPs((a) => igual(a, ps || [])); setL((a) => igual(a, ls || []));
     try { localStorage.setItem(FOTO, JSON.stringify({ perfil: p, grupo: g, personas: ps || [], lugares: ls || [] })); } catch {}
     recuentos();
   }, [router, recuentos]);
@@ -70,13 +73,9 @@ export function Sesion({ children }: { children: ReactNode }) {
     const canal = sb.channel("mis-avisos").on("postgres_changes", { event: "INSERT", schema: "public", table: "notificaciones", filter: `perfil_id=eq.${perfil.id}` }, () => recuentos()).subscribe();
     return () => { sb.removeChannel(canal); };
   }, [perfil?.id, recuentos]);
-  useEffect(() => {
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
-  }, []);
 
   const pantalla = useCallback((n: string) => grupo?.pantallas?.[n] !== false, [grupo]);
   const v = useMemo(() => ({ perfil, grupo, personas, lugares, sinLeer, avisos, recargar, recuentos, toast, pantalla }), [perfil, grupo, personas, lugares, sinLeer, avisos, recargar, recuentos, toast, pantalla]);
-  void ruta;
-  if (!perfil) return <div className="cargando"><span className="sello">Santa María</span></div>;
+  if (!perfil) return <Cargando />;
   return <C.Provider value={v}>{children}{msg && <div className="toast" role="status">{msg}</div>}</C.Provider>;
 }

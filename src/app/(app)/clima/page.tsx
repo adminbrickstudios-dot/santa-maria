@@ -57,5 +57,5 @@ export default function Clima() {
 }
 function IconoHora({ c }: { c: any }) {
   const fondo = c === "sol" || c === "noche" ? "transparent" : "#7F93AD";
-  return <span style={{ display: "inline-grid", width: 30, height: 30, borderRadius: 15, background: fondo, placeItems: "center", color: "inherit" }}><span style={{ width: 26, height: 26, filter: c === "sol" ? "saturate(2) brightness(.92)" : undefined }}><IconoCielo c={c} /></span></span>;
+  return <span style={{ display: "inline-grid", width: 30, height: 30, borderRadius: 15, background: fondo, placeItems: "center", color: "inherit" }}><span style={{ width: 26, height: 26, filter: c === "sol" ? "saturate(2) brightness(.92)" : undefined }}><IconoCielo c={c} quieto /></span></span>;
 }
