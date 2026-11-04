@@ -6,7 +6,7 @@
   --vidrio:rgba(255,255,255,.72);--vidrio-b:rgba(255,255,255,.6);--sombra-suave:0 10px 30px -14px rgba(20,28,45,.28);
   --resorte:linear(0,.009,.035 2.1%,.141,.281 6.7%,.723 12.9%,.938 16.7%,1.017,1.077,1.121,1.149 24.3%,1.159,1.163,1.161,1.154 29.9%,1.129 32.8%,1.051 39.6%,1.017 43.1%,.991,.977 51%,.974 53.8%,.975 57.1%,.997 69.8%,1.003 76.9%,1.004 83.8%,1);
   --hoja-curva:cubic-bezier(.32,.72,0,1);
-  --txt:"Sofia Sans Variable",-apple-system,"SF Pro Text",system-ui,sans-serif;
+  --txt:var(--f-txt),-apple-system,"SF Pro Text",system-ui,sans-serif;--disp:var(--f-dis),"Arial Narrow",sans-serif;
   --mini-mapa:url(/mapa-mini-claro.svg);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
@@ -431,3 +431,16 @@ input[type=text],input[type=search],input[type=password],input[type=time],input[
 .esq small{display:block;height:11px;width:38%;border-radius:6px;background:var(--hoja2);animation:esq 1.2s .1s ease-in-out infinite}
 @keyframes esq{50%{opacity:.45}}
 @media (prefers-reduced-motion:reduce){.esq i,.esq b,.esq small{animation:none}}
+
+/* Velocidad y detalles */
+.contenido{scroll-behavior:auto}
+.lista{content-visibility:auto;contain-intrinsic-size:auto 200px}
+.gordo{transform:perspective(620px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .55s var(--resorte);contain:paint}
+.gordo:active{transform:perspective(620px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) scale(.95);transition:transform .16s ease-out}
+.gordo::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at var(--bx,50%) var(--by,0%),rgba(255,255,255,.34),transparent 56%);opacity:0;transition:opacity .25s}
+.gordo:active::after{opacity:1}
+.zoom-capa{position:fixed;z-index:45;pointer-events:none;will-change:clip-path}
+.zoom-copia{position:absolute!important;animation:none!important;box-shadow:none!important;background:none!important;min-height:0!important}
+.barra-top{position:relative}
+.marco[data-alto="1"] .barra-top{background:var(--vidrio)!important;-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);box-shadow:0 .5px 0 var(--borde)!important}
+.barra-top h1 span{display:inline-block;animation:vista .28s var(--hoja-curva) backwards}

@@ -136,7 +136,7 @@ async function crearMapa(contenedor){
   maplibre=(await import('maplibre-gl')).default;
   mapa=new maplibre.Map({container:contenedor,style:estiloBase(),center:[-58.40,-34.60],zoom:13,minZoom:9,maxZoom:19,maxBounds:[[-59.3,-35.25],[-57.6,-34.0]],attributionControl:false,fadeDuration:120,maxPitch:60,pitchWithRotate:false,dragRotate:false});
   mapa.addControl(new maplibre.AttributionControl({compact:true}),'bottom-left');mapa.touchZoomRotate.disableRotation();mapa.touchPitch.disable();mapa.keyboard.disableRotation();
-  mapa.on('style.load',()=>{estiloListo=false;instalarCapas();});
+  mapa.on('style.load',()=>{estiloListo=false;if(CAPAS)instalarCapas();});
   mapa.once('idle',()=>{document.querySelector('.maplibregl-compact-show')?.classList.remove('maplibregl-compact-show');});
   mapa.on('click',toque);
   mapa.on('error',e=>{console.error('mapa',e.error?.message||e);});
@@ -508,7 +508,7 @@ function pintarSugerencias(){
 let datos=null;
 export function cargarDatosMapa(){
   if(!datos)datos=(async()=>{
-    const g=async u=>{const r=await fetch(u);if(!r.ok)throw new Error(u);return r.json();};
+    const g=async u=>{const r=await fetch(u);if(!r.ok)throw new Error(u);await new Promise(ok=>(window.requestIdleCallback||setTimeout)(ok));return r.json();};
     const [c,t,l]=await Promise.all([g('/data/calles.json'),g('/data/transporte.json'),g('/data/lugares.json')]);
     cargarCalles(c);cargarTransporte(t);Object.assign(L,l);
     L.pois.forEach(q=>{q.wx=wx(q[1]);q.wy=wy(q[2]);});
@@ -548,7 +548,7 @@ export async function montarMapa(raiz,api){
   const mq=matchMedia('(prefers-color-scheme:dark)');mq.addEventListener('change',tema);
   $('z-gps').onclick=gps;
   controladores=()=>{raiz.removeEventListener('click',clic);raiz.removeEventListener('input',entra);raiz.removeEventListener('change',cambia);mo.disconnect();mq.removeEventListener('change',tema);obs&&obs.disconnect();};
-  try{await cargarDatosMapa();await crearMapa($('mapa'));}catch(e){$('carga').textContent='No pude cargar el mapa. Revisá la conexión y volvé a entrar.';return;}
+  try{await crearMapa($('mapa'));$('carga').hidden=true;$('panel').innerHTML='<div class="pila"><p class="expl">Cargando las rutas…</p></div>';await cargarDatosMapa();if(mapa&&!estiloListo&&mapa.isStyleLoaded())instalarCapas();}catch(e){$('carga').hidden=false;$('carga').textContent='No pude cargar el mapa. Revisá la conexión y volvé a entrar.';return;}
   L.places=(api.lugares||[]).map((q,i)=>{const wxx=wx(q.lon),wyy=wy(q.lat),k={facu:'f',salida:'p',transporte:'t'}[q.tipo];return {k,n:q.nombre,d:q.descripcion,wx:wxx,wy:wyy,prim:!!q.destacado,place:{k:'l:'+q.id,nombre:q.nombre,x:wxx,y:wyy,tipo:'lugar',d:q.descripcion,sub:q.descripcion}};});
   L.places.sort((a,b)=>b.prim-a.prim);L.places.forEach(q=>reg(q.place));
   armarPersonas();Object.values(M.conocidos||{}).forEach(q=>REG.set(q.k,q));

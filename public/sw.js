@@ -1,5 +1,5 @@
 /* Service worker: guarda el plano para que abra rápido y recibe notificaciones. */
-const V = "sm-v1";
+const V = "sm-v2";
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil((async () => {
   for (const k of await caches.keys()) if (k !== V) await caches.delete(k);
@@ -17,7 +17,13 @@ self.addEventListener("fetch", (e) => {
       return r;
     }));
   } else if (e.request.mode === "navigate") {
-    e.respondWith(fetch(e.request).then((r) => { const k = r.clone(); caches.open(V).then((c) => c.put("/inicio", k)); return r; }).catch(() => caches.match("/inicio")));
+    /* Si la red tarda, abre lo guardado y se actualiza por detrás */
+    e.respondWith((async () => {
+      const c = await caches.open(V), h = await c.match(u.pathname);
+      const red = fetch(e.request).then((r) => { if (r.ok) c.put(u.pathname, r.clone()); return r; });
+      if (!h) return red.catch(async () => (await c.match("/inicio")) || Response.error());
+      return Promise.race([red.catch(() => h), new Promise((ok) => setTimeout(() => ok(h), 700))]);
+    })());
   }
 });
 self.addEventListener("push", (e) => {

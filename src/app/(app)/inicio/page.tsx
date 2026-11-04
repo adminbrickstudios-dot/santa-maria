@@ -1,5 +1,6 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { tic } from "@/lib/tic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -7,6 +8,7 @@ import { createPortal } from "react-dom";
 import { useSesion } from "@/lib/sesion";
 import { sb } from "@/lib/sb";
 import { Icono } from "@/components/Icono";
+import { expandirBoton } from "@/lib/transicion";
 import { abrirCaptura } from "@/components/Captura";
 import { DibuBilletera, DibuCalendario, DibuLibro, DibuMapa, IconoCielo } from "@/components/Animados";
 import { aMin, ahoraBA, DIAS, faltan, pesos, MESES } from "@/lib/util";
@@ -46,15 +48,18 @@ type Accion = { n: string; ic: string; f: () => void };
 function Gordo({ clase, n, href, titulo, sub, dibu, doble, atajos }: { clase: string; n: number; href: string; titulo: string; sub?: string; dibu: React.ReactNode; doble?: () => void; atajos: Accion[] }) {
   const r = useRouter(), t = useRef<any>(null), larga = useRef<any>(null), hizo = useRef(false), ini = useRef<[number, number]>([0, 0]);
   const [menu, setMenu] = useState<DOMRect | null>(null), btn = useRef<HTMLButtonElement>(null);
+  const abrir = () => { tic(8); expandirBoton(btn.current!, () => r.push(href)); };
   function clic() {
     if (hizo.current) { hizo.current = false; return; }
-    if (!doble) return r.push(href);
-    if (t.current) { clearTimeout(t.current); t.current = null; navigator.vibrate?.(12); return doble(); }
-    t.current = setTimeout(() => { t.current = null; r.push(href); }, 230);
+    if (!doble) return abrir();
+    if (t.current) { clearTimeout(t.current); t.current = null; tic(12); return doble(); }
+    t.current = setTimeout(() => { t.current = null; abrir(); }, 210);
   }
-  function baja(e: React.PointerEvent) { ini.current = [e.clientX, e.clientY]; larga.current = setTimeout(() => { hizo.current = true; navigator.vibrate?.(14); setMenu(btn.current!.getBoundingClientRect()); }, 420); }
-  function mueve(e: React.PointerEvent) { if (Math.hypot(e.clientX - ini.current[0], e.clientY - ini.current[1]) > 10) clearTimeout(larga.current); }
-  const suelta = () => clearTimeout(larga.current);
+  function inclina(e: React.PointerEvent) { const b = btn.current!, q = b.getBoundingClientRect(), x = (e.clientX - q.left) / q.width - .5, y = (e.clientY - q.top) / q.height - .5; b.style.setProperty("--rx", `${-y * 12}deg`); b.style.setProperty("--ry", `${x * 12}deg`); b.style.setProperty("--bx", `${(x + .5) * 100}%`); b.style.setProperty("--by", `${(y + .5) * 100}%`); }
+  function baja(e: React.PointerEvent) { inclina(e); ini.current = [e.clientX, e.clientY]; larga.current = setTimeout(() => { hizo.current = true; tic(14); setMenu(btn.current!.getBoundingClientRect()); }, 420); }
+  function mueve(e: React.PointerEvent) { inclina(e); if (Math.hypot(e.clientX - ini.current[0], e.clientY - ini.current[1]) > 10) clearTimeout(larga.current); }
+  const suelta = () => { clearTimeout(larga.current); btn.current?.style.setProperty("--rx", "0deg"); btn.current?.style.setProperty("--ry", "0deg"); };
+  useEffect(() => { const id = setTimeout(() => r.prefetch(href), 1800); return () => clearTimeout(id); }, [r, href]);
   return <>
     <button ref={btn} className={`gordo ${clase}`} style={{ "--n": n } as React.CSSProperties} onClick={clic} onPointerDown={baja} onPointerMove={mueve} onPointerUp={suelta} onPointerCancel={suelta} onPointerLeave={suelta} onContextMenu={(e) => e.preventDefault()}>{dibu}<b>{titulo}</b><small>{sub || " "}</small></button>
     {menu && createPortal(<div className="tq-fondo" onClick={() => { hizo.current = false; setMenu(null); }}><div className="tq-menu" style={{ left: Math.min(menu.left, innerWidth - 256), top: menu.bottom + 262 > innerHeight ? Math.max(16, menu.top - 262) : menu.bottom + 10 }}>{atajos.map((a) => <button key={a.n} onClick={(e) => { e.stopPropagation(); hizo.current = false; setMenu(null); a.f(); }}><span>{a.n}</span><Icono n={a.ic} t={20} /></button>)}</div></div>, document.body)}
