@@ -508,6 +508,11 @@ function puntoMedio(a,b){
   for(let i=2;i<p.length;i+=2){const s=Math.hypot(p[i]-p[i-2],p[i+1]-p[i-1]);if(acc+s>=tot/2){const t=s?(tot/2-acc)/s:0;x=p[i-2]+(p[i]-p[i-2])*t;y=p[i-1]+(p[i+1]-p[i-1])*t;break;}acc+=s;}
   return {x,y,len:w.len,seg:w.seg,pts:w.pts};
 }
+function minutosPie(o,lista){
+  const W=perfil('pie',{dia:'hab',min:720}),r=dijkstra(semillas(o,W,cl=>cl!==4).sem,W),v={};
+  for(const q of lista){const {sem}=semillas(q,W,cl=>cl!==4);v[q.id]=sem.length?Math.max(1,Math.round(Math.min(r.dist[sem[0].n]+sem[0].c,r.dist[sem[1].n]+sem[1].c)/60)):null;}
+  return v;
+}
 function recorrido(l){
   const pts=[],tramos=[];let len=0,seg=0;
   for(let i=1;i<l.length;i++){const w=caminar(l[i-1],l[i]);if(!w)continue;pts.push(...w.pts);len+=w.len;seg+=w.seg;tramos.push({len:w.len,seg:w.seg});}
@@ -554,4 +559,4 @@ function fichaBarrio(b,lw){
   return {b,lineas:lineas.size,est,cuenta,cafes:cafes.slice(0,6),plazas:pl.filter(p=>p.n).sort((x,y)=>y.area-x.area).slice(0,6),nPlazas:pl.length,verde:Math.round(pl.reduce((a,p)=>a+p.area,0)/10000)};
 }
 
-export {LON0,LAT0,wx,wy,alon,alat,sinTilde,indexarCalles,adoptarCalles,cargarCalles,indexarTransporte,adoptarTransporte,cargarTransporte,enganchar,juntaCalc,caminar,puntoMedio,recorrido,prepararLugares,planoBase,fichaBarrio,claveCalle,indiceCalles,centroCalle,perfil,dijkstra,semillas,camino,pasos,franja,frecuencia,subteAbierto,subteFrec,vecinas,esperaDe,rideSeg,planificar,km,cuadras,variantesPie,geocodificar,barrioDe,esquinaDe,nomParada,VBUS,FRANJA};
+export {LON0,LAT0,wx,wy,alon,alat,sinTilde,indexarCalles,adoptarCalles,cargarCalles,indexarTransporte,adoptarTransporte,cargarTransporte,enganchar,juntaCalc,caminar,puntoMedio,minutosPie,recorrido,prepararLugares,planoBase,fichaBarrio,claveCalle,indiceCalles,centroCalle,perfil,dijkstra,semillas,camino,pasos,franja,frecuencia,subteAbierto,subteFrec,vecinas,esperaDe,rideSeg,planificar,km,cuadras,variantesPie,geocodificar,barrioDe,esquinaDe,nomParada,VBUS,FRANJA};

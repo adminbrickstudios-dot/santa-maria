@@ -1,6 +1,6 @@
 // @ts-nocheck
 /* Quién tiene los datos y quién calcula: un Web Worker, y si el navegador no puede, el hilo principal. */
-import {G,T,L,adoptarCalles,adoptarTransporte,cargarCalles,cargarTransporte,planificar,variantesPie,juntaCalc,caminar,puntoMedio,recorrido,prepararLugares,fichaBarrio,planoBase} from './motor';
+import {G,T,L,adoptarCalles,adoptarTransporte,cargarCalles,cargarTransporte,planificar,variantesPie,juntaCalc,caminar,puntoMedio,minutosPie,recorrido,prepararLugares,fichaBarrio,planoBase} from './motor';
 
 let w=null,sinWorker=false,sec=0,datos=null,LOCAL=null;
 const pend=new Map();
@@ -59,7 +59,7 @@ export function cargarDatosMapa(){
   })().catch(e=>{datos=null;throw e;});
   return datos;
 }
-const AQUI={planificar(o,d,c){return {ops:planificar(o,d,c).ops};},variantesPie,juntaCalc,caminar,puntoMedio,recorrido,fichaBarrio:b=>fichaBarrio(b,LOCAL||L)};
+const AQUI={planificar(o,d,c){return {ops:planificar(o,d,c).ops};},variantesPie,juntaCalc,caminar,puntoMedio,minutosPie,recorrido,fichaBarrio:b=>fichaBarrio(b,LOCAL||L)};
 /* Corre un cálculo en el Worker; si no anda, acá mismo. */
 export async function enMotor(fn,...args){
   await cargarDatosMapa();

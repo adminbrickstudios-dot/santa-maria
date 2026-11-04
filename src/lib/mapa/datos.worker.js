@@ -1,6 +1,6 @@
 /* Baja y prepara los datos del mapa fuera del hilo principal, y calcula las rutas pesadas.
    El mapa y el panel siguen respondiendo mientras tanto. */
-import {G,T,wx,wy,indexarCalles,adoptarCalles,indexarTransporte,adoptarTransporte,planificar,variantesPie,juntaCalc,caminar,puntoMedio,recorrido,barrioDe,prepararLugares,fichaBarrio,planoBase} from './motor';
+import {G,T,wx,wy,indexarCalles,adoptarCalles,indexarTransporte,adoptarTransporte,planificar,variantesPie,juntaCalc,caminar,puntoMedio,minutosPie,recorrido,barrioDe,prepararLugares,fichaBarrio,planoBase} from './motor';
 
 let LW=null;
 const bajar=async u=>{const r=await fetch(u);if(!r.ok)throw new Error(`${u}: ${r.status}`);return r.json();};
@@ -18,7 +18,7 @@ async function cargar(){
 }
 const FN={
   planificar(o,d,c){return {ops:planificar(o,d,c).ops};},
-  variantesPie,juntaCalc,caminar,puntoMedio,recorrido,
+  variantesPie,juntaCalc,caminar,puntoMedio,minutosPie,recorrido,
   fichaBarrio(b){return fichaBarrio(b,LW);},
   verdes(){return LW.verdesUrl||(LW.verdesUrl=URL.createObjectURL(new Blob([JSON.stringify(LW.verdes)],{type:'application/json'})));},
   plano(){return LW.planoUrl||(LW.planoUrl=URL.createObjectURL(new Blob([JSON.stringify(planoBase(LW))],{type:'application/json'})));},
