@@ -45,7 +45,7 @@ function MapaChico() {
 }
 type Accion = { n: string; ic: string; f: () => void };
 /* Un toque abre, dos toques anota rápido y si lo mantenés aparecen los atajos */
-function Gordo({ clase, n, href, titulo, sub, dibu, doble, atajos }: { clase: string; n: number; href: string; titulo: string; sub?: string; dibu: React.ReactNode; doble?: () => void; atajos: Accion[] }) {
+function Gordo({ clase, letra, n, href, titulo, sub, dibu, doble, atajos }: { clase: string; letra: string; n: number; href: string; titulo: string; sub?: string; dibu: React.ReactNode; doble?: () => void; atajos: Accion[] }) {
   const r = useRouter(), t = useRef<any>(null), larga = useRef<any>(null), hizo = useRef(false), ini = useRef<[number, number]>([0, 0]);
   const [menu, setMenu] = useState<DOMRect | null>(null), btn = useRef<HTMLButtonElement>(null);
   const abrir = () => { tic(8); expandirBoton(btn.current!, () => r.push(href)); };
@@ -61,14 +61,17 @@ function Gordo({ clase, n, href, titulo, sub, dibu, doble, atajos }: { clase: st
   const suelta = () => { clearTimeout(larga.current); btn.current?.style.setProperty("--rx", "0deg"); btn.current?.style.setProperty("--ry", "0deg"); };
   useEffect(() => { const id = setTimeout(() => r.prefetch(href), 1800); return () => clearTimeout(id); }, [r, href]);
   return <>
-    <button ref={btn} className={`gordo ${clase}`} style={{ "--n": n } as React.CSSProperties} onClick={clic} onPointerDown={baja} onPointerMove={mueve} onPointerUp={suelta} onPointerCancel={suelta} onPointerLeave={suelta} onContextMenu={(e) => e.preventDefault()}>{dibu}<b>{titulo}</b><small>{sub || " "}</small></button>
+    <button ref={btn} className={`gordo ${clase}`} data-letra={letra} style={{ "--n": n } as React.CSSProperties} onClick={clic} onPointerDown={baja} onPointerMove={mueve} onPointerUp={suelta} onPointerCancel={suelta} onPointerLeave={suelta} onContextMenu={(e) => e.preventDefault()}>{dibu}<b>{titulo}</b><small>{sub || " "}</small></button>
     {menu && createPortal(<div className="tq-fondo" onClick={() => { hizo.current = false; setMenu(null); }}><div className="tq-menu" style={{ left: Math.min(menu.left, innerWidth - 256), top: menu.bottom + 262 > innerHeight ? Math.max(16, menu.top - 262) : menu.bottom + 10 }}>{atajos.map((a) => <button key={a.n} onClick={(e) => { e.stopPropagation(); hizo.current = false; setMenu(null); a.f(); }}><span>{a.n}</span><Icono n={a.ic} t={20} /></button>)}</div></div>, document.body)}
   </>;
 }
+/* Lo último que se vio: al volver, Inicio aparece completo y se actualiza por detrás */
+const VIGENCIA = 30e3;
+const memoria = { p: null as any, pT: 0, ag: "", pl: "", cl: "", resT: 0 };
 /* Lo próximo que tenés, con lo que hay que hacer */
 function Proximo() {
   const { perfil } = useSesion(), r = useRouter();
-  const [p, setP] = useState<any>(null);
+  const [p, setP] = useState<any>(memoria.p);
   useEffect(() => {
     const leer = async () => {
       const ya = new Date(), hoy = ahoraBA(), man = new Date(hoy); man.setDate(man.getDate() + 1);
@@ -76,9 +79,9 @@ function Proximo() {
       const oc = expandir(e || [], diaClave(hoy), diaClave(man)).filter((o) => o.e.todo_dia ? o.dia === diaClave(hoy) : new Date(o.cuando) > ya);
       const clases = (c || []).flatMap((k: any) => [0, 1].map((i) => { const d = new Date(hoy); d.setDate(d.getDate() + i); return d.getDay() === k.dia ? { clase: k, cuando: new Date(`${diaClave(d)}T${k.hora_inicio.slice(0, 5)}:00-03:00`).toISOString() } : null; })).filter((x: any) => x && new Date(x.cuando) > ya);
       const todo = [...oc.map((o) => ({ ev: o.e, cuando: o.cuando, todo: o.e.todo_dia })), ...clases].sort((a: any, b: any) => (a.todo === b.todo ? a.cuando.localeCompare(b.cuando) : a.todo ? 1 : -1));
-      setP(todo[0] || null);
+      memoria.p = todo[0] || null; memoria.pT = Date.now(); setP(memoria.p);
     };
-    leer();
+    if (Date.now() - memoria.pT > VIGENCIA) leer();
     const f = () => leer();
     addEventListener("sm-agenda", f); addEventListener("sm-inicio", f);
     return () => { removeEventListener("sm-agenda", f); removeEventListener("sm-inicio", f); };
@@ -96,7 +99,7 @@ function Proximo() {
   </div>;
 }
 function useResumen() {
-  const [ag, setAg] = useState(""), [pl, setPl] = useState(""), [cl, setCl] = useState("");
+  const [ag, setAg] = useState(memoria.ag), [pl, setPl] = useState(memoria.pl), [cl, setCl] = useState(memoria.cl);
   const { perfil } = useSesion();
   const [giro, setGiro] = useState(0);
   useEffect(() => {
@@ -105,21 +108,23 @@ function useResumen() {
     return () => { ["sm-agenda", "sm-plata", "sm-inicio"].forEach((x) => removeEventListener(x, f)); document.removeEventListener("visibilitychange", v); };
   }, []);
   useEffect(() => {
+    if (giro === 0 && Date.now() - memoria.resT < VIGENCIA) return;
+    memoria.resT = Date.now();
     sb.from("eventos").select("titulo,fecha").eq("hecho", false).gte("fecha", new Date().toISOString()).order("fecha").limit(1).then(({ data }: any) => {
-      const e = data?.[0]; setAg(e ? `${e.titulo}, ${faltan(e.fecha)}` : "Tocá dos veces para sumar algo");
+      const e = data?.[0]; memoria.ag = e ? `${e.titulo}, ${faltan(e.fecha)}` : "Tocá dos veces para sumar algo"; setAg(memoria.ag);
     });
     const h = ahoraBA(), ini = `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, "0")}-01`;
     sb.from("movimientos").select("tipo,monto").gte("fecha", ini).then(({ data }: any) => {
       const l = data || [], g = l.filter((m: any) => m.tipo === "gasto").reduce((a: number, m: any) => a + +m.monto, 0), lim = +(perfil.preferencias?.presupuesto || 0);
-      setPl(!l.length ? "Tocá dos veces para anotar" : lim ? `Te quedan ${pesos(Math.max(0, lim - g))}` : `Gastaste ${pesos(g)} este mes`);
+      memoria.pl = !l.length ? "Tocá dos veces para anotar" : lim ? `Te quedan ${pesos(Math.max(0, lim - g))}` : `Gastaste ${pesos(g)} este mes`; setPl(memoria.pl);
     });
     sb.from("clases").select("hora_inicio,dia,materias(nombre)").order("hora_inicio").then(({ data }: any) => {
       const l = data || [], d = h.getDay(), m = h.getHours() * 60 + h.getMinutes();
       for (let i = 0; i < 7; i++) {
         const x = l.find((k: any) => k.dia === (d + i) % 7 && (i > 0 || aMin(k.hora_inicio) > m));
-        if (x) { setCl(`${i === 0 ? "Hoy" : i === 1 ? "Mañana" : DIAS[(d + i) % 7]} ${x.hora_inicio.slice(0, 5)}: ${x.materias?.nombre}`); return; }
+        if (x) { memoria.cl = `${i === 0 ? "Hoy" : i === 1 ? "Mañana" : DIAS[(d + i) % 7]} ${x.hora_inicio.slice(0, 5)}: ${x.materias?.nombre}`; setCl(memoria.cl); return; }
       }
-      setCl("Materias, clases y apuntes");
+      memoria.cl = "Materias, clases y apuntes"; setCl(memoria.cl);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [giro]);
@@ -149,10 +154,10 @@ export default function Inicio() {
     {pantalla("mapa") && <MapaChico />}
     <Proximo />
     <div className="cuatro">
-      <Gordo clase="g-agenda" n={0} href="/agenda" titulo="Agenda" sub={ag} dibu={<DibuCalendario dia={h.getDate()} mes={MESES[h.getMonth()].slice(0, 3).toUpperCase()} />} doble={() => abrirCaptura("agenda")} atajos={[{ n: "Sumar algo", ic: "mas", f: () => abrirCaptura("agenda") }, { n: "Lo próximo", ic: "reloj", f: ir("/agenda?v=lista") }, { n: "Resúmenes", ic: "libro", f: ir("/agenda?v=res") }]} />
-      <Gordo clase="g-plata" n={1} href="/billetera" titulo="Billetera" sub={pl} dibu={<DibuBilletera />} doble={() => abrirCaptura("plata")} atajos={[{ n: "Anotar gasto", ic: "fuego", f: () => abrirCaptura("plata", "gasto") }, { n: "Entró plata", ic: "mas", f: () => abrirCaptura("plata", "ingreso") }, { n: "Números del mes", ic: "grafico", f: ir("/billetera?v=num") }, { n: "Gastos fijos", ic: "repetir", f: ir("/billetera?v=fijos") }]} />
-      <Gordo clase="g-mapa" n={2} href="/mapa" titulo="Mapa" sub="Cómo llegar a todos lados" dibu={<DibuMapa />} atajos={[...(u ? [{ n: "Ir a la facu", ic: "facu", f: ir(`/mapa?lat=${u.lat}&lon=${u.lon}&n=${encodeURIComponent(u.nombre)}`) }] : []), { n: "Qué hay cerca", ic: "pin", f: ir("/mapa?tab=cerca") }, { n: "Dónde juntarnos", ic: "gente", f: ir("/mapa?tab=junta") }, { n: "Caminar en 3D", ic: "ciudad", f: ir("/calle") }]} />
-      <Gordo clase="g-estudio" n={3} href="/facu" titulo="Estudio y horarios" sub={cl} dibu={<DibuLibro />} atajos={[{ n: "Modo foco", ic: "reloj", f: ir("/estudio") }, { n: "Repasar tarjetas", ic: "libro", f: ir("/estudio?v=tarjetas") }, { n: "Faltas y notas", ic: "tilde", f: ir("/estudio?v=faltas") }, { n: "Mi horario", ic: "calendario", f: ir("/facu") }]} />
+      <Gordo clase="g-agenda" letra="A" n={0} href="/agenda" titulo="Agenda" sub={ag} dibu={<DibuCalendario dia={h.getDate()} mes={MESES[h.getMonth()].slice(0, 3).toUpperCase()} />} doble={() => abrirCaptura("agenda")} atajos={[{ n: "Sumar algo", ic: "mas", f: () => abrirCaptura("agenda") }, { n: "Lo próximo", ic: "reloj", f: ir("/agenda?v=lista") }, { n: "Resúmenes", ic: "libro", f: ir("/agenda?v=res") }]} />
+      <Gordo clase="g-plata" letra="A" n={1} href="/billetera" titulo="Billetera" sub={pl} dibu={<DibuBilletera />} doble={() => abrirCaptura("plata")} atajos={[{ n: "Anotar gasto", ic: "fuego", f: () => abrirCaptura("plata", "gasto") }, { n: "Entró plata", ic: "mas", f: () => abrirCaptura("plata", "ingreso") }, { n: "Números del mes", ic: "grafico", f: ir("/billetera?v=num") }, { n: "Gastos fijos", ic: "repetir", f: ir("/billetera?v=fijos") }]} />
+      <Gordo clase="g-mapa" letra="M" n={2} href="/mapa" titulo="Mapa" sub="Cómo llegar a todos lados" dibu={<DibuMapa />} atajos={[...(u ? [{ n: "Ir a la facu", ic: "facu", f: ir(`/mapa?lat=${u.lat}&lon=${u.lon}&n=${encodeURIComponent(u.nombre)}`) }] : []), { n: "Qué hay cerca", ic: "pin", f: ir("/mapa?tab=cerca") }, { n: "Dónde juntarnos", ic: "gente", f: ir("/mapa?tab=junta") }, { n: "Caminar en 3D", ic: "ciudad", f: ir("/calle") }]} />
+      <Gordo clase="g-estudio" letra="F" n={3} href="/facu" titulo="Estudio y horarios" sub={cl} dibu={<DibuLibro />} atajos={[{ n: "Modo foco", ic: "reloj", f: ir("/estudio") }, { n: "Repasar tarjetas", ic: "libro", f: ir("/estudio?v=tarjetas") }, { n: "Faltas y notas", ic: "tilde", f: ir("/estudio?v=faltas") }, { n: "Mi horario", ic: "calendario", f: ir("/facu") }]} />
     </div>
     <button className="decime" onClick={() => abrirCaptura("auto")}><span>Decime qué anotar</span><i><Icono n="mic" t={20} /></i></button>
     <Link href="/mas" className="mas-largo"><span>Más</span><span className="ptos" style={{ flex: "none" }}><i style={{ "--c": "#10B765" } as React.CSSProperties} /><i style={{ "--c": "#FFB400" } as React.CSSProperties} /><i style={{ "--c": "#7C5CFC" } as React.CSSProperties} /></span><Icono n="chevron" t={18} /></Link>

@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { sb } from "@/lib/sb";
 import { useSesion } from "@/lib/sesion";
 import { Icono } from "@/components/Icono";
+import { Vacio } from "@/components/organizar/Comun";
 import { activarPush, esIOS, estaInstalada, pushSoportado } from "@/lib/push";
 import { cuandoRelativo } from "@/lib/util";
 
@@ -35,7 +36,7 @@ function Notif() {
     <h3 className="sec">Qué me llega</h3>
     <div className="lista">{TIPOS.map(([k, t, d]) => <button key={k} className="item" role="switch" aria-checked={!!n[k]} onClick={() => cambiar(k)}><span className="q"><b>{t}</b><small>{d}</small></span><span className="ic" style={{ color: n[k] ? "var(--ok)" : "var(--tinta3)" }}><Icono n={n[k] ? "ok" : "x"} /></span></button>)}</div>
     {q.get("v") !== "ajustes" && <><h3 className="sec">Lo último</h3>
-    {l.length ? <div className="lista">{l.map((a) => <Link key={a.id} href={a.enlace || "/inicio"} className="item"><span className="q"><b>{a.titulo}</b>{a.cuerpo && <small>{a.cuerpo}</small>}<small>{cuandoRelativo(a.creado_en)}</small></span></Link>)}</div> : <p className="expl">Todavía no pasó nada. Acá van a aparecer mensajes, juntadas y avisos.</p>}</>}
+    {l.length ? <div className="lista">{l.map((a) => <Link key={a.id} href={a.enlace || "/inicio"} className="item"><span className="q"><b>{a.titulo}</b>{a.cuerpo && <small>{a.cuerpo}</small>}<small>{cuandoRelativo(a.creado_en)}</small></span></Link>)}</div> : <Vacio emoji="🔔" titulo="Todo tranquilo" texto="Acá van a aparecer mensajes, juntadas y avisos." />}</>}
   </div>;
 }
 export default function P() { return <Suspense><Notif /></Suspense>; }

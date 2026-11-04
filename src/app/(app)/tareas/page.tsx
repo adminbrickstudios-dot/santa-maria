@@ -18,15 +18,18 @@ const TareaHoja = dynamic(() => import("@/components/organizar/TareaHojas").then
 const ListaHoja = dynamic(() => import("@/components/organizar/TareaHojas").then((m) => m.ListaHoja), { ssr: false });
 const V: [string, string][] = [["hoy", "Hoy"], ["proximas", "Próximas"], ["hechas", "Hechas"]];
 
+const memoria: { l: any[]; listas: any[]; miembros: any[]; ok: boolean } = { l: [], listas: [], miembros: [], ok: false };
+
 function Tareas() {
   const q = useSearchParams(), { perfil, toast } = useSesion();
-  const [v, setV] = useState("hoy"), [l, setL] = useState<any[]>([]), [listas, setListas] = useState<any[]>([]), [miembros, setMiembros] = useState<any[]>([]);
-  const [cargado, setCargado] = useState(false), [filtro, setFiltro] = useState<number | null>(q.get("lista") ? +q.get("lista")! : null);
+  const [v, setV] = useState("hoy"), [l, setL] = useState<any[]>(memoria.l), [listas, setListas] = useState<any[]>(memoria.listas), [miembros, setMiembros] = useState<any[]>(memoria.miembros);
+  const [cargado, setCargado] = useState(memoria.ok), [filtro, setFiltro] = useState<number | null>(q.get("lista") ? +q.get("lista")! : null);
   const [txt, setTxt] = useState(""), [marcando, setMarcando] = useState<number[]>([]), [ed, setEd] = useState<any>(null), [lh, setLh] = useState<any>(null);
   const tiempos = useRef<any[]>([]);
   const cargar = useCallback(async () => {
     const [a, b, c] = await Promise.all([sb.from("tareas").select("*").order("id").limit(3000), sb.from("tarea_listas").select("*").order("creado_en"), sb.from("tarea_lista_miembros").select("*")]);
-    setL(a.data || []); setListas(b.data || []); setMiembros(c.data || []); setCargado(true);
+    memoria.l = a.data || []; memoria.listas = b.data || []; memoria.miembros = c.data || []; memoria.ok = true;
+    setL(memoria.l); setListas(memoria.listas); setMiembros(memoria.miembros); setCargado(true);
   }, []);
   useEffect(() => {
     cargar();

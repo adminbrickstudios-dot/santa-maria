@@ -7,6 +7,7 @@ import { sb } from "@/lib/sb";
 import { useSesion } from "@/lib/sesion";
 import { Hoja } from "@/components/Hoja";
 import { Icono } from "@/components/Icono";
+import { Vacio } from "@/components/organizar/Comun";
 import { abrirCaptura } from "@/lib/captura";
 import { lanzarEfecto } from "@/components/Efectos";
 import { ahoraBA, pesos } from "@/lib/util";
@@ -181,10 +182,10 @@ function Billetera() {
     {v === "mov" && !cargado && <div className="lista">{[0, 1, 2, 3].map((i) => <div key={i} className="item esq"><i /><span><b /><small /></span></div>)}</div>}
     {v === "mov" && cargado && <>
       {m.length > 8 && <input type="search" placeholder="Buscar" aria-label="Buscar movimientos" value={busca} onChange={(e) => setBusca(e.target.value)} />}
-      {dias2.length ? dias2.map(([d, l]) => { const dd = new Date(d + "T12:00"), fut = d > hoyK; return <div key={d}><div className="pl-dia"><span>{d === hoyK ? "Hoy" : `${DIA[dd.getDay()]} ${dd.getDate()}`}{fut ? ", programado" : ""}</span></div><div className="lista">{l.map((x) => { const c = catDe(x.categoria, x.tipo); return <button key={x.id} className="item pl-mov" onClick={() => setEd(x)}><span className="ic" style={{ background: `color-mix(in srgb,${c?.color || "#8E8E93"} 16%,var(--hoja))` }}>{c?.emoji || "💸"}</span><span className="q"><b>{x.nota || x.categoria}</b>{x.nota && <small>{x.categoria}</small>}</span><span className={`v ${x.tipo}`}>{x.tipo === "gasto" ? "−" : "+"}{pesos(+x.monto)}</span></button>; })}</div></div>; }) : <p className="expl" style={{ textAlign: "center", padding: 18 }}>Nada anotado este mes. Tocá dos veces Billetera abajo y anotá con voz o texto.</p>}
+      {dias2.length ? dias2.map(([d, l]) => { const dd = new Date(d + "T12:00"), fut = d > hoyK; return <div key={d}><div className="pl-dia"><span>{d === hoyK ? "Hoy" : `${DIA[dd.getDay()]} ${dd.getDate()}`}{fut ? ", programado" : ""}</span></div><div className="lista">{l.map((x) => { const c = catDe(x.categoria, x.tipo); return <button key={x.id} className="item pl-mov" onClick={() => setEd(x)}><span className="ic" style={{ background: `color-mix(in srgb,${c?.color || "#8E8E93"} 16%,var(--hoja))` }}>{c?.emoji || "💸"}</span><span className="q"><b>{x.nota || x.categoria}</b>{x.nota && <small>{x.categoria}</small>}</span><span className={`v ${x.tipo}`}>{x.tipo === "gasto" ? "−" : "+"}{pesos(+x.monto)}</span></button>; })}</div></div>; }) : <Vacio emoji="💸" titulo="Nada anotado este mes" texto="Anotá tu primer gasto con voz o texto. Te lleva dos segundos."><button className="btn pri" onClick={() => abrirCaptura("plata", "gasto")}>Anotar un gasto</button></Vacio>}
     </>}
     {(v === "num" || v === "numeros") && <>
-      {r.gastos > 0 ? <div className="tarjeta pl-graf"><div className="pl-dona-c"><Dona datos={datos} total={r.gastos} /><span><small>Salió</small><b>{pesos(r.gastos)}</b></span></div><div className="pl-ley">{datos.map((d) => <div key={d.n}><i style={{ background: d.c }} /><span>{d.n}</span><b>{Math.round((d.v / r.gastos) * 100)}%</b></div>)}</div></div> : <p className="expl" style={{ textAlign: "center", padding: 18 }}>Cuando anotes gastos, acá ves en qué se va la plata.</p>}
+      {r.gastos > 0 ? <div className="tarjeta pl-graf"><div className="pl-dona-c"><Dona datos={datos} total={r.gastos} /><span><small>Salió</small><b>{pesos(r.gastos)}</b></span></div><div className="pl-ley">{datos.map((d) => <div key={d.n}><i style={{ background: d.c }} /><span>{d.n}</span><b>{Math.round((d.v / r.gastos) * 100)}%</b></div>)}</div></div> : <Vacio emoji="📊" titulo="Todavía no hay números" texto="Cuando anotes gastos, acá ves en qué se va la plata."><button className="btn pri" onClick={() => abrirCaptura("plata", "gasto")}>Anotar un gasto</button></Vacio>}
       {r.seis.some((x) => x.g > 0) && <div className="tarjeta"><h3>Últimos meses</h3><div className="pl-bars">{r.seis.map((x) => { const mx = Math.max(...r.seis.map((y) => y.g), 1); return <div key={x.k} className={x.k === ini ? "ya" : ""}><i style={{ height: `${Math.max(3, (x.g / mx) * 100)}%` }} /><span>{MES[+x.k.slice(5) - 1].slice(0, 3)}</span></div>; })}</div></div>}
       <div className="dos"><div className="mini"><span className="et">Por día</span><b>{pesos(r.gastos / Math.max(1, estamos ? h.getDate() : dias))}</b></div><div className="mini"><span className="et">Gasto más grande</span><b>{r.mayor ? pesos(+r.mayor.monto) : "-"}</b><small>{r.mayor?.nota || r.mayor?.categoria}</small></div></div>
       {recs.length > 0 && <><h3 className="sec">Para vos</h3><div className="lista">{recs.map((x, i) => <div key={i} className="item"><span className="ic">{x.e}</span><span className="q"><b style={{ fontSize: 16 }}>{x.t}</b>{x.d && <small>{x.d}</small>}</span></div>)}</div></>}
@@ -193,12 +194,13 @@ function Billetera() {
     </>}
     {v === "fijos" && <>
       <div className="mini"><span className="et">Gastos fijos por mes</span><b>{pesos(totFijos)}</b></div>
+      {!fijos.length && <Vacio emoji="📌" titulo="Sin gastos fijos" texto="Alquiler, Netflix, el gimnasio: cargalos una vez y se anotan solos cada mes." />}
       {fijos.length > 0 && <div className="lista">{fijos.map((x) => { const c = catDe(x.categoria, x.tipo); return <button key={x.id} className="item pl-mov" onClick={() => setFj(x)}><span className="ic">{c?.emoji || "📌"}</span><span className="q"><b>{x.nombre}</b><small>Día {x.dia}</small></span><span className={`v ${x.tipo}`}>{pesos(+x.monto)}</span></button>; })}</div>}
       <button className="btn pri" onClick={() => setFj({})}><Icono n="mas" />Sumar fijo</button>
     </>}
     {v === "metas" && <>
       {metas.map((x) => { const pct = Math.min(100, (+x.ahorrado / +x.objetivo) * 100); return <button key={x.id} className="tarjeta" style={{ textAlign: "left" }} onClick={() => setMt(x)}><h3>{x.emoji} {x.nombre}</h3><div className="pl-meta"><i style={{ width: `${pct}%` }} /></div><small className="expl">{pesos(+x.ahorrado)} de {pesos(+x.objetivo)}{x.limite ? `, para el ${x.limite.slice(8)}/${x.limite.slice(5, 7)}` : ""}</small></button>; })}
-      {!metas.length && <p className="expl" style={{ textAlign: "center", padding: 12 }}>Poné una meta y mirá cómo se va llenando.</p>}
+      {!metas.length && <Vacio emoji="🎯" titulo="Sin metas todavía" texto="Poné una meta y mirá cómo se va llenando." />}
       <button className="btn pri" onClick={() => setMt({})}><Icono n="mas" />Nueva meta</button>
     </>}
     {ed && <MovHoja m={ed} cats={cats} cerrar={() => setEd(null)} />}

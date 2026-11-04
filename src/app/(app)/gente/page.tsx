@@ -8,6 +8,7 @@ import { useSesion } from "@/lib/sesion";
 import { Avatar } from "@/components/Avatar";
 import { Hoja } from "@/components/Hoja";
 import { Icono } from "@/components/Icono";
+import { Vacio } from "@/components/organizar/Comun";
 import { cuandoRelativo, pesos } from "@/lib/util";
 
 function Gente() {
@@ -60,6 +61,7 @@ function Gente() {
     <Link href="/gente/juntadas" className="bloque"><span className="ic"><Icono n="gente" t={28} /></span><span style={{ flex: 1, minWidth: 0 }}><b>Juntadas</b><small>Proponé una, confirmá quién va</small></span></Link>
     <div className="segs" role="tablist">{tabs.map(([k, n]) => <button key={k} className="seg" role="tab" aria-selected={v === k} onClick={() => setV(k)}>{n}</button>)}</div>
     {v === "mensajes" && <>
+      {!conv.length && <Vacio emoji="💬" titulo="Todavía no hay charlas" texto="Escribile a alguien de tu grupo y la charla queda acá." />}
       {conv.length > 0 && <div className="lista">{conv.map((c) => <Link key={c.id} href={`/gente/chat/${c.id}`} className="item">
         {c.tipo === "grupo" ? <span className="ic"><Icono n="gente" /></span> : <Avatar p={{ nombre: c.otro_nombre, color: c.otro_color, avatar_url: c.otro_avatar }} />}
         <span className="q"><b>{c.tipo === "grupo" ? c.titulo : c.otro_nombre}</b><small style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.ultimo_texto || "Todavía no hay mensajes"}</small></span>
@@ -70,10 +72,11 @@ function Gente() {
     {v === "personas" && <div className="grilla-gente">{personas.filter((p) => p.id !== yo).map((p) => <button key={p.id} className="persona" onClick={() => setVer(p)}><Avatar p={p} t={46} /><span className="q"><b>{p.nombre}</b><small>{p.carrera_texto || p.barrio || ""}</small></span></button>)}</div>}
     {v === "grupo" && <>
       <button className="btn pri" onClick={() => { setF({ tipo: "aviso" }); setN(true); }}><Icono n="mas" />Publicar</button>
-      {aps.length ? <div className="lista">{aps.map((a) => <div key={a.id} className="item"><Avatar p={personas.find((p) => p.id === a.autor_id)} t={38} /><span className="q"><b>{a.titulo}</b>{a.nota && <small>{a.nota}</small>}<small>{nombre(a.autor_id)} · {TX[a.tipo]} · {cuandoRelativo(a.creado_en)}</small></span>{a.lat != null && <Link className="ico-btn" aria-label="Ver en el mapa" href={`/mapa?lat=${a.lat}&lon=${a.lon}&n=${encodeURIComponent(a.titulo)}&ver=1`}><Icono n="mapa" t={20} /></Link>}{(a.autor_id === yo || perfil.rol === "admin") && <button className="ico-btn" aria-label="Borrar" onClick={async () => { await sb.from("aportes").delete().eq("id", a.id); cargar(); }}><Icono n="x" t={18} /></button>}</div>)}</div> : <p className="expl">Avisos, atajos, lugares y pedidos del tipo “¿alguien tiene el libro de…?”.</p>}
+      {aps.length ? <div className="lista">{aps.map((a) => <div key={a.id} className="item"><Avatar p={personas.find((p) => p.id === a.autor_id)} t={38} /><span className="q"><b>{a.titulo}</b>{a.nota && <small>{a.nota}</small>}<small>{nombre(a.autor_id)} · {TX[a.tipo]} · {cuandoRelativo(a.creado_en)}</small></span>{a.lat != null && <Link className="ico-btn" aria-label="Ver en el mapa" href={`/mapa?lat=${a.lat}&lon=${a.lon}&n=${encodeURIComponent(a.titulo)}&ver=1`}><Icono n="mapa" t={20} /></Link>}{(a.autor_id === yo || perfil.rol === "admin") && <button className="ico-btn" aria-label="Borrar" onClick={async () => { await sb.from("aportes").delete().eq("id", a.id); cargar(); }}><Icono n="x" t={18} /></button>}</div>)}</div> : <Vacio emoji="📣" titulo="El muro está tranquilo" texto="Avisos, atajos, lugares y pedidos del tipo “¿alguien tiene el libro de…?”." />}
     </>}
     {v === "cuentas" && <>
       <p className="expl">Para dividir un asado, un viaje o el alquiler sin pelearse.</p>
+      {!cuentas.length && <Vacio emoji="🧾" titulo="Sin cuentas abiertas" texto="Sumá lo que pagó cada uno y te digo quién le pasa cuánto a quién." />}
       {cuentas.length > 0 && <div className="lista">{cuentas.map((c) => <button key={c.id} className="item" onClick={() => abrirCuenta(c)}><span className="ic"><Icono n="plata" /></span><span className="q"><b>{c.titulo}</b><small>{c.miembros.length} personas</small></span></button>)}</div>}
       <button className="btn pri" onClick={() => { setF({ miembros: [] }); setNcu(true); }}><Icono n="mas" />Nueva cuenta</button>
     </>}

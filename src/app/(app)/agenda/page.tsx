@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { sb } from "@/lib/sb";
 import { useSesion } from "@/lib/sesion";
 import { Icono } from "@/components/Icono";
+import { Vacio } from "@/components/organizar/Comun";
 import { abrirCaptura } from "@/lib/captura";
 import dynamic from "next/dynamic";
 import { claveDeISO, diaClave, expandir, horaDeISO, leerICS, TIPOS, type Ocurrencia } from "@/lib/agenda";
@@ -85,9 +86,9 @@ function Agenda() {
         })}</div>
       </div>
       <div className="ag-dia-cab"><h3 className="sec">{sel === hoy ? "Hoy" : `${NOMDIA[dSel.getDay()]} ${+sel.slice(8)}`}</h3><button className="btn sec2 chico" onClick={() => setNuevo(sel)}><Icono n="mas" t={18} />Sumar</button></div>
-      {delSel.length ? <div className="lista">{delSel.map((o) => <Fila key={o.e.id + o.cuando} o={o} abrir={abrir} />)}</div> : <p className="expl" style={{ textAlign: "center", padding: 12 }}>Nada para este día.</p>}
+      {delSel.length ? <div className="lista">{delSel.map((o) => <Fila key={o.e.id + o.cuando} o={o} abrir={abrir} />)}</div> : <Vacio emoji="🌤️" titulo="Día libre" texto="No hay nada anotado para este día."><button className="btn pri" onClick={() => setNuevo(sel)}>Sumar algo</button></Vacio>}
     </>}
-    {v === "lista" && (lista.length ? <div className="lista">{lista.map((o, i) => { const nuevoDia = i === 0 || lista[i - 1].dia !== o.dia, d = new Date(o.dia + "T12:00"); return <div key={o.e.id + o.cuando}>{nuevoDia && <div className="ag-sep">{o.dia === hoy ? "Hoy" : `${NOMDIA[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`}</div>}<Fila o={o} abrir={abrir} /></div>; })}</div> : <p className="expl" style={{ textAlign: "center", padding: 18 }}>No tenés nada en los próximos 60 días.</p>)}
+    {v === "lista" && (lista.length ? <div className="lista">{lista.map((o, i) => { const nuevoDia = i === 0 || lista[i - 1].dia !== o.dia, d = new Date(o.dia + "T12:00"); return <div key={o.e.id + o.cuando}>{nuevoDia && <div className="ag-sep">{o.dia === hoy ? "Hoy" : `${NOMDIA[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`}</div>}<Fila o={o} abrir={abrir} /></div>; })}</div> : <Vacio emoji="🗓️" titulo="Agenda despejada" texto="No tenés nada en los próximos 60 días."><button className="btn pri" onClick={() => abrirCaptura("agenda")}>Sumar algo</button></Vacio>)}
     {v === "res" && <Resumenes />}
     {ab && <EventoHoja key={ab.e.id + ab.dia} o={ab} cerrar={() => setAb(null)} />}
     {nuevo && <EventoForm dia={nuevo} cerrar={() => setNuevo(null)} />}

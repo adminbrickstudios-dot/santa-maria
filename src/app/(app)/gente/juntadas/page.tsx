@@ -8,6 +8,7 @@ import { useSesion } from "@/lib/sesion";
 import { Avatar } from "@/components/Avatar";
 import { Hoja } from "@/components/Hoja";
 import { Icono } from "@/components/Icono";
+import { Vacio } from "@/components/organizar/Comun";
 import { fechaLarga, horaDe } from "@/lib/util";
 
 function Juntadas() {
@@ -30,7 +31,7 @@ function Juntadas() {
     <Link href="/gente" className="btn sec2 chico" style={{ justifySelf: "start" }}><Icono n="volver" />Gente</Link>
     <h2 className="titulo">Juntadas</h2>
     <div className="fila"><button className="btn pri" onClick={() => setN(true)}><Icono n="mas" />Proponer</button><Link className="btn sec2" href="/mapa">Buscar el mejor lugar</Link></div>
-    {!l.length && <p className="expl">No hay nada armado. En Mapa, “Dónde juntarnos” te dice qué lugar queda más parejo para todos.</p>}
+    {!l.length && <Vacio emoji="🧉" titulo="No hay nada armado" texto="Proponé un plan. En Mapa, “Dónde juntarnos” te dice qué lugar queda más parejo para todos." />}
     {l.map((j) => { const rr = rs.filter((r) => r.juntada_id === j.id), van = rr.filter((r) => r.estado === "voy"), mio = rr.find((r) => r.perfil_id === perfil.id)?.estado; return <div key={j.id} className="tarjeta">
       <h3 style={{ fontSize: 20 }}>{j.titulo}</h3>
       <p>{fechaLarga(j.cuando)}, {horaDe(j.cuando)}{j.lugar_nombre ? ` · ${j.lugar_nombre}` : ""}</p>
