@@ -551,7 +551,7 @@ export async function montarMapa(raiz,api){
   const mq=matchMedia('(prefers-color-scheme:dark)');mq.addEventListener('change',tema);
   $('z-gps').onclick=gps;
   controladores=()=>{raiz.removeEventListener('click',clic);raiz.removeEventListener('input',entra);raiz.removeEventListener('change',cambia);mo.disconnect();mq.removeEventListener('change',tema);obs&&obs.disconnect();};
-  try{await crearMapa($('mapa'));$('carga').hidden=true;$('panel').innerHTML='<div class="pila"><p class="expl">Cargando las rutas…</p></div>';await cargarDatosMapa();if(mapa&&!estiloListo&&mapa.isStyleLoaded())intentarCapas();}catch(e){$('carga').hidden=false;$('carga').textContent='No pude cargar el mapa. Revisá la conexión y volvé a entrar.';return;}
+  try{await crearMapa($('mapa'));$('carga').hidden=true;$('panel').innerHTML='<div class="pila"><p class="expl">Cargando las rutas…</p></div>';await cargarDatosMapa();if(mapa&&!estiloListo)intentarCapas();}catch(e){$('carga').hidden=false;$('carga').textContent='No pude cargar el mapa. Revisá la conexión y volvé a entrar.';return;}
   L.places=(api.lugares||[]).map((q,i)=>{const wxx=wx(q.lon),wyy=wy(q.lat),k={facu:'f',salida:'p',transporte:'t'}[q.tipo];return {k,n:q.nombre,d:q.descripcion,wx:wxx,wy:wyy,prim:!!q.destacado,place:{k:'l:'+q.id,nombre:q.nombre,x:wxx,y:wyy,tipo:'lugar',d:q.descripcion,sub:q.descripcion}};});
   L.places.sort((a,b)=>b.prim-a.prim);L.places.forEach(q=>reg(q.place));
   armarPersonas();Object.values(M.conocidos||{}).forEach(q=>REG.set(q.k,q));
