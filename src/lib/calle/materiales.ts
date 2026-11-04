@@ -59,8 +59,8 @@ export function matSuelo(c: Comunes, detalle: THREE.Texture, lado: number) {
         c*=1.+(d.r-.5)*.26*vMat.r;
         c*=mix(1.,.82+d.g*.26,vMat.g);
         c*=1.+(d.b-.5)*.5*vMat.b;
-        vec3 luz=uLuzCielo*.62+uLuzSol*max(uSol.y,.0)*.75+uLuzSuelo*.1;
-        c*=luz*1.12;
+        vec3 luz=uLuzCielo*.58+uLuzSol*max(uSol.y,.0)*.5+uLuzSuelo*.1;
+        c*=luz;
         if(agua>.5){
           float o=sin(vW.x*.9+uTiempo*.9+d.r*5.)*sin(vW.z*.7-uTiempo*.7+d.b*5.);
           c+=uLuzCielo*(.05+.09*o);

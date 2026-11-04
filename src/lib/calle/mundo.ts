@@ -424,11 +424,21 @@ export class Mundo {
     }
     if (!mejor) return null;
     const { px, pz, dx, dz, hw } = mejor;
-    for (const lado of [1, -1]) for (const extra of [1.8, 1.1, 0.6]) {
-      const qx = px - dz * lado * (hw + extra), qz = pz + dx * lado * (hw + extra), [cx, cz, toco] = this.chocar(qx, qz, 0.5);
-      if (!toco) return { x: cx, z: cz, yaw: Math.atan2(-dx, -dz) };
+    /* Se corre a lo largo de la calle para no caer en plena esquina, y prueba las dos veredas */
+    for (const avance of [16, -16, 30, -30, 0]) for (const lado of [1, -1]) for (const extra of [2, 1.2]) {
+      const qx = px + dx * avance - dz * lado * (hw + extra), qz = pz + dz * avance + dx * lado * (hw + extra);
+      if (this.sobreCalzada(qx, qz) || this.chocar(qx, qz, 0.5)[2]) continue;
+      return { x: qx, z: qz, yaw: Math.atan2(-dx, -dz) };
     }
     return { x: px, z: pz, yaw: Math.atan2(-dx, -dz) };
+  }
+
+  private sobreCalzada(x: number, z: number) {
+    for (const c of this.cercanas(x, z)) {
+      const t = c.tramos;
+      for (let i = 0; i < t.length; i += 6) if (t[i + 4] >= 3 && distTramo(t, i, x, z) < t[i + 4] + 0.4) return true;
+    }
+    return false;
   }
 
   localesCerca(x: number, z: number, r: number) {
