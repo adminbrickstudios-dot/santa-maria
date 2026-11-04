@@ -87,7 +87,8 @@ export function Marco({ children }: { children: React.ReactNode }) {
     const quitar = setTimeout(() => { delete document.documentElement.dataset.dir; }, 420);
     if (primera.current) { primera.current = false; return () => clearTimeout(quitar); }
     const v = vista.current;
-    if (v?.animate && !conVistas() && !pocoMovimiento()) v.animate([{ opacity: .4, transform: `translate3d(${atras ? -18 : 18}px,0,0)` }, { opacity: 1, transform: "none" }], { duration: 260, easing: CURVA });
+    /* Volver atrás llega por popstate: React lo aplica de una, sin View Transition, así que esa va siempre por acá */
+    if (v?.animate && (atras || !conVistas()) && !pocoMovimiento()) v.animate([{ opacity: .4, transform: `translate3d(${atras ? -18 : 18}px,0,0)` }, { opacity: 1, transform: "none" }], { duration: 260, easing: CURVA });
     return () => clearTimeout(quitar);
   }, [ruta]);
   /* Respuesta inmediata: el toque se nota antes de que llegue la pantalla */
