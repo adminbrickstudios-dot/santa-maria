@@ -59,7 +59,7 @@
 .calle-btn.pri{background:var(--azul);color:#fff;box-shadow:none}
 .calle-nota{font-size:13px;line-height:1.3;color:var(--tinta2);margin-top:9px;text-align:center}
 
-.calle-ayuda{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 70px);width:min(320px,calc(100% - 32px));font-size:15px;line-height:1.3;font-weight:700;padding:11px 14px;border-radius:18px;text-align:center;pointer-events:none}
+.calle-ayuda{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 112px);width:min(320px,calc(100% - 32px));font-size:15px;line-height:1.3;font-weight:700;padding:11px 14px;border-radius:18px;text-align:center;pointer-events:none}
 .calle-aviso{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 200px);width:min(320px,calc(100% - 32px));font-size:15px;font-weight:700;padding:11px 14px;border-radius:16px;text-align:center}
 
 .calle-interior{position:absolute;inset:0;pointer-events:none}

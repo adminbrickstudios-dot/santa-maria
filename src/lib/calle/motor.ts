@@ -3,7 +3,7 @@
 import * as THREE from "three";
 import { cieloEn, fechaEnHora } from "./cielo";
 import { Entrada } from "./entrada";
-import { crearOrigen, lonLatDeMundo, mundoDeLonLat } from "./geo";
+import { DIV, crearOrigen, lonLatDeMundo, mundoDeLonLat } from "./geo";
 import { crearInterior, type Interior } from "./interior";
 import { aplicarCielo, crearComunes, matCielo, matDisco, matEdificio, matObjeto, matSombra, matSuelo, texturaDetalle } from "./materiales";
 import { Mundo, type Calidad } from "./mundo";
@@ -68,6 +68,7 @@ export class Motor {
   private nivel: number;
   private fijo: boolean;
   private calidadUni = { value: 1 };
+  private sombrasActivas = true;
 
   /* Caminante */
   x = 0;
@@ -128,7 +129,7 @@ export class Motor {
 
     this.detalle = texturaDetalle();
     this.mats = {
-      suelo: matSuelo(this.comunes, this.detalle, this.o.m / 10),
+      suelo: matSuelo(this.comunes, this.detalle, this.o.m / DIV),
       edif: matEdificio(this.comunes, this.calidadUni),
       sombra: matSombra(this.comunes),
       objeto: matObjeto(this.comunes),
@@ -136,7 +137,7 @@ export class Motor {
 
     this.matCieloM = matCielo(this.comunes, this.cen, this.hor);
     this.cieloMesh = new THREE.Mesh(new THREE.SphereGeometry(10, 16, 10), this.matCieloM);
-    this.cieloMesh.renderOrder = -30;
+    this.cieloMesh.renderOrder = 50; // al final: solo pinta lo que quedó libre
     this.cieloMesh.frustumCulled = false;
     this.escena.add(this.cieloMesh);
     const dg = new THREE.CircleGeometry(600, 24);
@@ -176,6 +177,7 @@ export class Motor {
       alMover: () => { this.destino = null; this.marca.visible = false; },
     });
 
+    this.calidadUni.value = this.calidad().ventanas;
     this.ajustar();
     window.addEventListener("resize", this.ajustar);
     document.addEventListener("visibilitychange", this.visibilidad);
@@ -217,7 +219,6 @@ export class Motor {
     s.uFuerza.value = 0.34 * Math.max(0, Math.min(1, e.elevacion / 7));
     this.sombrasActivas = e.elevacion > 1;
   }
-  private sombrasActivas = true;
 
   setHora(h: number | null) { this.op.hora = h; this.ponerCielo(); }
 
@@ -273,7 +274,7 @@ export class Motor {
       if (!this.vivo) return;
       this.inter = crearInterior(l);
       this.localInt = l;
-      this.x = this.inter.entrada.x; this.z = this.inter.entrada.z; this.yaw = 0; this.pitch = 0;
+      this.x = this.inter.entrada.x; this.z = this.inter.entrada.z; this.yaw = 0; this.pitch = -0.1;
       this.vx = this.vz = 0;
       this.destino = null; this.marca.visible = false;
       this.tarjeta = null;
@@ -368,6 +369,7 @@ export class Motor {
   private cerca(t: number) {
     if (t - this.tCerca < 0.25) return;
     this.tCerca = t;
+    if (this.tarjeta && Math.hypot(this.tarjeta.x - this.x, this.tarjeta.z - this.z) > 45) this.cerrarTarjeta();
     let mejor: Local | null = null, md = 7.5;
     const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw);
     for (const l of this.mundo.localesCerca(this.x, this.z, 8)) {
@@ -394,7 +396,7 @@ export class Motor {
     else if (this.fps > 52) { this.buenas++; this.bajas = 0; }
     else { this.bajas = 0; this.buenas = 0; }
     if (this.bajas >= 2 && this.nivel > 0) { this.nivel--; this.bajas = 0; this.aplicarNivel(); }
-    else if (this.buenas >= 8 && this.nivel < NIVELES.length - 1 && this.nivel < 3) { this.nivel++; this.buenas = 0; this.aplicarNivel(); }
+    else if (this.buenas >= 8 && this.nivel < NIVELES.length - 1) { this.nivel++; this.buenas = 0; this.aplicarNivel(); }
   }
 
   private aplicarNivel() {
@@ -402,6 +404,7 @@ export class Motor {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, q.dpr));
     this.ajustar();
     this.nieblaPara(q);
+    this.calidadUni.value = q.ventanas;
   }
 
   private nieblaPara(q: Calidad) {
@@ -411,7 +414,7 @@ export class Motor {
   private cuadro = (ahora: number) => {
     if (!this.vivo || this.pausa) return;
     this.raf = requestAnimationFrame(this.cuadro);
-    const dt = Math.min(0.1, (ahora - this.tAnt) / 1000);
+    const dt = Math.min(0.2, (ahora - this.tAnt) / 1000);
     this.tAnt = ahora;
     const t = (ahora - this.t0) / 1000;
     this.comunes.uTiempo.value = t;
@@ -509,6 +512,6 @@ export class Motor {
 export function hayWebGL() {
   try {
     const c = document.createElement("canvas");
-    return !!(c.getContext("webgl2") || c.getContext("webgl"));
+    return !!c.getContext("webgl2");
   } catch { return false; }
 }

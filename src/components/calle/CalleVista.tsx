@@ -162,7 +162,7 @@ export default function CalleVista({ lat, lon, hora, proveedorTiles, proveedorLu
             <Link className="calle-redondo" href="/mapa" aria-label="Salir al mapa"><Icono n="volver" /></Link>
             <div className="calle-brujula">
               <span ref={dial} className="calle-dial" aria-hidden="true"><b>N</b></span>
-              <strong aria-live="polite">{calle ?? "Sin nombre de calle"}</strong>
+              <strong aria-live="polite">{calle ?? "Calle sin nombre"}</strong>
               <small ref={rumbo}>N</small>
             </div>
             <button className="calle-redondo" onClick={() => setCredito((c) => !c)} aria-label="Información del mapa" aria-expanded={credito}><Svg d={INFO} /></button>

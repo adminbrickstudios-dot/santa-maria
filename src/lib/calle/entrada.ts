@@ -80,9 +80,9 @@ export class Entrada {
     const m = this.mira.get(e.pointerId);
     if (!m) return;
     this.mira.delete(e.pointerId);
-    if (m.movio || e.type === "pointercancel" || performance.now() - m.t > 320) return;
+    if (m.movio || e.type === "pointercancel" || performance.now() - m.t > 600) return;
     const u = this.ultimoToque, ahora = performance.now();
-    if (ahora - u.t < 340 && Math.hypot(m.ix - u.x, m.iy - u.y) < 44) {
+    if (ahora - u.t < 420 && Math.hypot(m.ix - u.x, m.iy - u.y) < 44) {
       this.ultimoToque = { t: 0, x: 0, y: 0 };
       this.h.dobleToque(m.ix, m.iy);
     } else {

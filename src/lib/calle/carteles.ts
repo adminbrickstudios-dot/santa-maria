@@ -2,14 +2,16 @@
 import * as THREE from "three";
 import type { Cartel, Rubro } from "./tipos";
 
-const FUENTE = '"Sofia Sans Variable", "Sofia Sans", -apple-system, system-ui, sans-serif';
+/** La tipografía real de la app sale de lo computado: next/font le pone un nombre con hash. */
+let fuente: string | null = null;
+const FUENTE = () => (fuente ??= getComputedStyle(document.body).fontFamily || "-apple-system, system-ui, sans-serif");
 const FILA = 96, COL = 512;
 
 function ajustar(ctx: CanvasRenderingContext2D, texto: string, max: number, alto: number, estilo: string) {
   let t = alto;
-  ctx.font = `${estilo} ${t}px ${FUENTE}`;
+  ctx.font = `${estilo} ${t}px ${FUENTE()}`;
   const w = ctx.measureText(texto).width;
-  if (w > max) { t = Math.max(18, Math.floor((t * max) / w)); ctx.font = `${estilo} ${t}px ${FUENTE}`; }
+  if (w > max) { t = Math.max(18, Math.floor((t * max) / w)); ctx.font = `${estilo} ${t}px ${FUENTE()}`; }
   return t;
 }
 

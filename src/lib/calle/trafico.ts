@@ -24,6 +24,8 @@ export class Trafico {
   private p = new THREE.Vector3();
   private s = new THREE.Vector3(1, 1, 1);
   private cache: { version: number; vias: ViaMundo[] } = { version: -1, vias: [] };
+  private sombras: THREE.InstancedMesh;
+  private texSombra: THREE.CanvasTexture;
 
   constructor(escena: THREE.Scene, mat: THREE.ShaderMaterial) {
     const geos = [geoColectivo(), geoAuto(), geoAuto(hex("#F4C20D"))], topes = [6, 16, 5];
@@ -51,6 +53,35 @@ export class Trafico {
       this.personas.push({ ax: 0, az: 0, bx: 0, bz: 0, t: 0, dir: 1, of: 0, vel: 1.2, viva: false });
     }
     escena.add(this.gente);
+
+    /* Sombrita blanda bajo cada cosa que se mueve: un solo llamado de dibujo */
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = 64;
+    const c = cv.getContext("2d")!, g = c.createRadialGradient(32, 32, 6, 32, 32, 32);
+    g.addColorStop(0, "#fff");
+    g.addColorStop(0.55, "#bbb");
+    g.addColorStop(1, "#000");
+    c.fillStyle = g;
+    c.fillRect(0, 0, 64, 64);
+    this.texSombra = new THREE.CanvasTexture(cv);
+    const gs = new THREE.PlaneGeometry(1, 1);
+    gs.rotateX(-Math.PI / 2);
+    const ms = new THREE.MeshBasicMaterial({ color: 0x1a1626, alphaMap: this.texSombra, transparent: true, opacity: 0.42, depthWrite: false });
+    this.sombras = new THREE.InstancedMesh(gs, ms, this.vehiculos.length + N);
+    this.sombras.frustumCulled = false;
+    this.sombras.count = 0;
+    this.sombras.position.y = 0.03;
+    escena.add(this.sombras);
+  }
+
+  private nSombra = 0;
+  private sombraEn(x: number, z: number, g: number, an: number, la: number) {
+    this.p.set(x, 0, z);
+    this.q.setFromAxisAngle(this.eje, g);
+    this.s.set(an, 1, la);
+    this.m.compose(this.p, this.q, this.s);
+    this.sombras.setMatrixAt(this.nSombra++, this.m);
+    this.s.set(1, 1, 1);
   }
 
   private vias(mundo: Mundo) {
@@ -96,6 +127,7 @@ export class Trafico {
     const vias = this.vias(mundo);
     const cantidad = [Math.ceil(cal.autos * 0.25), Math.ceil(cal.autos * 0.6), Math.ceil(cal.autos * 0.15)];
     const cuenta = [0, 0, 0];
+    this.nSombra = 0;
     for (const v of this.vehiculos) {
       if (v.ind >= cantidad[v.tipo]) continue;
       if (!v.via) { this.ubicar(v, vias, x, z); if (!v.via) continue; }
@@ -118,6 +150,7 @@ export class Trafico {
       this.q.setFromAxisAngle(this.eje, Math.atan2(dx, dz));
       this.m.compose(this.p, this.q, this.s);
       this.mallas[v.tipo].setMatrixAt(k, this.m);
+      if (v.tipo === 0) this.sombraEn(px, pz, Math.atan2(dx, dz), 3.4, 12.5); else this.sombraEn(px, pz, Math.atan2(dx, dz), 2.5, 5.2);
     }
     this.mallas.forEach((m, i) => { m.count = cuenta[i]; m.instanceMatrix.needsUpdate = true; });
 
@@ -136,11 +169,14 @@ export class Trafico {
       this.q.setFromAxisAngle(this.eje, Math.atan2(dx * p.dir, dz * p.dir));
       this.m.compose(this.p, this.q, this.s);
       this.gente.setMatrixAt(n, this.m);
+      this.sombraEn(px, pz, 0, 0.95, 0.95);
       if (this.fases[n] !== this.fases[i]) this.fases[n] = this.fases[i];
       n++;
     }
     this.gente.count = n;
     this.gente.instanceMatrix.needsUpdate = true;
+    this.sombras.count = this.nSombra;
+    this.sombras.instanceMatrix.needsUpdate = true;
   }
 
   private nacer(p: Persona, x: number, z: number, mundo: Mundo) {
@@ -160,6 +196,8 @@ export class Trafico {
   }
 
   destruir() {
-    for (const m of [...this.mallas, this.gente]) { m.geometry.dispose(); m.dispose(); }
+    for (const m of [...this.mallas, this.gente, this.sombras]) { m.geometry.dispose(); m.dispose(); }
+    this.texSombra.dispose();
+    (this.sombras.material as THREE.Material).dispose();
   }
 }

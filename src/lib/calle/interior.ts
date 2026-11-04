@@ -94,8 +94,7 @@ export function crearInterior(l: Local): Interior {
     estante(p, 2.3, -D / 2 + 0.3, 3.4, 0.45, 2.3, true, madera, sem + 6);
     p.push(caja(6, 1, 0.7, 0, 0.5, -2.4, madera), caja(6.06, 0.05, 0.76, 0, 1.02, -2.4, color));
     bloq(0, -2.4, 6.1, 0.8);
-    p.push(caja(0.9, 0.28, 0.08, 0, 2.5, -D / 2 + 0.06, [0.1, 0.85, 0.42], P_EMISIVO), caja(0.28, 0.9, 0.08, 0, 2.5, -D / 2 + 0.06, [0.1, 0.85, 0.42], P_EMISIVO));
-    estante(p, 0, 1.6, 2.4, 0.6, 1.3, true, madera, sem + 8); bloq(0, 1.6, 2.5, 0.7);
+    p.push(caja(0.72, 0.22, 0.08, 0, 1.7, -D / 2 + 0.06, [0.1, 0.8, 0.42], P_EMISIVO), caja(0.22, 0.72, 0.08, 0, 1.7, -D / 2 + 0.06, [0.1, 0.8, 0.42], P_EMISIVO));
   } else if (tipo === "cafe") {
     p.push(caja(5.6, 1.05, 0.7, -0.6, 0.53, -3.6, hex("#6F4E37")), caja(5.7, 0.05, 0.8, -0.6, 1.08, -3.6, hex("#EFE3D0")));
     bloq(-0.6, -3.6, 5.8, 0.9);
@@ -103,7 +102,7 @@ export function crearInterior(l: Local): Interior {
     estante(p, 1.4, -D / 2 + 0.28, 4, 0.4, 2.2, true, hex("#8A5F3F"), sem + 3);
     [[-2.6, -0.6], [2.6, -0.6], [-2.6, 2.4], [2.6, 2.4], [0, 0.9]].forEach(([x, z], i) => { mesa(p, x, z, sem + i, hex("#D8BE9A")); bloq(x, z, 2.1, 1.1); });
   } else if (tipo === "super") {
-    for (let i = -1; i <= 1; i++) { estante(p, i * 3.6, -1.6, 7.6, 0.9, 1.9, false, hex("#E9E6DF"), sem + i * 3); bloq(i * 3.6, -1.6, 1, 7.7); }
+    for (const x of [-4.4, -1.6, 1.6, 4.4]) { estante(p, x, -1.6, 7.6, 0.9, 1.9, false, hex("#E9E6DF"), sem + x * 3); bloq(x, -1.6, 1, 7.7); }
     estante(p, 0, -D / 2 + 0.4, 10, 0.6, 2.2, true, hex("#E9E6DF"), sem + 9);
     for (const s of [-1, 1]) {
       p.push(caja(1.8, 0.95, 0.75, s * 3.4, 0.48, 5, hex("#3D4148")), caja(1.84, 0.04, 0.8, s * 3.4, 0.98, 5, color));
@@ -128,8 +127,8 @@ export function crearInterior(l: Local): Interior {
   const comunes = crearComunes();
   comunes.uSol.value.set(0.15, 1, 0.3).normalize();
   comunes.uLuzSol.value.setRGB(0.3, 0.27, 0.22, THREE.LinearSRGBColorSpace);
-  comunes.uLuzCielo.value.setRGB(0.86, 0.84, 0.8, THREE.LinearSRGBColorSpace);
-  comunes.uLuzSuelo.value.setRGB(0.52, 0.48, 0.44, THREE.LinearSRGBColorSpace);
+  comunes.uLuzCielo.value.setRGB(0.7, 0.68, 0.64, THREE.LinearSRGBColorSpace);
+  comunes.uLuzSuelo.value.setRGB(0.86, 0.83, 0.78, THREE.LinearSRGBColorSpace);
   comunes.uNiebla.value.setRGB(1, 1, 1, THREE.LinearSRGBColorSpace);
   comunes.uNieblaD.value.set(1e4, 0);
   comunes.uNoche.value = 0.28;
@@ -139,10 +138,9 @@ export function crearInterior(l: Local): Interior {
   const mat = matObjeto(comunes, false), geo = fundir(p);
   escena.add(new THREE.Mesh(geo, mat));
   const tex = texturaNombre(l.nombre, l.rubro), mp = new THREE.MeshBasicMaterial({ map: tex });
-  const ALTO = 0.56, ANCHO = Math.min(W - 1.4, 3);
+  const ALTO = 0.56, ANCHO = 3;
   const cartel = new THREE.Mesh(new THREE.PlaneGeometry(ANCHO, ALTO * (ANCHO / 3)), mp);
-  cartel.position.set(0, tipo === "farmacia" ? 1.75 : 2.75, -D / 2 + 0.03);
-  if (tipo === "farmacia") cartel.position.y = 2.95, cartel.position.z = -D / 2 + 0.08;
+  cartel.position.set(0, 2.72, -D / 2 + 0.08);
   escena.add(cartel);
 
   return {

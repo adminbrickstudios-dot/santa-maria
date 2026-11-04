@@ -36,7 +36,8 @@ float h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
 export function matSuelo(c: Comunes, detalle: THREE.Texture, lado: number) {
   return new THREE.ShaderMaterial({
     uniforms: { ...c, uDet: { value: detalle }, uC: { value: lado } },
-    depthTest: false, depthWrite: false, transparent: false,
+    /* Escribe profundidad pero no la consulta: pinta por orden y deja que el cielo se salte lo tapado */
+    depthFunc: THREE.AlwaysDepth, depthWrite: true, transparent: false, side: THREE.DoubleSide,
     blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
     vertexShader: /* glsl */ `
       attribute vec4 aCol; attribute vec4 aMat;
@@ -59,7 +60,7 @@ export function matSuelo(c: Comunes, detalle: THREE.Texture, lado: number) {
         c*=1.+(d.r-.5)*.26*vMat.r;
         c*=mix(1.,.82+d.g*.26,vMat.g);
         c*=1.+(d.b-.5)*.5*vMat.b;
-        vec3 luz=uLuzCielo*.58+uLuzSol*max(uSol.y,.0)*.5+uLuzSuelo*.1;
+        vec3 luz=uLuzCielo*.72+uLuzSol*max(uSol.y,.0)*.38+uLuzSuelo*.08;
         c*=luz;
         if(agua>.5){
           float o=sin(vW.x*.9+uTiempo*.9+d.r*5.)*sin(vW.z*.7-uTiempo*.7+d.b*5.);
@@ -88,7 +89,7 @@ export function matSombra(c: Comunes) {
       uniform float uFuerza; varying vec3 vW;
       void main(){
         float x=max(length(vW-cameraPosition)-uNieblaD.x,0.)*uNieblaD.y;
-        gl_FragColor=vec4(.17,.16,.34,uFuerza*exp(-x*x));
+        gl_FragColor=vec4(.16,.16,.27,uFuerza*exp(-x*x));
       }`,
   });
 }
@@ -111,24 +112,30 @@ export function matEdificio(c: Comunes, calidad: { value: number }) {
       const float PB=3.4;
       float caja(float v,float c,float m,float aa){ return smoothstep(m+aa,m-aa,abs(v-c)); }
       void main(){
+        float sem=floor(vSem*255.+.5)/255.;
         float u=vUv.x, y=vUv.y, pisoH=abs(vUv.z), H=vUv.w, conPb=step(0.,vUv.z);
         vec3 N=normalize(vec3(vN.x,0.,vN.y));
         float dif=max(dot(N,uSol),0.);
         vec3 luz=(uLuzCielo*.56+uLuzSuelo*.5)*(.92+.08*N.x)+uLuzSol*dif*.62;
-        float grano=h21(floor(vec2(u*9.,y*4.))+vSem);
-        vec3 muro=vCol*(.97+.05*grano);
+        vec3 muro=vCol*(.985+.03*sin(y*.8+sem*40.));
         vec3 col=muro, emi=vec3(0.);
-        float est=floor(vSem*3.999);
-        float ven=mix(.25,.34,fract(vSem*7.));
+        float est=floor(sem*3.999);
+        float ven=mix(.25,.34,fract(sem*7.));
         if(u<-.5){
           /* Medianera: revoque sin ventanas */
-          col=mix(muro,vec3(.82,.79,.74),.35)*(.95+.06*h21(floor(vec2(vW.x+vW.z,y)*.6)));
+          col=mix(muro,vec3(.82,.79,.74),.45)*(.97+.03*sin(y*.45+sem*20.));
         }else{
           float dU=max(fwidth(u),1e-4), dY=max(fwidth(y),1e-4);
           float pasa=0.;
-          if(conPb>.5&&y<PB){
-            float iu=floor(u), fu=fract(u), r=h21(vec2(iu,1.)+vSem*53.);
-            vec3 base=mix(muro*.74,vec3(.45,.42,.4),.3+.3*fract(vSem*3.));
+          if(uCalidad<.5){
+            /* versión barata para equipos justos: solo ventanas lisas */
+            float y0=conPb*PB, p=(y-y0)/pisoH;
+            float m=step(.24,fract(u))*step(fract(u),.76)*step(.3,fract(p))*step(fract(p),.8)*step(y0,y);
+            col=mix(muro*(y<y0?.78:1.),vec3(.2,.24,.3)+.25*uLuzCielo,m*.85);
+            emi+=m*uNoche*step(.6,h21(floor(vec2(u,p))*1.3+sem*17.))*vec3(.95,.75,.45);
+          }else if(conPb>.5&&y<PB){
+            float iu=floor(u), fu=fract(u), r=h21(vec2(iu,1.)+sem*53.);
+            vec3 base=mix(muro*.74,vec3(.45,.42,.4),.3+.3*fract(sem*3.));
             col=base;
             float ax=dU*1.2, ay=dY*1.2;
             if(r<.34){
@@ -151,7 +158,7 @@ export function matEdificio(c: Comunes, calidad: { value: number }) {
               float reja=step(.7,fract(fu*7.))*(1.-smoothstep(.2,.45,dU*7.));
               v=mix(v,vec3(.12),reja*.8);
               col=mix(col,v,m);
-              emi+=m*uNoche*step(.5,h21(vec2(iu,7.)+vSem))*vec3(.7,.55,.32)*(1.-reja);
+              emi+=m*uNoche*step(.5,h21(vec2(iu,7.)+sem))*vec3(.7,.55,.32)*(1.-reja);
             }
             /* zócalo y cornisa de la planta baja */
             col=mix(col,base*.72,smoothstep(.6+ay,.6-ay,y));
@@ -162,7 +169,7 @@ export function matEdificio(c: Comunes, calidad: { value: number }) {
           }else{
             float y0=conPb*PB, p=(y-y0)/pisoH, ip=floor(p), fp=fract(p), fu=fract(u), iu=floor(u);
             float dP=dY/pisoH, ax=dU*1.3, ay=dP*1.3;
-            float r=h21(vec2(iu,ip)+vSem*91.);
+            float r=h21(vec2(iu,ip)+sem*91.);
             float mx=caja(fu,.5,ven,ax), my=caja(fp,.55,.27,ay), m=mx*my;
             float mx2=caja(fu,.5,ven+.035,ax), my2=caja(fp,.55,.27+.05,ay), rim=mx2*my2;
             float tinte=.5+.5*r;
@@ -171,9 +178,10 @@ export function matEdificio(c: Comunes, calidad: { value: number }) {
             /* cortina de enrollar a medio bajar, tan de acá */
             float cierre=step(.42,r)*fract(r*7.3)*.85;
             float yv=clamp((fp-.28)/.54,0.,1.), pers=step(1.-cierre,yv);
-            vec3 cor=mix(vec3(.82,.79,.72),muro,.25)*(.9+.1*step(.5,fract(y*11.)));
+            float cinta=1.-smoothstep(.1,.5,dY*11.);
+            vec3 cor=mix(vec3(.82,.79,.72),muro,.25)*(.95+.05*sin(y*69.)*cinta);
             vid=mix(vid,cor,pers);
-            float prende=step(.6,h21(vec2(ip,iu)*1.31+vSem*17.));
+            float prende=step(.6,h21(vec2(ip,iu)*1.31+sem*17.));
             vec3 hog=mix(vec3(1.,.8,.48),vec3(1.,.92,.72),fract(r*5.))*(1.-.75*pers);
             col=mix(col,muro*1.13,rim);
             col=mix(col,vid,m);
@@ -225,25 +233,31 @@ export function matDetalle(c: Comunes, atlas: THREE.Texture | null) {
       void main(){
         float k=floor(vK+.5);
         vec3 N=normalize(vN);
+        if(!gl_FrontFacing) N=-N;
         vec3 luz=(uLuzCielo*.56+uLuzSuelo*.5)+uLuzSol*max(dot(N,uSol),0.)*.62;
         vec3 col=vCol, emi=vec3(0.);
         if(k<.5){
         }else if(k<1.5){
-          /* vidriera: u y v en metros */
-          float u=vUv.x, y=vUv.y;
-          float marco=step(.35,y)*step(y,2.55);
-          vec3 ac=vCol*.86;
-          float mul=step(.06,fract(u/1.6)*1.6);
-          float prof=clamp((y-.35)/2.2,0.,1.);
-          float est=step(.86,fract(y*1.45))*.5;
-          float bloque=h21(floor(vec2(u*2.6,y*1.45)));
-          vec3 adentro=mix(vec3(.3,.24,.2),vCol*.7+.2,bloque*.55)*(1.-est);
-          vec3 refl=mix(uNiebla,uLuzCielo,prof);
-          vec3 vid=mix(adentro*.55,refl,.35+.25*prof);
-          vec3 v=mix(ac,vid,marco*mul);
-          col=v;
-          emi=marco*mul*uNoche*(adentro*1.3+vec3(.4,.3,.15));
-          col*=.94;
+          /* vidriera: u y v en metros. Góndolas y mercadería sugeridas, con reflejo de la calle */
+          float u=vUv.x, y=vUv.y, df=max(fwidth(u),fwidth(y));
+          float vano=step(.42,y)*step(y,2.56);
+          float ccol=fract(u/1.75), mont=smoothstep(.0,.035,ccol)*smoothstep(1.,.965,ccol);
+          float limpio=1.-smoothstep(.04,.14,df);
+          float fila=floor(y/.58), fy=fract(y/.58);
+          float ite=floor(u*4.2+fila*1.7), r=h21(vec2(ite,fila)+floor(vCol.rg*16.+.5));
+          float alto=.3+.5*r;
+          float pieza=step(fy,alto)*step(.12,fract(u*4.2+fila*1.7))*step(.1,r)*limpio;
+          vec3 fondo=mix(vec3(.98,.9,.76),vCol,.16)*(.72+.28*smoothstep(.42,2.5,y));
+          vec3 obj=mix(vCol*1.1,vec3(r,fract(r*7.),fract(r*13.))*.85+.12,.6);
+          vec3 adentro=mix(fondo,obj,pieza*.85);
+          adentro*=1.-.45*(1.-smoothstep(.0,.05,fy))*limpio;
+          float diag=smoothstep(.0,.25,fract((u*.6+y*.42)+vW.x*.03+vW.z*.03));
+          vec3 refl=mix(uNiebla,uLuzCielo,clamp(y/2.6,0.,1.));
+          vec3 vid=mix(adentro*.74,refl,.14+.2*diag*diag*.5);
+          vec3 marco=mix(vCol*.5,vec3(.14,.14,.17),.5);
+          col=mix(marco,vid,vano*mont);
+          col=mix(col,vCol*.72,1.-step(.42,y));
+          emi=vano*mont*uNoche*(adentro*.72+vec3(.08,.06,.03));
         }else if(k<2.5){
           /* toldo a rayas */
           float r=step(.5,fract(vUv.x/1.1));
@@ -324,7 +338,7 @@ export function matObjeto(c: Comunes, instanciado = true) {
 export function matCielo(c: Comunes, cen: { value: THREE.Color }, hor: { value: THREE.Color }) {
   return new THREE.ShaderMaterial({
     uniforms: { ...c, uCenit: cen, uHorizonte: hor },
-    side: THREE.BackSide, depthTest: false, depthWrite: false,
+    side: THREE.BackSide, depthWrite: false,
     vertexShader: /* glsl */ `
       varying vec3 vD;
       void main(){ vD=position; vec4 p=projectionMatrix*mat4(mat3(viewMatrix))*vec4(position,1.); gl_Position=p.xyww; }`,
@@ -346,8 +360,8 @@ export function matCielo(c: Comunes, cen: { value: THREE.Color }, hor: { value: 
         vec3 cn=mix(vec3(1.,.97,.93),uHorizonte*1.05,.25+.4*smoothstep(.0,.3,1.-h));
         c=mix(c,cn*(1.-uNoche*.72),nube*.8);
         if(uNoche>.1){
-          vec2 e=floor(d.xz/(abs(d.y)+.3)*90.);
-          c+=step(.985,h21(e))*h21(e+3.)*uNoche*smoothstep(.02,.25,d.y)*(1.-nube);
+          vec2 g=d.xz/(abs(d.y)+.3)*260., e=floor(g), f=fract(g)-.5;
+          c+=step(.992,h21(e))*h21(e+3.)*smoothstep(.34,.1,length(f))*uNoche*uNoche*smoothstep(.04,.3,d.y)*(1.-nube);
         }
         gl_FragColor=vec4(c,1.);
       }`,
@@ -358,7 +372,7 @@ export function matCielo(c: Comunes, cen: { value: THREE.Color }, hor: { value: 
 export function matDisco(c: Comunes) {
   return new THREE.ShaderMaterial({
     uniforms: { uNiebla: c.uNiebla },
-    depthTest: false, depthWrite: false,
+    depthFunc: THREE.AlwaysDepth, depthWrite: true,
     vertexShader: `void main(){ gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
     fragmentShader: `uniform vec3 uNiebla; void main(){ gl_FragColor=vec4(uNiebla,1.); }`,
   });

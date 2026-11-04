@@ -95,20 +95,12 @@ function ruedas(xs: number[], zs: number[], r: number, w: number): Parte[] {
   }
   return sal;
 }
-function sombraPlana(w: number, l: number): Parte {
-  const g = new THREE.PlaneGeometry(w, l);
-  g.rotateX(-Math.PI / 2);
-  g.translate(0, 0.03, 0);
-  return { geo: g, color: [0.12, 0.11, 0.15] };
-}
-
 export function geoAuto(techo?: number[]) {
   const cab = new THREE.BoxGeometry(1.54, 0.56, 2.2);
   const a = cab.getAttribute("position");
   for (let i = 0; i < a.count; i++) if (a.getY(i) > 0) { a.setX(i, a.getX(i) * 0.86); a.setZ(i, a.getZ(i) * 0.76); }
   cab.translate(0, 1.2, -0.12);
   return fundir([
-    sombraPlana(2, 4.4),
     ...ruedas([-0.8, 0.8], [-1.32, 1.3], 0.32, 0.22),
     caja(1.74, 0.56, 4.16, 0, 0.66, 0, [1, 1, 1], P_PINTABLE),
     { geo: cab, color: VIDRIO },
@@ -123,7 +115,6 @@ export function geoAuto(techo?: number[]) {
 export function geoColectivo() {
   const blanco = hex("#F4F1E8");
   return fundir([
-    sombraPlana(2.9, 11.6),
     ...ruedas([-1.1, 1.1], [-3.3, 3.2], 0.5, 0.3),
     caja(2.48, 1.3, 11, 0, 1.12, 0, [1, 1, 1], P_PINTABLE),
     caja(2.5, 0.95, 10.6, 0, 2.2, 0, VIDRIO),
@@ -139,18 +130,17 @@ export function geoColectivo() {
 
 export function geoPersona() {
   const piel = hex("#CDB29A"), pant = hex("#3E4757");
-  const pecho = new THREE.CylinderGeometry(0.21, 0.17, 0.62, 6);
+  const pecho = new THREE.CylinderGeometry(0.2, 0.16, 0.6, 6);
   pecho.translate(0, 1.2, 0);
   pecho.scale(1, 1, 0.68);
   const cabeza = new THREE.IcosahedronGeometry(0.125, 1);
   cabeza.translate(0, 1.6, 0);
-  const pierna = (x: number, k: number): Parte => caja(0.14, 0.86, 0.16, x, 0.47, 0, pant, k);
-  const brazo = (x: number, k: number): Parte => caja(0.08, 0.6, 0.09, x, 1.15, 0, piel, k);
+  const pierna = (x: number, k: number): Parte => caja(0.13, 0.9, 0.15, x, 0.45, 0, pant, k);
+  const brazo = (x: number, k: number): Parte => caja(0.07, 0.56, 0.08, x, 1.16, 0, piel, k);
   return fundir([
     { geo: pecho, color: [1, 1, 1], parte: P_PINTABLE },
     { geo: cabeza, color: piel },
     pierna(-0.09, P_PIERNA_A), pierna(0.09, P_PIERNA_B),
-    brazo(-0.255, P_BRAZO_A), brazo(0.255, P_BRAZO_B),
-    sombraPlana(0.55, 0.55),
+    brazo(-0.235, P_BRAZO_A), brazo(0.235, P_BRAZO_B),
   ], true);
 }

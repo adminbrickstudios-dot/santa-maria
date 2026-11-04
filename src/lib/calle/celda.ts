@@ -361,7 +361,7 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
   const filasEn = (s: number) => Math.floor(s / 2);
   const uvSlot = (s: number): number[] => {
     if (s < 0) return [0, 0, 0, 0];
-    return [(s % 2) * 0.5 + 0.003, filasEn(s), ((s % 2) + 1) * 0.5 - 0.003, filasEn(s) + 1];
+    return [(s % 2) * 0.5 + 0.003, filasEn(s) + 1, ((s % 2) + 1) * 0.5 - 0.003, filasEn(s)];
   };
   const pendientesUv: { i0: number; n: number }[] = [];
   const conUvAtlas = (f: () => void) => { const i0 = det.uv.length / 2; f(); pendientesUv.push({ i0, n: det.uv.length / 2 - i0 }); };

@@ -1,4 +1,5 @@
 /* Quién procesa los tiles: un Web Worker, y si no se puede, el hilo principal de a poco. */
+import { DIV } from "./geo";
 import type { PedidoWorker, RespuestaWorker } from "./tipos";
 
 export interface Procesador {
@@ -35,7 +36,7 @@ export function procesadorLocal(oir: Oyente): Procesador {
       } else if (p.t === "soltar") {
         tiles.delete(`${p.tx}/${p.ty}`);
       } else {
-        const t = tiles.get(`${Math.floor(p.gx / 10)}/${Math.floor(p.gy / 10)}`);
+        const t = tiles.get(`${Math.floor(p.gx / DIV)}/${Math.floor(p.gy / DIV)}`);
         if (!t) throw new Error("tile no cargado");
         oir({ t: "celda", datos: cel.armarCelda(t, p.gx, p.gy) });
       }

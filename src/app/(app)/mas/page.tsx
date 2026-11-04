@@ -9,6 +9,7 @@ const T: [string, string, string, string, string, string?][] = [
   ["/caja", "guardar", "#1F7AFF", "Mi caja", "Notas, fotos y archivos tuyos"],
   ["/compras", "regalo", "#10B765", "Compras", "Listas y qué conviene hoy"],
   ["/bondi", "bus", "#FFB400", "Bondi", "Cuánto sale y cómo pagar"],
+  ["/calle", "ciudad", "#0FB5AE", "Caminar en 3D", "Recorré Buenos Aires"],
   ["/guia", "guia", "#10B765", "Guía de la ciudad", "Comer, salir, trámites y secretos", "guia"],
   ["/gente/juntadas", "gente", "#7C5CFC", "Juntadas", "Armá planes con tu gente", "gente"],
   ["/guia/descuentos", "regalo", "#FF8A1F", "Descuentos", "Lo que conviene hoy"],

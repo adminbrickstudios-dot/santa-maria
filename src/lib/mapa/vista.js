@@ -147,7 +147,7 @@ function alternar3D(){trid=!trid;if(trid&&vistaBase==='satelite'){cambiarBase('m
 function abrirGlobo(p){
   const g=$('globo');g.hidden=false;
   let sub=p.sub||p.d||'';if(p.tipo==='persona')sub=p.barrio||'';
-  g.innerHTML=`<b>${esc(p.nombre)}${sub?`<small>${esc(sub)}</small>`:''}</b><button class="btn pri chico" data-a="ir" data-k="${esc(p.k)}">Cómo llego</button><button class="btn sec2 chico" data-a="cerca-de" data-k="${esc(p.k)}">Qué hay cerca</button><button class="ico-btn" data-a="cerrar-globo" aria-label="Cerrar">✕</button>`;
+  g.innerHTML=`<b>${esc(p.nombre)}${sub?`<small>${esc(sub)}</small>`:''}</b><button class="btn pri chico" data-a="ir" data-k="${esc(p.k)}">Cómo llego</button><button class="btn sec2 chico" data-a="cerca-de" data-k="${esc(p.k)}">Qué hay cerca</button><a class="btn sec2 chico" href="/calle?lat=${alat(p.y).toFixed(6)}&lon=${alon(p.x).toFixed(6)}">Caminar en 3D</a><button class="ico-btn" data-a="cerrar-globo" aria-label="Cerrar">✕</button>`;
 }
 
 /* ───────── Vistas ───────── */
