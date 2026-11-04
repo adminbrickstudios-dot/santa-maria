@@ -1,0 +1,23 @@
+name: datos-ciudad
+on:
+  push:
+    branches: [datos-job]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  datos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash herramientas/ciudad/recon.sh
+      - name: Guardar resultado en la rama datos
+        run: |
+          git config user.name "adminbrickstudios-dot"
+          git config user.email "adminbrickstudios@gmail.com"
+          git checkout --orphan datos
+          git rm -rfq --cached .
+          git add recon
+          git commit -qm "Datos de la ciudad"
+          git push -f origin datos
