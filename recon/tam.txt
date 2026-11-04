@@ -1,0 +1,6 @@
+total 37240
+drwxr-xr-x  2 runner runner     4096 Nov  4 23:27 .
+drwxr-xr-x 13 runner runner     4096 Nov  4 23:27 ..
+-rw-r--r--  1 runner runner    43697 Nov  4 23:27 ghsl_alto.json.gz
+-rw-r--r--  1 runner runner 38074591 Nov  4 23:27 globfp.jsonl.gz
+-rw-r--r--  1 runner runner       33 Nov  4 23:25 ov_dir.jsonl.gz
