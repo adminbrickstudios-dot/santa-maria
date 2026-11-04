@@ -444,3 +444,4 @@ input[type=text],input[type=search],input[type=password],input[type=time],input[
 .barra-top{position:relative}
 .marco[data-alto="1"] .barra-top{background:var(--vidrio)!important;-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);box-shadow:0 .5px 0 var(--borde)!important}
 .barra-top h1 span{display:inline-block;animation:vista .28s var(--hoja-curva) backwards}
+.marco[data-sec="estudio"]{--sec-c:var(--estudio)}

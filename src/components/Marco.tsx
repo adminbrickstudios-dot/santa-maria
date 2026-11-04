@@ -15,6 +15,10 @@ const MENU = [
   ["/perfil", "usuario", "Mi perfil", "Foto, casa, carrera, colores"],
   ["/notificaciones", "campana", "Avisos", "Lo que pasó y qué te llega al celular"],
   ["/guia?v=guardados", "guardar", "Guardados", "Lo que marcaste en la guía"],
+  ["/tareas", "tilde", "Tareas", "Lo que tenés que hacer"],
+  ["/caja", "guardar", "Mi caja", "Notas, fotos y archivos tuyos"],
+  ["/compras", "regalo", "Compras", "Listas y qué conviene hoy"],
+  ["/bondi", "bus", "Bondi", "Cuánto sale y cómo pagar"],
   ["/guia", "guia", "Guía", "La ciudad, descuentos y trámites"],
   ["/facu", "facu", "Estudio y horarios", "Materias, clases y apuntes"],
   ["/facu/carreras", "brujula", "Carreras", "Explorar, comparar y test de orientación"],
@@ -62,7 +66,7 @@ export function Marco({ children }: { children: React.ReactNode }) {
     if (!["/inicio", "/agenda", "/billetera"].some((x) => ruta.startsWith(x))) location.reload();
   }
   function atras() { if (history.length > 1) r.back(); else r.push("/inicio"); }
-  const sec = ["agenda", "billetera", "mapa", "guia", "facu", "gente"].find((x) => ruta.startsWith("/" + x)) || "inicio";
+  const sec = ["agenda", "billetera", "mapa", "guia", "facu", "estudio", "gente"].find((x) => ruta.startsWith("/" + x)) || "inicio";
   const tabs = TABS.filter(([id]) => pantalla(id));
   const activa = tabs.findIndex(([id]) => ruta.startsWith("/" + id));
   const toques = useRef<Record<string, number>>({});

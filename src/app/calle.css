@@ -1,0 +1,100 @@
+/* Modo calle. Todo cuelga de .calle, así no toca al resto de la app. */
+.calle{position:fixed;inset:0;z-index:80;background:#CFE3EE;color:var(--tinta);font-family:var(--txt);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;overscroll-behavior:none}
+.calle-lienzo{position:absolute;inset:0}
+.calle-canvas{display:block;width:100%!important;height:100%!important;touch-action:none;cursor:grab;outline:0}
+.calle-canvas:active{cursor:grabbing}
+
+/* Vidrio: igual que las hojas de la app */
+.calle-redondo,.calle-brujula,.calle-marcha,.calle-tarjeta,.calle-cerca,.calle-credito,.calle-ayuda,.calle-interior-tit,.calle-aviso{
+  background:var(--vidrio);-webkit-backdrop-filter:saturate(1.7) blur(18px);backdrop-filter:saturate(1.7) blur(18px);
+  box-shadow:0 0 0 .5px var(--vidrio-b),var(--sombra-suave)}
+@media (prefers-reduced-transparency:reduce){.calle-redondo,.calle-brujula,.calle-marcha,.calle-tarjeta,.calle-cerca,.calle-credito,.calle-ayuda,.calle-interior-tit,.calle-aviso{background:var(--hoja);-webkit-backdrop-filter:none;backdrop-filter:none}}
+
+.calle-arriba{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 10px);padding:0 12px;display:flex;gap:8px;align-items:center;justify-content:space-between;pointer-events:none}
+.calle-arriba>*{pointer-events:auto}
+.calle-redondo{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;flex:none;transition:transform .35s var(--resorte)}
+.calle-redondo:active{transform:scale(.9)}
+.calle-brujula{flex:0 1 auto;min-width:0;height:48px;border-radius:24px;padding:0 15px 0 7px;display:flex;align-items:center;gap:9px}
+.calle-brujula strong{font-size:16px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.calle-brujula small{font-size:13px;font-weight:800;color:var(--tinta2);flex:none}
+.calle-dial{width:34px;height:34px;border-radius:50%;flex:none;position:relative;background:var(--hoja);box-shadow:inset 0 0 0 1.5px var(--borde)}
+.calle-dial::after{content:"";position:absolute;left:50%;bottom:50%;width:0;height:0;margin-left:-4px;border:4px solid transparent;border-bottom:11px solid #FF3B30;border-top:0}
+.calle-dial b{position:absolute;left:50%;top:-1px;transform:translateX(-50%);font-size:9px;line-height:11px;font-weight:900;color:var(--tinta2)}
+
+.calle-credito{position:absolute;right:12px;top:calc(env(safe-area-inset-top,0px) + 66px);font-size:13.5px;font-weight:600;padding:7px 12px;border-radius:14px;animation:calle-entra .3s var(--hoja-curva) both}
+.calle-credito a,.calle-credito-carga a{text-decoration:underline;font-weight:800}
+
+.calle-joy{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none}
+.calle>.calle-joy:not(.activo),.calle-interior>.calle-joy:not(.activo){left:80px;top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 92px)}
+.calle-joy::before{content:"";position:absolute;left:-56px;top:-56px;width:112px;height:112px;border-radius:50%;background:rgba(255,255,255,.18);box-shadow:inset 0 0 0 2px rgba(255,255,255,.75),0 4px 18px -6px rgba(0,0,0,.35)}
+.calle-joy i{position:absolute;left:-26px;top:-26px;width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.9);box-shadow:0 3px 10px rgba(0,0,0,.28)}
+.calle-joy i::after{content:"";position:absolute;inset:0}
+@media (pointer:fine){.calle-joy{display:none}}
+
+.calle-marcha{position:absolute;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);border-radius:26px;padding:5px;display:grid;gap:3px;--ancho:60px}
+.calle-marcha button{width:var(--ancho);height:56px;border-radius:21px;display:grid;justify-items:center;align-content:center;gap:0;font-size:11.5px;font-weight:800;color:var(--tinta2);transition:background .2s,color .2s,transform .35s var(--resorte)}
+.calle-marcha button:active{transform:scale(.92)}
+.calle-marcha button.on{background:var(--azul);color:#fff}
+
+.calle-cerca{position:absolute;left:150px;right:88px;bottom:calc(env(safe-area-inset-bottom,0px) + 22px);min-height:64px;border-radius:22px;padding:9px 10px 9px 13px;display:flex;align-items:center;gap:10px;animation:calle-entra .36s var(--resorte) both}
+.calle-cerca>i{width:12px;height:12px;border-radius:50%;flex:none}
+.calle-cerca span{flex:1;min-width:0;display:grid}
+.calle-cerca b{font-size:15.5px;line-height:1.15;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.calle-cerca small{font-size:13px;font-weight:600;color:var(--tinta2)}
+@media (max-width:520px){.calle-cerca{left:12px;right:88px;bottom:calc(env(safe-area-inset-bottom,0px) + 182px)}}
+
+.calle-tarjeta{position:absolute;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);max-width:560px;margin:0 auto;max-height:calc(100% - 90px);overflow:auto;border-radius:28px;padding:8px 18px 14px;touch-action:pan-y;animation:calle-sube .44s var(--hoja-curva) both;transition:transform .32s var(--hoja-curva);user-select:text;-webkit-user-select:text}
+.calle-tarjeta h2{font-size:26px;line-height:1.08;font-weight:800;letter-spacing:-.02em;margin:7px 40px 9px 0;overflow-wrap:anywhere}
+.calle-asa{width:38px;height:5px;border-radius:3px;background:var(--tinta3);opacity:.45;margin:0 auto 10px}
+.calle-cerrar{position:absolute;right:10px;top:12px;width:44px;height:44px;border-radius:50%;display:grid;place-items:center}
+.calle-rubro{display:inline-block;font-size:13px;font-weight:800;padding:3px 10px;border-radius:9px}
+.calle-datos{list-style:none;padding:0;margin:0 0 12px;display:grid;gap:6px;font-size:15.5px;font-weight:600}
+.calle-datos li{display:flex;gap:8px;align-items:flex-start;color:var(--tinta)}
+.calle-datos svg{flex:none;margin-top:2px;color:var(--tinta2)}
+.calle-datos a{text-decoration:underline;font-weight:700;color:var(--azul)}
+.calle-buscando{color:var(--tinta2)!important;font-size:14px}
+.calle-acciones{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+.calle-btn{min-height:54px;border-radius:17px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:18px;font-weight:800;background:var(--hoja);box-shadow:inset 0 0 0 .5px var(--borde);transition:transform .35s var(--resorte);text-align:center}
+.calle-btn:active{transform:scale(.95)}
+.calle-btn.pri{background:var(--azul);color:#fff;box-shadow:none}
+.calle-nota{font-size:13px;line-height:1.3;color:var(--tinta2);margin-top:9px;text-align:center}
+
+.calle-ayuda{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 70px);width:min(320px,calc(100% - 32px));font-size:15px;line-height:1.3;font-weight:700;padding:11px 14px;border-radius:18px;text-align:center;pointer-events:none}
+.calle-aviso{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 200px);width:min(320px,calc(100% - 32px));font-size:15px;font-weight:700;padding:11px 14px;border-radius:16px;text-align:center}
+
+.calle-interior{position:absolute;inset:0;pointer-events:none}
+.calle-interior-tit{position:absolute;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 10px);margin:0 auto;max-width:440px;border-radius:20px;padding:9px 15px;display:grid;text-align:center}
+.calle-interior-tit strong{font-size:17px;font-weight:800;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.calle-interior-tit small{font-size:13px;font-weight:600;color:var(--tinta2)}
+.calle-salir{position:absolute;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);padding:0 24px;pointer-events:auto}
+.calle-interior>.calle-joy{pointer-events:none}
+
+.calle-fundido{position:absolute;inset:0;background:#0E1116;opacity:0;pointer-events:none;transition:opacity .26s ease}
+.calle-fundido.on{opacity:1}
+
+/* Pantalla de carga: una maqueta que se levanta con el progreso */
+.calle-carga{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px;text-align:center;touch-action:auto;user-select:text;-webkit-user-select:text;
+  background:linear-gradient(180deg,#5EA6EC 0%,#A6D1EE 46%,#FFE1BC 78%,#F6CFA3 100%);color:#10202F}
+.calle-carga h1{font-size:30px;line-height:1.08;font-weight:800;letter-spacing:-.02em;margin-top:6px}
+.calle-carga p{font-size:17px;font-weight:600;max-width:320px}
+.calle-maqueta{width:min(280px,76vw);height:150px;display:flex;align-items:flex-end;justify-content:center;gap:5px;padding-bottom:7px;border-bottom:7px solid #6E8F58;border-radius:0 0 6px 6px}
+.calle-maqueta i{flex:1;transform-origin:bottom;border-radius:4px 4px 0 0;transition:transform .5s var(--resorte);background-color:#E8C9A8;
+  background-image:linear-gradient(rgba(38,56,84,.72) 45%,transparent 45%),linear-gradient(90deg,transparent 22%,rgba(255,255,255,.0) 22%);background-size:100% 13px}
+.calle-maqueta i:nth-child(2n){background-color:#CC8B70}
+.calle-maqueta i:nth-child(3n){background-color:#F2E7D3}
+.calle-maqueta i:nth-child(5n){background-color:#ABC3C4}
+.calle-barra{width:min(280px,76vw);height:9px;border-radius:5px;background:rgba(16,32,47,.18);overflow:hidden;margin-top:8px}
+.calle-barra i{display:block;height:100%;background:var(--azul);transform-origin:left;transition:transform .3s ease;border-radius:5px}
+.calle-carga .calle-acciones{max-width:320px;margin-top:10px}
+.calle-carga>.calle-btn{min-width:220px;padding:0 22px;margin-top:10px}
+.calle-carga .calle-btn{color:#10202F;background:#fff}
+.calle-carga .calle-btn.pri{color:#fff;background:var(--azul)}
+.calle-carga .calle-credito-carga{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);margin:0 auto;font-size:13.5px}
+
+.calle a:focus-visible,.calle button:focus-visible{outline:3px solid var(--azul);outline-offset:2px}
+
+@keyframes calle-entra{from{opacity:0;transform:translateY(8px) scale(.97)}}
+@keyframes calle-sube{from{transform:translateY(105%)}}
+@media (prefers-reduced-motion:reduce){
+  .calle *,.calle *::before,.calle *::after{animation:none!important;transition:none!important}
+}
