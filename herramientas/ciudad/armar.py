@@ -196,10 +196,12 @@ def alto_zona(lon, lat):
 
 def alto_globfp(c):
     k = (int(c[0] * 16), int(c[1] * 16))
-    mejor, md = None, 0.0016  # ~8 m en tile z16
+    mejor, md = None, 0.02  # ~10 m en tile z16
     for i in (-1, 0, 1):
         for j in (-1, 0, 1):
             for cc, pts, h in gf.get((k[0] + i, k[1] + j), ()):
+                if adentro(pts, c[0], c[1]):
+                    return h
                 d = math.hypot(cc[0] - c[0], cc[1] - c[1])
                 if d < md:
                     md, mejor = d, h
