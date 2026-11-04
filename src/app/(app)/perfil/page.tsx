@@ -10,7 +10,6 @@ import { COLORES } from "@/lib/util";
 import { INTERESES } from "@/lib/intereses";
 
 const ACENTOS = ["#FFD21F", "#FF8A3D", "#FF6FA8", "#58D68D", "#5CC8FF", "#B79CFF"];
-const WIDGETS: [string, string][] = [["hoy", "Tu día"], ["avisos", "Avisos de la app"], ["clima", "Clima y dólar"], ["fechas", "Próximas fechas"], ["juntada", "Próxima juntada"], ["paravos", "Para vos"], ["descuento", "Descuento de hoy"], ["tip", "Dato porteño del día"], ["primermes", "Primer mes en Buenos Aires"], ["accesos", "Accesos rápidos"]];
 
 export default function Perfil() {
   const { perfil, recargar, toast } = useSesion();
@@ -18,7 +17,6 @@ export default function Perfil() {
   useEffect(() => { sb.from("universidades").select("id,nombre").order("nombre").then(({ data }: any) => setU(data || [])); }, []);
   const set = (k: string) => (e: any) => setF({ ...f, [k]: e.target.value });
   const pref = f.preferencias || {};
-  const orden: string[] = [...(pref.inicio || []), ...WIDGETS.map((w) => w[0]).filter((k) => !(pref.inicio || []).includes(k))], oculto: string[] = pref.inicio_oculto || [];
   async function guardar(extra: any = {}) {
     const { nombre, bio, ciudad_origen, universidad_id, carrera_texto, anio_cursada, casa_visibilidad, tema, color, preferencias } = { ...f, ...extra };
     const { error } = await sb.from("perfiles").update({ nombre, bio, ciudad_origen, universidad_id: universidad_id || null, carrera_texto, anio_cursada: anio_cursada || null, casa_visibilidad, tema, color, preferencias, ...extra }).eq("id", perfil.id);
@@ -49,8 +47,6 @@ export default function Perfil() {
     if (error) return toast("No pude cambiarla.");
     setC1(""); setC2(""); toast("Contraseña cambiada.");
   }
-  function mover(k: string, d: number) { const o = [...orden], i = o.indexOf(k), j = i + d; if (j < 0 || j >= o.length) return; [o[i], o[j]] = [o[j], o[i]]; const p = { ...pref, inicio: o }; setF({ ...f, preferencias: p }); guardar({ preferencias: p }); }
-  function alternar(k: string) { const q = oculto.includes(k) ? oculto.filter((x) => x !== k) : [...oculto, k], p = { ...pref, inicio: orden, inicio_oculto: q }; setF({ ...f, preferencias: p }); guardar({ preferencias: p }); }
   return <div className="pagina">
     <h2 className="titulo">Mi perfil</h2>
     <div style={{ display: "flex", gap: 14, alignItems: "center" }}><Avatar p={f} t={84} /><div style={{ display: "grid", gap: 6 }}><p className="chico">Tu usuario: @{perfil.usuario}</p><label className="btn sec2 chico"><input type="file" accept="image/*" hidden onChange={foto} />{sub ? "Subiendo…" : "Cambiar foto"}</label></div></div>
@@ -78,9 +74,6 @@ export default function Perfil() {
       <div className="campo"><span>Color de la app</span><div className="chipera">{ACENTOS.map((c) => <button key={c} aria-label={`Color ${c}`} aria-pressed={(pref.acento || "#FFD21F") === c} onClick={() => { const p = { ...pref, acento: c }; setF({ ...f, preferencias: p }); aplicarTema(f.tema, c); guardar({ preferencias: p }); }} style={{ width: 44, height: 44, borderRadius: "50%", background: c, outline: (pref.acento || "#FFD21F") === c ? "3px solid var(--tinta)" : "none", outlineOffset: 2 }} />)}</div></div>
       <div className="campo"><span>Tu color en el grupo</span><div className="chipera">{COLORES.map((c) => <button key={c} aria-label={`Color ${c}`} onClick={() => { setF({ ...f, color: c }); guardar({ color: c }); }} style={{ width: 36, height: 36, borderRadius: "50%", background: c, outline: f.color === c ? "3px solid var(--tinta)" : "none", outlineOffset: 2 }} />)}</div></div>
     </div>
-    <h3 className="sec">Mi pantalla de Inicio</h3>
-    <p className="expl">Elegí qué ves y en qué orden.</p>
-    <div className="lista">{orden.map((k) => { const w = WIDGETS.find((x) => x[0] === k); if (!w) return null; const on = !oculto.includes(k); return <div key={k} className="item"><button className="ico-btn" aria-label={on ? "Ocultar" : "Mostrar"} onClick={() => alternar(k)} style={{ color: on ? "var(--ok)" : "var(--tinta3)" }}><Icono n={on ? "ok" : "tilde"} /></button><span className="q"><b style={{ opacity: on ? 1 : 0.55 }}>{w[1]}</b></span><button className="ico-btn" aria-label="Subir" onClick={() => mover(k, -1)}><Icono n="subir" t={20} /></button><button className="ico-btn" aria-label="Bajar" onClick={() => mover(k, 1)}><Icono n="bajar" t={20} /></button></div>; })}</div>
     <Link className="btn sec2" href="/notificaciones?v=ajustes"><Icono n="campana" />Notificaciones</Link>
     <h3 className="sec">Contraseña</h3>
     <div className="tarjeta">
