@@ -6,13 +6,15 @@ import { useEffect, useRef, useState } from "react";
 import { sb } from "@/lib/sb";
 import { useSesion } from "@/lib/sesion";
 import { Avatar } from "@/components/Avatar";
+import { Moderar } from "@/components/Contacto";
+import { Hoja } from "@/components/Hoja";
 import { Icono } from "@/components/Icono";
 import { horaDe } from "@/lib/util";
 
 export default function Chat() {
   const { id } = useParams<{ id: string }>();
   const { perfil, personas, recuentos, toast, asegurarPersonas } = useSesion();
-  const [ms, setM] = useState<any[]>([]), [c, setC] = useState<any>(null), [t, setT] = useState(""), [env, setEnv] = useState(false), [hayMas, setHayMas] = useState(false);
+  const [ms, setM] = useState<any[]>([]), [c, setC] = useState<any>(null), [t, setT] = useState(""), [env, setEnv] = useState(false), [hayMas, setHayMas] = useState(false), [mod, setMod] = useState(false);
   const fin = useRef<HTMLDivElement>(null), alFinal = useRef(true);
   const POR_TANDA = 50;
   async function anteriores() {
@@ -49,12 +51,13 @@ export default function Chat() {
     setEnv(true); setT(""); alFinal.current = true;
     const { data, error } = await sb.from("mensajes").insert({ conversacion_id: id, autor_id: perfil.id, texto: x }).select().single();
     setEnv(false);
-    if (error) { setT(x); toast(error.code === "PT429" ? "Mandaste muchos seguidos. Esperá un minuto." : "No se pudo mandar. Puede que te hayan bloqueado o no tengas conexión."); return; }
+    if (error) { setT(x); toast(error.code === "PT429" ? "Mandaste muchos seguidos. Esperá un minuto." : error.code === "PT403" ? "Todavía no aceptó tu contacto." : "No se pudo mandar. Puede que te hayan bloqueado o no tengas conexión."); return; }
     setM((m) => m.some((y) => y.id === data.id) ? m : [...m, data]);
   }
   const titulo = c ? (c.tipo === "grupo" ? c.titulo : c.otro_nombre) : "Mensajes";
   return <div className="chat">
-    <div className="chat-cab"><Link className="ico-btn" href="/gente" aria-label="Volver"><Icono n="volver" /></Link>{c?.tipo === "directa" && <Avatar p={{ nombre: c.otro_nombre, color: c.otro_color, avatar_url: c.otro_avatar }} t={38} />}{c?.otro_id ? <Link href={`/gente?persona=${c.otro_id}`}><b>{titulo}</b></Link> : <b>{titulo}</b>}</div>
+    <div className="chat-cab"><Link className="ico-btn" href="/gente" aria-label="Volver"><Icono n="volver" /></Link>{c?.tipo === "directa" && <Avatar p={{ nombre: c.otro_nombre, color: c.otro_color, avatar_url: c.otro_avatar }} t={38} />}{c?.otro_id ? <Link href={`/gente?persona=${c.otro_id}`}><b>{titulo}</b></Link> : <b>{titulo}</b>}{c?.otro_id && <button className="ico-btn" style={{ marginLeft: "auto" }} aria-label="Bloquear o denunciar" onClick={() => setMod(true)}><Icono n="ajustes" /></button>}</div>
+    {mod && c?.otro_id && <Hoja titulo={c.otro_nombre} cerrar={() => setMod(false)}><Moderar persona={{ id: c.otro_id, nombre: c.otro_nombre }} /></Hoja>}
     <div className="chat-lista">
       {hayMas && <button className="btn sec2 chico" style={{ justifySelf: "center" }} onClick={anteriores}>Ver anteriores</button>}
       {!ms.length && <p className="vacio">Mandá el primer mensaje. Solo lo ven quienes están en esta charla.</p>}

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { sb } from "@/lib/sb";
 import { useSesion } from "@/lib/sesion";
 import { Avatar } from "@/components/Avatar";
+import { Moderar, Solicitudes } from "@/components/Contacto";
 import { Hoja } from "@/components/Hoja";
 import { Icono } from "@/components/Icono";
 import { cuandoRelativo, pesos } from "@/lib/util";
@@ -22,7 +23,7 @@ function Gente() {
     asegurarPersonas([...(b.data || []).map((x: any) => x.autor_id), ...(c.data || []).flatMap((x: any) => x.miembros || [])]);
   }, [recuentos, asegurarPersonas]);
   /* Buscar a alguien sin bajarse la lista entera */
-  const [busca, setBusca] = useState(""), [halladas, setHalladas] = useState<any[] | null>(null);
+  const [busca, setBusca] = useState(""), [halladas, setHalladas] = useState<any[] | null>(null), [pedido, setPedido] = useState("");
   useEffect(() => {
     const t = busca.trim();
     if (t.length < 2) { setHalladas(null); return; }
@@ -32,7 +33,23 @@ function Gente() {
   useEffect(() => { cargar(); if (q.get("nuevo") === "1") { setF({ tipo: "aviso" }); setN(true); } }, [cargar, q]);
   useEffect(() => { const id = q.get("persona"); if (id) { const p = personas.find((x) => x.id === id); if (p) { setV("personas"); setVer(p); } } }, [q, personas]);
   const nombre = (id: string) => personas.find((p) => p.id === id)?.nombre || "Alguien";
-  async function dm(id: string) { const { data, error } = await sb.rpc("abrir_directa", { otro: id }); if (error) return toast("No pude abrir la charla."); r.push(`/gente/chat/${data}`); }
+  async function dm(id: string) { const { data, error } = await sb.rpc("abrir_directa", { otro: id }); if (error) return toast(error.code === "PT403" ? "Primero tiene que aceptarte." : "No pude abrir la charla."); r.push(`/gente/chat/${data}`); }
+  /* En el grupo grande solo se escriben quienes aceptaron el contacto */
+  async function pedirContacto(p: any) {
+    const { data, error } = await sb.rpc("pedir_contacto", { otro: p.id, p_mensaje: pedido.trim() || null });
+    if (error || data === "no_valido") return toast("No pude mandar la solicitud.");
+    if (data === "no_disponible") return toast("No se le puede escribir a esta persona.");
+    if (data === "muchas") return toast("Mandaste muchas solicitudes hoy. Probá mañana.");
+    const t = data === "libre" ? "libre" : "enviada";
+    setPedido(""); setVer({ ...p, trato: t }); setHalladas((l) => l && l.map((x) => x.id === p.id ? { ...x, trato: t } : x)); s.recargar();
+    toast(t === "libre" ? "Ya pueden escribirse." : "Listo. Si acepta, se abre la charla.");
+  }
+  async function responder(p: any, si: boolean) {
+    const { data, error } = await sb.rpc("responder_contacto", { otro: p.id, p_acepto: si });
+    if (error) return toast("No pude responder. Probá de nuevo.");
+    s.recargar();
+    if (si && data) r.push(`/gente/chat/${data}`); else { setVer(null); toast("Listo. No le avisamos."); }
+  }
   async function publicar() {
     if (!f.titulo) return toast("Escribí algo.");
     let la = null, lo = null;
@@ -74,8 +91,10 @@ function Gente() {
         <span className="q"><b>{c.tipo === "grupo" ? c.titulo : c.otro_nombre}</b><small style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.ultimo_texto || "Todavía no hay mensajes"}</small></span>
         <span className="v"><small>{c.ultimo_texto ? cuandoRelativo(c.ultimo_en) : ""}</small>{Number(c.sin_leer) > 0 && <span className="etiqueta amarilla">{c.sin_leer}</span>}</span>
       </Link>)}</div>}
+      <Solicitudes alCambiar={() => { cargar(); s.recargar(); }} />
       <button className="btn pri" onClick={() => setV("personas")}><Icono n="chat" />Escribirle a alguien</button>
     </>}
+    {v === "personas" && <Solicitudes alCambiar={() => { cargar(); s.recargar(); }} />}
     {v === "personas" && <div className="campo"><label htmlFor="bp">Buscar por nombre o usuario</label><input id="bp" type="search" value={busca} onChange={(e) => setBusca(e.target.value)} /></div>}
     {v === "personas" && <div className="grilla-gente">{(halladas || personas).filter((p: any) => p.id !== yo).map((p: any) => <button key={p.id} className="persona" onClick={() => setVer(p)}><Avatar p={p} t={46} /><span className="q"><b>{p.nombre}</b><small>{p.carrera_texto || p.barrio || ""}</small></span></button>)}</div>}
     {v === "grupo" && <>
@@ -91,8 +110,15 @@ function Gente() {
       <div style={{ display: "flex", gap: 14, alignItems: "center" }}><Avatar p={ver} t={72} /><div><p className="chico">@{ver.usuario}</p>{ver.barrio && <p>{ver.barrio}</p>}{ver.ciudad_origen && <p className="expl">De {ver.ciudad_origen}</p>}</div></div>
       {ver.carrera_texto && <p><b>{ver.carrera_texto}</b>{ver.anio_cursada ? `, ${ver.anio_cursada}° año` : ""}</p>}
       {ver.bio && <p>{ver.bio}</p>}
-      <div className="fila"><button className="btn pri" onClick={() => dm(ver.id)}><Icono n="chat" />Mensaje</button>{ver.lat != null && <Link className="btn sec2" href={`/mapa?lat=${ver.lat}&lon=${ver.lon}&n=${encodeURIComponent("Casa de " + ver.nombre)}`}><Icono n="mapa" />Cómo llego</Link>}</div>
-      <button className="btn mal chico" onClick={async () => { await sb.from("bloqueos").insert({ perfil_id: yo, bloqueado_id: ver.id }); toast(`Bloqueaste a ${ver.nombre}. Ya no puede escribirte.`); setVer(null); }}>Bloquear</button>
+      {ver.trato === "nada" && <>
+        <p className="expl">Para escribirle tiene que aceptarte. Le podés contar quién sos.</p>
+        <div className="campo"><label htmlFor="pc1">Tu saludo (opcional)</label><textarea id="pc1" maxLength={200} value={pedido} onChange={(e) => setPedido(e.target.value)} /></div>
+        <button className="btn pri" onClick={() => pedirContacto(ver)}><Icono n="chat" />Pedir contacto</button>
+      </>}
+      {ver.trato === "enviada" && <p className="expl">Ya le pediste contacto. Si acepta, se abre la charla.</p>}
+      {ver.trato === "recibida" && <div className="fila"><button className="btn pri" onClick={() => responder(ver, true)}>Aceptar</button><button className="btn sec2" onClick={() => responder(ver, false)}>Rechazar</button></div>}
+      <div className="fila">{(!ver.trato || ver.trato === "libre") && <button className="btn pri" onClick={() => dm(ver.id)}><Icono n="chat" />Mensaje</button>}{ver.lat != null && <Link className="btn sec2" href={`/mapa?lat=${ver.lat}&lon=${ver.lon}&n=${encodeURIComponent("Casa de " + ver.nombre)}`}><Icono n="mapa" />Cómo llego</Link>}</div>
+      <Moderar persona={ver} alCambiar={() => s.recargar()} />
     </Hoja>}
     {nuevo && <Hoja titulo="Publicar en el grupo" cerrar={() => setN(false)}>
       <div className="chipera">{[["aviso", "Aviso"], ["pedido", "Pedido"], ["atajo", "Atajo"], ["lugar", "Lugar"]].map(([k, n]) => <button key={k} className="chip" aria-pressed={f.tipo === k} onClick={() => setF({ ...f, tipo: k })}>{n}</button>)}</div>

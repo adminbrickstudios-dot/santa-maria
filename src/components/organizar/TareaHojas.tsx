@@ -66,7 +66,7 @@ export function ListaHoja({ x, miembros, cerrar }: { x?: any; miembros: any[]; c
   const { perfil, personas, toast } = useSesion();
   const [nombre, setNombre] = useState(x?.nombre || ""), [emoji, setEmoji] = useState(x?.emoji || "📋");
   const [con, setCon] = useState<string[]>(x ? miembros.filter((m) => m.lista_id === x.id).map((m) => m.perfil_id) : []);
-  const mia = !x || x.perfil_id === perfil.id, otros = personas.filter((p: any) => p.id !== perfil.id);
+  const mia = !x || x.perfil_id === perfil.id, otros = personas.filter((p: any) => p.id !== perfil.id && (!p.trato || p.trato === "libre"));
   const avisar = () => window.dispatchEvent(new Event("sm-tareas"));
   async function guardar() {
     if (!nombre.trim()) return toast("Ponele un nombre.");

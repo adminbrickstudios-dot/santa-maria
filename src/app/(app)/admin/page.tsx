@@ -7,16 +7,34 @@ import { Avatar } from "@/components/Avatar";
 import { Icono } from "@/components/Icono";
 
 const PANT: [string, string][] = [["mapa", "Mapa"], ["guia", "Guía"], ["facu", "Facu"], ["gente", "Gente"], ["cuentas", "Cuentas compartidas"], ["apuntes", "Apuntes"], ["carreras", "Carreras"]];
+const MOTIVO: Record<string, string> = { acoso: "Molesta o acosa", spam: "Spam o publicidad", contenido: "Contenido ofensivo", suplantacion: "Se hace pasar por otra persona", otro: "Otra cosa" };
 export default function Admin() {
   const { perfil, grupo, recargar, toast } = useSesion();
-  const [l, setL] = useState<any[]>([]), [mails, setM] = useState<Record<string, string>>({});
-  const cargar = useCallback(async () => { const { data } = await sb.rpc("admin_cuentas"); setL(data || []); }, []);
+  const [l, setL] = useState<any[]>([]), [mails, setM] = useState<Record<string, string>>({}), [den, setDen] = useState<any[]>([]);
+  const cargar = useCallback(async () => {
+    const [a, b] = await Promise.all([sb.rpc("admin_cuentas"), sb.rpc("admin_denuncias")]);
+    setL(a.data || []); setDen(b.data || []);
+  }, []);
   useEffect(() => { if (perfil.rol === "admin") cargar(); }, [perfil.rol, cargar]);
   if (perfil.rol !== "admin") return <div className="pagina"><p className="expl">Esta pantalla es para quien administra el grupo.</p></div>;
+  async function resolver(id: number, estado: string) {
+    const { error } = await sb.rpc("admin_resolver_denuncia", { p_id: id, p_estado: estado });
+    if (error) return toast("No pude guardarlo.");
+    setDen((x) => x.filter((d) => d.id !== id));
+  }
   async function pantalla(k: string) { const p = { ...grupo.pantallas, [k]: grupo.pantallas?.[k] === false }; await sb.from("grupos").update({ pantallas: p }).eq("id", grupo.id); recargar(); }
   return <div className="pagina">
     <h2 className="titulo">Administrar</h2>
     <div className="tarjeta"><h3>Código para sumarse a {grupo.nombre}</h3><p className="titulo-m" style={{ userSelect: "all" }}>{grupo.codigo_invitacion}</p><p className="expl">Quien crea una cuenta con este código entra a tu grupo.</p></div>
+    <h3 className="sec">Denuncias</h3>
+    <p className="expl">Lo que contó quien denunció. Los mensajes no se pueden leer ni desde acá.</p>
+    {den.length ? den.map((d) => <div key={d.id} className="tarjeta">
+      <h3>@{d.denunciado_usuario || "cuenta borrada"}{Number(d.abiertas) > 1 ? `, ${d.abiertas} denuncias` : ""}</h3>
+      <p><b>{MOTIVO[d.motivo] || d.motivo}</b></p>
+      {d.detalle && <p>{d.detalle}</p>}
+      <p className="chico">De @{d.denunciante_usuario || "cuenta borrada"}</p>
+      <div className="fila"><button className="btn sec2 chico" onClick={() => resolver(d.id, "revisada")}>Ya la revisé</button><button className="btn sec2 chico" onClick={() => resolver(d.id, "descartada")}>Descartar</button></div>
+    </div>) : <p className="expl">No hay denuncias abiertas.</p>}
     <h3 className="sec">Pantallas del grupo</h3>
     <div className="lista">{PANT.map(([k, n]) => { const on = grupo.pantallas?.[k] !== false; return <button key={k} className="item" role="switch" aria-checked={on} onClick={() => pantalla(k)}><span className="q"><b>{n}</b></span><span className="ic" style={{ color: on ? "var(--ok)" : "var(--tinta3)" }}><Icono n={on ? "ok" : "x"} /></span></button>; })}</div>
     <h3 className="sec">Cuentas</h3>
