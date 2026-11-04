@@ -74,8 +74,9 @@ export function Marco({ children }: { children: React.ReactNode }) {
     if (red?.saveData || /2g/.test(red?.effectiveType || "")) return;
     let i = 0, id: any = 0, fin = false;
     const pedir = (f: () => void) => ("requestIdleCallback" in window ? requestIdleCallback(f, { timeout: 1500 }) : setTimeout(f, 300));
-    const sig = () => { if (fin || i >= PRINCIPALES.length) return; const h = PRINCIPALES[i++]; if (h !== location.pathname) r.prefetch(h); id = pedir(sig); };
-    id = setTimeout(sig, 700);
+    /* De a una y con aire entre medio: si no, compiten con la primera carga y traban justo cuando la persona empieza a tocar */
+    const sig = () => { if (fin || i >= PRINCIPALES.length) return; const h = PRINCIPALES[i++]; if (h !== location.pathname) r.prefetch(h); id = setTimeout(() => pedir(sig), 450); };
+    id = setTimeout(() => pedir(sig), 2200);
     return () => { fin = true; clearTimeout(id); };
   }, [r]);
   /* La pantalla nueva entra con transform y opacity: si el navegador hace View Transitions lo resuelve él, y si no, esto */
