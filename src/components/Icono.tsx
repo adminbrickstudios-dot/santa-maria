@@ -40,6 +40,20 @@ const P: Record<string, string> = {
   link: '<path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.700l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.700l1-1"/>',
   admin: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4"/>',
   instalar: '<rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M12 7v7M9 11.500l3 3 3-3"/>',
+  billetera: '<path d="M4 7.5A2.500 2.500 0 016.5 5H18v3M4 7.5V17a3 3 0 003 3h13V8H6.500A2.500 2.500 0 014 7.500zM16.500 14h.01"/>',
+  mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>',
+  teclado: '<rect x="2.500" y="6" width="19" height="12" rx="2.500"/><path d="M6.500 10h.01M10 10h.01M14 10h.01M17.500 10h.01M7 14h10"/>',
+  repetir: '<path d="M4 11V9a3 3 0 013-3h12l-3-3M20 13v2a3 3 0 01-3 3H5l3 3"/>',
+  pin: '<path d="M12 21s7-6.500 7-12a7 7 0 10-14 0c0 5.500 7 12 7 12z"/><circle cx="12" cy="9" r="2.500"/>',
+  adjunto: '<path d="M20 11.500l-8.500 8.500a5 5 0 01-7-7L13 4.500a3.300 3.300 0 014.700 4.700L9.500 17.500a1.600 1.600 0 01-2.300-2.300L15 7.500"/>',
+  grafico: '<path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/>',
+  fuego: '<path d="M12 3s5 4.500 5 10a5 5 0 01-10 0c0-1.800.8-3.200 1.700-4.200C9 11 10.500 11 10.500 9c0-2.500 1.500-6 1.500-6z"/>',
+  papelera: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>',
+  lapiz: '<path d="M4 20l1-4L16.500 4.500a2 2 0 013 3L8 19zM14.500 6.500l3 3"/>',
+  compartir: '<path d="M12 15V4M8 7.500L12 4l4 3.500M5 12v7a1 1 0 001 1h12a1 1 0 001-1v-7"/>',
+  capas: '<path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/>',
+  tres: '<circle cx="5" cy="12" r="1.700" fill="currentColor"/><circle cx="12" cy="12" r="1.700" fill="currentColor"/><circle cx="19" cy="12" r="1.700" fill="currentColor"/>',
+  chevron: '<path d="M9 5l7 7-7 7"/>',
 };
 export function Icono({ n, t = 24, g = 2 }: { n: string; t?: number; g?: number }) {
   return (

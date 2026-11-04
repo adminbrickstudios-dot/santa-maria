@@ -17,6 +17,7 @@ export function crearDemo() {
     order(k: string, o?: any) { this.ord.push([k, o?.ascending !== false]); return this; }
     limit(n: number) { this.lim = n; return this; }
     single() { this.uno = true; return this; }
+    maybeSingle() { this.uno = true; return this; }
     insert(o: any) { this.op = "insert"; this.dato = o; return this; }
     update(o: any) { this.op = "update"; this.dato = o; return this; }
     upsert(o: any) { this.op = "upsert"; this.dato = o; return this; }
@@ -55,7 +56,7 @@ export function crearDemo() {
       return { data: null };
     },
     auth: {
-      async getSession() { const u = yo(); return { data: { session: u ? { user: { id: u }, access_token: "demo" } : null } }; },
+      async getSession() { if (!yo() && process.env.NEXT_PUBLIC_DEMO_AUTO) { const d = await carga(); localStorage.setItem("demo-yo", d.perfiles[0].id); } const u = yo(); return { data: { session: u ? { user: { id: u }, access_token: "demo" } : null } }; },
       async signInWithPassword({ email, password }: any) {
         const d = await carga(), p = d.perfiles.find((x: any) => email.startsWith(x.usuario + "@"));
         if (!p || password !== "12345678") return { error: { message: "no" } };
@@ -67,6 +68,6 @@ export function crearDemo() {
     },
     channel() { const c: any = { on: () => c, subscribe: () => c }; return c; },
     removeChannel() {},
-    storage: { from: () => ({ upload: async () => ({ error: null }), getPublicUrl: () => ({ data: { publicUrl: "" } }) }) },
+    storage: { from: () => ({ upload: async () => ({ error: null }), getPublicUrl: () => ({ data: { publicUrl: "" } }), createSignedUrl: async () => ({ data: null }), remove: async () => ({}) }) },
   };
 }

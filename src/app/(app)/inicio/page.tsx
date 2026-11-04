@@ -1,165 +1,96 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { useSesion } from "@/lib/sesion";
 import { sb } from "@/lib/sb";
 import { Icono } from "@/components/Icono";
-import { ItemGuia } from "@/components/ItemGuia";
-import { ahoraBA, aMin, delDia, DIAS, faltan, fechaLarga, hhmm, horaDe, pesos } from "@/lib/util";
-import { INTERESES } from "@/lib/intereses";
+import { abrirCaptura } from "@/components/Captura";
+import { DibuBilletera, DibuCalendario, DibuLibro, DibuMapa, IconoCielo } from "@/components/Animados";
+import { aMin, ahoraBA, DIAS, faltan, pesos, MESES } from "@/lib/util";
 import { activarPush, estaInstalada, pushSoportado } from "@/lib/push";
+import { cieloDe, FONDO, useClima } from "@/lib/clima";
 
-const WIDGETS: [string, string][] = [["hoy", "Tu día"], ["avisos", "Avisos de la app"], ["clima", "Clima y dólar"], ["fechas", "Próximas fechas"], ["juntada", "Próxima juntada"], ["paravos", "Para vos"], ["descuento", "Descuento de hoy"], ["tip", "Dato porteño del día"], ["primermes", "Primer mes en Buenos Aires"], ["accesos", "Accesos rápidos"]];
-const CLIMA: Record<number, string> = { 0: "Despejado", 1: "Casi despejado", 2: "Algo nublado", 3: "Nublado", 45: "Niebla", 48: "Niebla", 51: "Llovizna", 53: "Llovizna", 55: "Llovizna", 61: "Lluvia", 63: "Lluvia", 65: "Lluvia fuerte", 80: "Chaparrones", 81: "Chaparrones", 82: "Chaparrones fuertes", 95: "Tormenta", 96: "Tormenta", 99: "Tormenta" };
-const DIAS_ET = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+/* Recorte del mapa chico: tiene que coincidir con scripts/mapa-mini.py */
+const MINI = { o: -58.4465, e: -58.3485, n: -34.5725, s: -34.6225 };
+const px = (lon: number) => `${((lon - MINI.o) / (MINI.e - MINI.o)) * 100}%`;
+const py = (lat: number) => `${((MINI.n - lat) / (MINI.n - MINI.s)) * 100}%`;
+const dentro = (lat: number, lon: number) => lon > MINI.o && lon < MINI.e && lat < MINI.n && lat > MINI.s;
 
-function Hoy() {
-  const { perfil, lugares } = useSesion();
-  const [c, setC] = useState<any>(null), [cal, setCal] = useState<string>("");
-  const hoy = ahoraBA(), ahora = hoy.getHours() * 60 + hoy.getMinutes();
-  useEffect(() => {
-    (async () => {
-      const { data } = await sb.from("clases").select("*, materias(nombre,color)").order("hora_inicio");
-      const l = data || [];
-      for (let i = 0; i < 7; i++) {
-        const d = (hoy.getDay() + i) % 7;
-        const x = l.find((k: any) => k.dia === d && (i > 0 || aMin(k.hora_inicio) > ahora));
-        if (x) { setC({ ...x, en: i }); return; }
-      }
-      setC(false);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  useEffect(() => {
-    if (!c || c.en > 1 || perfil.casa_lat == null) return;
-    (async () => {
-      const m = await import("@/lib/mapa/vista");
-      await m.cargarDatosMapa();
-      const lugar = lugares.find((x: any) => x.id === c.lugar_id) || lugares.find((x: any) => x.destacado);
-      if (!lugar) return;
-      const entra = aMin(c.hora_inicio), dd = (hoy.getDay() + c.en) % 7;
-      const ctx = { dia: dd === 0 ? "dom" : dd === 6 ? "sab" : "hab", min: Math.max(0, entra - 40), lluvia: false };
-      const p = m.planificar({ nombre: "Tu casa", x: m.wx(perfil.casa_lon), y: m.wy(perfil.casa_lat) }, { nombre: lugar.nombre, x: m.wx(lugar.lon), y: m.wy(lugar.lat) }, ctx);
-      const op = p.ops.filter((o: any) => o.tipo === "bus" || o.tipo === "subte" || o.tipo === "pie").sort((a: any, b: any) => a.dMax - b.dMax)[0];
-      if (op) setCal(`Salí a las ${hhmm(entra - op.dMax - 5)} · ${op.titulo === "A pie" ? "a pie" : op.titulo}`);
-    })().catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [c]);
-  if (c === null) return null;
-  if (!c) return <Link href="/facu" className="grande"><Icono n="calendario" /><span className="q"><b>Armá tu horario</b><small>Cargá tus materias y te digo a qué hora salir.</small></span><Icono n="flecha" /></Link>;
-  return <Link href="/facu" className="grande"><Icono n="reloj" /><span className="q"><b>{cal || `${c.hora_inicio.slice(0, 5)} ${c.materias?.nombre}`}</b><small>{c.en === 0 ? "Hoy" : c.en === 1 ? "Mañana" : DIAS[(hoy.getDay() + c.en) % 7]} a las {c.hora_inicio.slice(0, 5)}: {c.materias?.nombre}{c.aula ? `, aula ${c.aula}` : ""}</small></span><Icono n="flecha" /></Link>;
+function ClimaBoton() {
+  const w = useClima();
+  if (!w) return <span className="clima-b" style={{ opacity: 0 }} aria-hidden="true" />;
+  const c = cieloDe(w.current.weather_code, w.current.is_day), f = FONDO[c];
+  return <Link href="/clima" className="clima-b" aria-label={`Clima: ${Math.round(w.current.temperature_2m)} grados. Ver pronóstico`} style={{ "--c-fondo": f.b, "--c-sombra": f.s } as React.CSSProperties}><IconoCielo c={c} />{Math.round(w.current.temperature_2m)}°</Link>;
 }
-function ClimaDolar() {
-  const [w, setW] = useState<any>(null), [d, setD] = useState<any>(null);
-  useEffect(() => {
-    fetch("https://api.open-meteo.com/v1/forecast?latitude=-34.6&longitude=-58.42&current=temperature_2m,weather_code&daily=precipitation_probability_max,temperature_2m_max,temperature_2m_min&timezone=America%2FArgentina%2FBuenos_Aires&forecast_days=1").then((r) => r.json()).then(setW).catch(() => {});
-    fetch("https://dolarapi.com/v1/dolares").then((r) => r.json()).then(setD).catch(() => {});
-  }, []);
-  const blue = Array.isArray(d) ? d.find((x: any) => x.casa === "blue") : null, of = Array.isArray(d) ? d.find((x: any) => x.casa === "oficial") : null;
-  if (!w && !blue) return null;
-  const ll = w?.daily?.precipitation_probability_max?.[0];
-  return <div className="dos">
-    {w && <div className="mini"><span className="et"><Icono n="clima" t={16} />Clima</span><b>{Math.round(w.current.temperature_2m)}°</b><small>{CLIMA[w.current.weather_code] || "Variable"}. {Math.round(w.daily.temperature_2m_min[0])}° a {Math.round(w.daily.temperature_2m_max[0])}°{ll >= 40 ? `. ${ll}% de lluvia: llevá paraguas` : ""}</small></div>}
-    {blue && <div className="mini"><span className="et"><Icono n="dolar" t={16} />Dólar</span><b>{pesos(blue.venta)}</b><small>Blue. Oficial {of ? pesos(of.venta) : ""}</small></div>}
-  </div>;
+function MapaChico() {
+  const { perfil, personas, lugares } = useSesion();
+  const u = lugares.find((x: any) => x.destacado);
+  const amigos = personas.filter((p: any) => p.id !== perfil.id && p.lat != null && dentro(p.lat, p.lon));
+  return <Link href="/mapa" className="mapa-chico" aria-label="Abrir el mapa completo">
+    {amigos.map((p: any) => <i key={p.id} className="mc-amigo" style={{ left: px(p.lon), top: py(p.lat), background: p.color }} />)}
+    {u && dentro(u.lat, u.lon) && <span className="mc-facu" style={{ left: px(u.lon), top: py(u.lat) }}><Icono n="pin" t={24} g={2.4} /></span>}
+    {perfil.casa_lat != null && dentro(perfil.casa_lat, perfil.casa_lon) && <i className="mc-yo" style={{ left: px(perfil.casa_lon), top: py(perfil.casa_lat) }} />}
+    <span className="mc-buscar"><Icono n="lupa" t={19} g={2.6} />¿A dónde vas?</span>
+  </Link>;
 }
-function Fechas() {
-  const [l, setL] = useState<any[]>([]);
-  useEffect(() => { sb.from("eventos").select("*").eq("hecho", false).gte("fecha", new Date().toISOString()).order("fecha").limit(3).then(({ data }: any) => setL(data || [])); }, []);
-  if (!l.length) return null;
-  return <div className="lista">{l.map((e) => <Link key={e.id} href="/facu?v=fechas" className="item"><span className="ic"><Icono n="calendario" /></span><span className="q"><b>{e.titulo}</b><small>{fechaLarga(e.fecha)}</small></span><span className="v">{faltan(e.fecha)}</span></Link>)}</div>;
+/* Un toque abre, dos toques anota rápido */
+function Gordo({ clase, n, href, titulo, sub, dibu, doble }: { clase: string; n: number; href: string; titulo: string; sub?: string; dibu: React.ReactNode; doble?: () => void }) {
+  const r = useRouter(), t = useRef<any>(null);
+  function clic() {
+    if (!doble) return r.push(href);
+    if (t.current) { clearTimeout(t.current); t.current = null; navigator.vibrate?.(12); return doble(); }
+    t.current = setTimeout(() => { t.current = null; r.push(href); }, 240);
+  }
+  return <button className={`gordo ${clase}`} style={{ "--n": n } as React.CSSProperties} onClick={clic} onPointerEnter={() => r.prefetch(href)}>{dibu}<b>{titulo}</b><small>{sub || " "}</small></button>;
 }
-function Juntada() {
-  const [j, setJ] = useState<any>(null);
-  useEffect(() => { sb.from("juntadas").select("*").gte("cuando", new Date().toISOString()).order("cuando").limit(1).then(({ data }: any) => setJ(data?.[0] || null)); }, []);
-  if (!j) return null;
-  return <Link href="/gente/juntadas" className="item tarjeta" style={{ display: "flex" }}><span className="ic"><Icono n="gente" /></span><span className="q"><b>{j.titulo}</b><small>{fechaLarga(j.cuando)} {horaDe(j.cuando)}{j.lugar_nombre ? ` · ${j.lugar_nombre}` : ""}</small></span></Link>;
-}
-function Descuento({ abrir }: { abrir: (i: any) => void }) {
-  const [i, setI] = useState<any>(null);
-  useEffect(() => {
-    const dia = DIAS_ET[ahoraBA().getDay()];
-    sb.from("guia_items").select("*").eq("seccion", "descuentos").contains("etiquetas", [dia]).limit(20).then(async ({ data }: any) => {
-      let l = data || [];
-      if (!l.length) { const r = await sb.from("guia_items").select("*").eq("seccion", "descuentos").limit(30); l = r.data || []; }
-      setI(delDia(l) || null);
-    });
-  }, []);
-  if (!i) return null;
-  return <button className="tarjeta" style={{ textAlign: "left" }} onClick={() => abrir(i)}><h3><Icono n="regalo" t={20} />Hoy te conviene</h3><p><b>{i.titulo}</b>{i.dato ? `: ${i.dato}` : ""}</p>{i.bajada && <p className="expl">{i.bajada}</p>}</button>;
-}
-function Tip({ abrir }: { abrir: (i: any) => void }) {
-  const [i, setI] = useState<any>(null);
-  useEffect(() => { sb.from("guia_items").select("*").eq("seccion", "secretos").limit(200).then(({ data }: any) => setI(delDia(data || []) || null)); }, []);
-  if (!i) return null;
-  return <button className="tarjeta" style={{ textAlign: "left" }} onClick={() => abrir(i)}><h3><Icono n="idea" t={20} />Dato porteño</h3><p><b>{i.titulo}</b></p>{i.bajada && <p className="expl">{i.bajada}</p>}</button>;
-}
-function ParaVos({ abrir }: { abrir: (i: any) => void }) {
+function useResumen() {
+  const [ag, setAg] = useState(""), [pl, setPl] = useState(""), [cl, setCl] = useState("");
   const { perfil } = useSesion();
-  const [l, setL] = useState<any[]>([]);
   useEffect(() => {
-    const ints: string[] = perfil.preferencias?.intereses?.length ? perfil.preferencias.intereses : Object.keys(INTERESES);
-    const secs = ints.map((k) => INTERESES[k]?.seccion).filter(Boolean);
-    sb.from("guia_items").select("*").in("seccion", secs).limit(300).then(({ data }: any) => {
-      let v: any[] = data || [];
-      const la = perfil.casa_lat, lo = perfil.casa_lon;
-      const d = (i: any) => (i.lat == null || la == null ? 9 : Math.hypot((i.lat - la) * 111, (i.lon - lo) * 92));
-      const cerca = v.filter((i) => d(i) < 2);
-      if (cerca.length >= 6) v = cerca;
-      const base = ahoraBA().getDate(), o = [...v].sort((a, b) => ((a.id * 7 + base) % 13) - ((b.id * 7 + base) % 13));
-      const vistos = new Set<string>(), r: any[] = [];
-      for (const i of o) { if (!vistos.has(i.seccion)) { vistos.add(i.seccion); r.push(i); } if (r.length === 3) break; }
-      setL(r);
+    sb.from("eventos").select("titulo,fecha").eq("hecho", false).gte("fecha", new Date().toISOString()).order("fecha").limit(1).then(({ data }: any) => {
+      const e = data?.[0]; setAg(e ? `${e.titulo}, ${faltan(e.fecha)}` : "Tocá dos veces para sumar algo");
     });
-  }, [perfil]);
-  if (!l.length) return null;
-  return <div style={{ display: "grid", gap: 8 }}><h3 className="sec">Para vos</h3><div className="lista">{l.map((i) => <button key={i.id} className="item" onClick={() => abrir(i)}><span className="ic"><Icono n="estrella" t={20} /></span><span className="q"><b>{i.titulo}</b><small>{i.dato || i.bajada}</small></span></button>)}</div></div>;
+    const h = ahoraBA(), ini = `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, "0")}-01`;
+    sb.from("movimientos").select("tipo,monto").gte("fecha", ini).then(({ data }: any) => {
+      const l = data || [], g = l.filter((m: any) => m.tipo === "gasto").reduce((a: number, m: any) => a + +m.monto, 0), lim = +(perfil.preferencias?.presupuesto || 0);
+      setPl(!l.length ? "Tocá dos veces para anotar" : lim ? `Te quedan ${pesos(Math.max(0, lim - g))}` : `Gastaste ${pesos(g)} este mes`);
+    });
+    sb.from("clases").select("hora_inicio,dia,materias(nombre)").order("hora_inicio").then(({ data }: any) => {
+      const l = data || [], d = h.getDay(), m = h.getHours() * 60 + h.getMinutes();
+      for (let i = 0; i < 7; i++) {
+        const x = l.find((k: any) => k.dia === (d + i) % 7 && (i > 0 || aMin(k.hora_inicio) > m));
+        if (x) { setCl(`${i === 0 ? "Hoy" : i === 1 ? "Mañana" : DIAS[(d + i) % 7]} ${x.hora_inicio.slice(0, 5)}: ${x.materias?.nombre}`); return; }
+      }
+      setCl("Materias, clases y apuntes");
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return { ag, pl, cl };
 }
 function Avisos() {
   const { perfil, toast } = useSesion();
   const [p, setP] = useState(false), [ins, setIns] = useState(false);
   useEffect(() => { setP(pushSoportado() && Notification.permission === "default"); setIns(!estaInstalada()); }, []);
-  if (ins) return <Link href="/instalar" className="tarjeta" style={{ display: "flex", gap: 10, alignItems: "center" }}><Icono n="instalar" /><span style={{ flex: 1 }}><b>Instalá la app</b><br /><span className="expl">Queda con su ícono en tu celular</span></span><Icono n="flecha" t={20} /></Link>;
-  if (p) return <button className="tarjeta" style={{ display: "flex", gap: 10, alignItems: "center", textAlign: "left" }} onClick={async () => { const r = await activarPush(perfil.id); setP(false); toast(r === "ok" ? "Listo, te van a llegar al celular." : "No se activaron."); }}><Icono n="campana" /><span style={{ flex: 1 }}><b>Activá las notificaciones</b><br /><span className="expl">Para enterarte de mensajes y juntadas</span></span></button>;
+  if (ins) return <Link href="/instalar" className="mas-largo"><Icono n="instalar" t={20} /><span>Instalá la app en tu celular</span><Icono n="chevron" t={18} /></Link>;
+  if (p) return <button className="mas-largo" onClick={async () => { const r = await activarPush(perfil.id); setP(false); toast(r === "ok" ? "Listo, te van a llegar al celular." : "No se activaron."); }}><Icono n="campana" t={20} /><span>Activá las notificaciones</span><Icono n="chevron" t={18} /></button>;
   return null;
 }
-function Rapido() {
-  const [a, setA] = useState(false);
-  const ops = [["/plata?nuevo=1", "plata", "Gasto"], ["/facu?v=fechas&nuevo=1", "calendario", "Fecha"], ["/gente/juntadas?nuevo=1", "gente", "Juntada"], ["/gente?v=grupo&nuevo=1", "chat", "Aviso"]];
-  return <div className="rapido">{a && <div className="rapido-m">{ops.map(([h, ic, n], i) => <Link key={n} href={h} className="rapido-o" style={{ animationDelay: `${i * 35}ms` }}><Icono n={ic} t={20} />{n}</Link>)}</div>}<button className="rapido-b" aria-label="Sumar algo rápido" aria-expanded={a} onClick={() => setA(!a)} style={{ transform: a ? "rotate(45deg)" : "none" }}><Icono n="mas" t={28} g={2.6} /></button></div>;
-}
-function PrimerMes() {
-  const [t, setT] = useState<[number, number] | null>(null);
-  useEffect(() => {
-    (async () => {
-      const [{ count: tot }, { data: h }] = await Promise.all([
-        sb.from("guia_items").select("id", { count: "exact", head: true }).eq("seccion", "primer-mes"),
-        sb.from("progreso_items").select("item_id, guia_items!inner(seccion)").eq("guia_items.seccion", "primer-mes"),
-      ]);
-      setT([h?.length || 0, tot || 0]);
-    })();
-  }, []);
-  if (!t || !t[1] || t[0] >= t[1]) return null;
-  return <Link href="/guia/primer-mes" className="tarjeta"><h3><Icono n="tilde" t={20} />Tu primer mes: {t[0]} de {t[1]}</h3><div className="barrita"><i style={{ width: `${(t[0] / t[1]) * 100}%` }} /></div></Link>;
-}
-function Accesos() {
-  const { lugares } = useSesion();
-  const u = lugares.find((x: any) => x.destacado);
-  const a = [[u ? `/mapa?lat=${u.lat}&lon=${u.lon}&n=${encodeURIComponent(u.nombre)}` : "/mapa", "facu", "A la facu"], ["/guia/emergencias", "sirena", "Emergencias"], ["/guia/descuentos", "regalo", "Descuentos"], ["/plata", "plata", "Mi plata"]];
-  return <div className="dos">{a.map(([h, ic, n]) => <Link key={n} href={h} className="mini" style={{ minHeight: 76 }}><Icono n={ic} /><strong>{n}</strong></Link>)}</div>;
-}
 export default function Inicio() {
-  const { perfil } = useSesion();
-  const [item, setItem] = useState<any>(null);
-  const h = ahoraBA().getHours(), sal = h < 6 ? "Buenas noches" : h < 13 ? "Buen día" : h < 20 ? "Buenas tardes" : "Buenas noches";
-  const orden: string[] = [...(perfil.preferencias?.inicio || []), ...WIDGETS.map((w) => w[0]).filter((k) => !(perfil.preferencias?.inicio || []).includes(k))];
-  const oculto: string[] = perfil.preferencias?.inicio_oculto || [];
-  const M: Record<string, React.ReactNode> = { hoy: <Hoy />, clima: <ClimaDolar />, fechas: <Fechas />, juntada: <Juntada />, avisos: <Avisos />, paravos: <ParaVos abrir={setItem} />, descuento: <Descuento abrir={setItem} />, tip: <Tip abrir={setItem} />, primermes: <PrimerMes />, accesos: <Accesos /> };
+  const { perfil, pantalla } = useSesion();
+  const h = ahoraBA(), hr = h.getHours(), sal = hr < 6 ? "Buenas noches" : hr < 13 ? "Buen día" : hr < 20 ? "Buenas tardes" : "Buenas noches";
+  const { ag, pl, cl } = useResumen();
   return <div className="pagina">
-    <h2 className="titulo">{sal}, {perfil.nombre.split(" ")[0]}</h2>
-    {orden.filter((k) => !oculto.includes(k) && M[k]).map((k) => <div key={k}>{M[k]}</div>)}
-    {item && <ItemGuia item={item} cerrar={() => setItem(null)} />}
-    <Rapido />
+    <div className="saludo"><h2>{sal}, {perfil.nombre.split(" ")[0]}</h2><ClimaBoton /></div>
+    {pantalla("mapa") && <MapaChico />}
+    <div className="cuatro">
+      <Gordo clase="g-agenda" n={0} href="/agenda" titulo="Agenda" sub={ag} dibu={<DibuCalendario dia={h.getDate()} mes={MESES[h.getMonth()].slice(0, 3).toUpperCase()} />} doble={() => abrirCaptura("agenda")} />
+      <Gordo clase="g-plata" n={1} href="/billetera" titulo="Billetera" sub={pl} dibu={<DibuBilletera />} doble={() => abrirCaptura("plata")} />
+      <Gordo clase="g-mapa" n={2} href="/mapa" titulo="Mapa" sub="Cómo llegar a todos lados" dibu={<DibuMapa />} />
+      <Gordo clase="g-estudio" n={3} href="/facu" titulo="Estudio y horarios" sub={cl} dibu={<DibuLibro />} />
+    </div>
+    <Link href="/mas" className="mas-largo"><span>Más</span><span className="ptos" style={{ flex: "none" }}><i style={{ "--c": "#10B765" } as React.CSSProperties} /><i style={{ "--c": "#FFB400" } as React.CSSProperties} /><i style={{ "--c": "#7C5CFC" } as React.CSSProperties} /></span><Icono n="chevron" t={18} /></Link>
+    <Avisos />
   </div>;
 }

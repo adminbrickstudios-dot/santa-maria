@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSesion } from "@/lib/sesion";
 import { sb } from "@/lib/sb";
 import { montarMapa, desmontarMapa } from "@/lib/mapa/vista";
+import "maplibre-gl/dist/maplibre-gl.css";
 
 function Mapa() {
   const ref = useRef<HTMLDivElement>(null), s = useSesion(), q = useSearchParams(), r = useRouter();
