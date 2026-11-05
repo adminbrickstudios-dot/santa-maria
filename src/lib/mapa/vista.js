@@ -1,7 +1,7 @@
 // @ts-nocheck
 /* El mapa: plano, rutas, cerca, juntada, explorar y herramientas. Se monta sobre un div.
    El mapa aparece primero y los datos llegan después, desde un Worker: nada espera a nada. */
-import {G,T,L,wx,wy,alon,alat,sinTilde,perfil,dijkstra,semillas,franja,frecuencia,subteFrec,km,cuadras,planificar,geocodificar,barrioDe,esquinaDe,nomParada,centroCalle,VBUS,FRANJA} from './motor';
+import {T,L,wx,wy,alon,alat,sinTilde,perfil,dijkstra,semillas,franja,frecuencia,subteFrec,km,cuadras,planificar,geocodificar,barrioDe,esquinaDe,nomParada,centroCalle,VBUS,FRANJA} from './motor';
 import {cargarDatosMapa,enMotor,urlVerdes,urlPlano,datosEnMemoria} from './datos';
 import {svg,dibujarImagen,RATIO_IMAGEN} from './iconos';
 import {fc,urlEstilo,estiloPlano,instalarCapas,CAPAS_TOQUE} from './estilo';
@@ -657,7 +657,6 @@ function vistaMedio(){
 }
 
 /* ───── Filtros tipo ficha ───── */
-const CACHE_F={k:'',l:[]};
 function itemsFicha(){
   const f=ficha(S.filtro);if(!f)return [];
   const l=[];
@@ -675,7 +674,6 @@ function pintarFichaEnMapa(){
   const ic=`bg|${f.col}|${f.ic}`;
   poner('pois',fc(l.map((q,i)=>{PTS.set('i'+i,{nombre:q.n,x:q.x,y:q.y,tipo:'poi',sub:q.d,h:q.h});return punto(q.x,q.y,{id:'i'+i,ic});})),sig);
 }
-let tFicha=null;
 async function actualizarFicha(){
   const f=S.filtro&&ficha(S.filtro);if(!f||!f.osm||!mapa)return;
   if(mapa.getZoom()<12.5){S.estadoFicha='lejos';if(!S.herr&&!S.buscando)render();return;}
@@ -695,7 +693,7 @@ function vistaFicha(){
   const cerca=l.map(q=>({...q,dist:Math.hypot(q.x-c.x,q.y-c.y)})).sort((p,q)=>p.dist-q.dist).slice(0,12);
   S.fichaLista=cerca;
   const e=S.estadoFicha;
-  return `<div class="ruta-cab"><div class="t">${esc(f.n)}<small>${l.length?`${l.length.toLocaleString('es-AR')} ${S.soloAbierto?'abiertos con horario cargado':'en esta zona'}`:''}</small></div><button class="ico-btn" data-a="ficha-fuera" aria-label="Sacar filtro">${svg('x',2.4)}</button></div>
+  return `<div class="ruta-cab"><div class="t">${esc(f.n)}<small>${l.length?`${l.length.toLocaleString('es-AR')} ${S.soloAbierto?'abiertos con horario cargado':'en el mapa'}`:''}</small></div><button class="ico-btn" data-a="ficha-fuera" aria-label="Sacar filtro">${svg('x',2.4)}</button></div>
   ${!hayDatos()&&f.local?avisoDatos():''}
   ${e==='cargando'?'<div class="m-carga-fila"><i></i><span>Buscando en OpenStreetMap…</span></div>':''}
   ${e==='lejos'?'<p class="expl">Acercá un poco el mapa para buscar en esta zona.</p>':''}
@@ -1135,7 +1133,7 @@ function hojaArrastrable(){
 export function desmontarMapa(){
   sesion++;
   if(controladores)controladores();controladores=null;
-  for(const t of [tEstilo,tSondeo,tCtx,tMueve,tTap,tBusca,tDatos,tFicha,tPoner,V.tLeer,V.tFin])clearTimeout(t);
+  for(const t of [tEstilo,tSondeo,tCtx,tMueve,tTap,tBusca,tDatos,tPoner,V.tLeer,V.tFin])clearTimeout(t);
   tTap=null;V.tLeer=null;
   if(V.comp)pararVivo();
   pararAlerta();if(U.off)U.off();U.off=null;U.modo=0;U.pos=null;apagarUbicacion();

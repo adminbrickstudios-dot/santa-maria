@@ -9,7 +9,7 @@
 .m-arriba>*{pointer-events:auto;min-width:0}
 .m-barra{display:flex;align-items:center;height:52px;border-radius:26px;background:var(--hoja);box-shadow:0 4px 16px -6px rgba(0,0,0,.35);padding:0 6px 0 16px;gap:8px}
 .m-lupa{flex:none;color:var(--tinta3);display:grid}.m-lupa svg{width:22px;height:22px}
-#m-buscar{flex:1;min-width:0;height:100%;border:0;background:none;outline:none;font:inherit;font-size:17px;font-weight:600;color:var(--tinta);-webkit-appearance:none;appearance:none}
+#m-buscar{flex:1;min-width:0;width:auto;height:100%;min-height:0;padding:0;border:0!important;border-radius:0;background:none!important;box-shadow:none!important;outline:none;font:inherit;font-size:17px;font-weight:600;color:var(--tinta);-webkit-appearance:none;appearance:none}
 #m-buscar::placeholder{color:var(--tinta2);font-weight:500}
 #m-buscar::-webkit-search-cancel-button{display:none}
 .m-barra button{flex:none;width:44px;height:44px;border-radius:22px;display:grid;place-items:center;color:var(--tinta)}
