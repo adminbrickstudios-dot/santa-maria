@@ -5,6 +5,7 @@ import { cieloEn, fechaEnHora } from "./cielo";
 import { Entrada } from "./entrada";
 import { DIV, crearOrigen, lonLatDeMundo, mundoDeLonLat } from "./geo";
 import { crearInterior, type Interior } from "./interior";
+import { Ambiente } from "./ambiente";
 import { crearAtlasHojas } from "./arboles";
 import { aplicarCielo, crearComunes, matCielo, matDisco, matEdificio, matFollaje, matProp, texturaBaldosa, texturaRuido } from "./materiales";
 import { Mundo, type Calidad } from "./mundo";
@@ -68,6 +69,8 @@ export class Motor {
   private proc: Procesador;
   mundo: Mundo;
   private trafico: Trafico;
+  private ambiente: Ambiente;
+  private lluvia = false;
   private entrada: Entrada;
   private o: ReturnType<typeof crearOrigen>;
   private nivel: number;
@@ -177,6 +180,7 @@ export class Motor {
       aviso: (m) => op.eventos.aviso(m),
     }, this.mats.prop);
     this.trafico = new Trafico(this.escena, this.mats.prop);
+    this.ambiente = new Ambiente(this.escena, this.mats.prop, this.comunes);
 
     this.entrada = new Entrada(this.renderer.domElement, {
       mirar: (dx, dy) => {
@@ -239,12 +243,24 @@ export class Motor {
 
   private ponerCielo() {
     const e = cieloEn(fechaEnHora(this.op.hora), this.op.lat, this.op.lon);
+    if (this.lluvia) {
+      /* Nublado: casi sin sol y con cielo gris parejo */
+      const g = (l: number[], k: number) => { const m = (l[0] + l[1] + l[2]) / 3; return l.map((v) => (v * 0.25 + m * 0.75) * k); };
+      e.cenit = g(e.horizonte, 0.5); e.horizonte = g(e.horizonte, 0.62); e.luzSol = e.luzSol.map((v) => v * 0.08); e.luzCielo = g(e.luzCielo, 1.15);
+    }
     aplicarCielo(this.comunes, e);
     this.elevacion = e.elevacion;
-    this.sombras.ponerSol(this.comunes.uSol.value, e.elevacion > 1.5);
+    this.sombras.ponerSol(this.comunes.uSol.value, e.elevacion > 1.5 && !this.lluvia);
   }
 
   setHora(h: number | null) { this.op.hora = h; this.ponerCielo(); }
+
+  /** Lluvia opcional: gotas, calle mojada y cielo cubierto. */
+  setLluvia(a: boolean) {
+    this.lluvia = a;
+    this.ambiente.setLluvia(a);
+    this.ponerCielo();
+  }
 
   setModo(m: ModoMarcha) { this.modo = m; }
 
@@ -475,6 +491,7 @@ export class Motor {
     this.disco.position.set(this.x, 0, this.z);
     const q = this.calidad();
     this.trafico.actualizar(dt, this.x, this.z, this.mundo, q, t);
+    this.ambiente.actualizar(dt, t, this.x, this.z, this.camara.position.y, this.mundo, this.nivel < 1);
     this.cerca(t);
     this.rumbo();
     if (t - this.tCalle > 0.4) {
@@ -526,6 +543,7 @@ export class Motor {
     this.proc.destruir();
     this.mundo.destruir();
     this.trafico.destruir();
+    this.ambiente.destruir();
     this.inter?.destruir();
     this.sombras.destruir();
     this.ruido.dispose();

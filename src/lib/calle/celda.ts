@@ -6,7 +6,7 @@ import { DIV, hash, hexARgb } from "./geo";
 import { BUCKET_EDIF, BUCKET_VIA, dentroDe, recortar, type Edif, type Poi, type TileDatos, type Via } from "./decodificar";
 import { M_CHAPA_TECHO, M_LOSA, M_MEDIANERA, M_PIZARRA, M_TEJA, M_TERRAZA, estiloDe, zonaDe, type Estilo } from "./fachada";
 import { singularesDe, type Bloque } from "./singulares";
-import { ALTO_VEREDA, armarMapa, distCalzada } from "./suelo";
+import { ALTO_VEREDA, armarMapa, distCalzada, distPared, distSenda } from "./suelo";
 import * as P from "./piezas";
 import type { Cartel, CeldaDatos, Local, LoteKit, LoteProp, Rubro, Singular, ViaTrafico } from "./tipos";
 
@@ -15,7 +15,8 @@ type C4 = readonly [number, number, number, number];
 
 /* Tipos de suelo: los mismos números que usa el shader */
 export const S_BASE = 0, S_PASTO = 1, S_PARQUE = 2, S_BOSQUE = 3, S_AGUA = 4, S_ARENA = 5, S_CANCHA = 6, S_JUEGOS = 7, S_CEMENTERIO = 8,
-  S_MARCA = 10, S_SOMBRA = 11, S_LUZ = 12, S_PARCHE = 13, S_ADOQUIN = 14, S_TAPA = 15, S_TIERRA = 16, S_BUS = 17, S_BICI = 18, S_BALASTO = 19, S_RIEL = 20;
+  S_CANIL = 9, S_MARCA = 10, S_SOMBRA = 11, S_LUZ = 12, S_PARCHE = 13, S_ADOQUIN = 14, S_TAPA = 15, S_TIERRA = 16, S_BUS = 17, S_BICI = 18, S_BALASTO = 19, S_RIEL = 20,
+  S_PLAYA = 21, S_PLAZA = 22, S_TERRENO = 23, S_RAMPA = 24, S_REJILLA = 25, S_CANTERO = 26;
 
 class Capa {
   pos: number[] = [];
@@ -208,6 +209,7 @@ function preparar(t: TileDatos): Preparado {
   return prep;
 }
 
+const PARED_LOTE: C3[] = [[196, 188, 170], [176, 170, 158], [204, 190, 160], [168, 160, 150], [190, 178, 164]];
 const PINTURAS = [[0.85, 0.86, 0.84], [0.17, 0.18, 0.21], [0.62, 0.65, 0.67], [0.6, 0.2, 0.18], [0.18, 0.34, 0.6], [0.91, 0.89, 0.85], [0.4, 0.44, 0.48], [0.1, 0.12, 0.14], [0.75, 0.77, 0.78], [0.3, 0.17, 0.15]];
 
 const ESPECIES: [RegExp, number][] = [[/tipu/i, P.A_TIPA], [/jacaranda/i, P.A_JACARANDA], [/ficus/i, P.A_GOMERO], [/phoenix|palm|syagrus|washingtonia/i, P.A_PALMERA], [/ceiba|chorisia/i, P.A_PALO_BORRACHO], [/fraxinus|fresno/i, P.A_FRESNO], [/platanus|plátano|platano/i, P.A_PLATANO]];
@@ -218,7 +220,7 @@ const especieDe = (d: string, sem: number) => {
 
 const PROP_OBJ: Record<string, number> = {
   banco: P.P_BANCO, cesto: P.P_CESTO, contenedor: P.P_CONTENEDOR, reciclado: P.P_RECICLADO, fuente: P.P_FUENTE, bicis: P.P_BICIS, ecobici: P.P_ECOBICI, buzon: P.P_BUZON, telefono: P.P_TELEFONO,
-  subte: P.P_SUBTE, arte: P.P_ESTATUA, monumento: P.P_ESTATUA, hidrante: P.P_HIDRANTE, gabinete: P.P_GABINETE, bolardo: P.P_BOLARDO, cajero: P.P_CAJERO, bebedero: P.P_BEBEDERO, reloj: P.P_RELOJ, farola: P.P_FAROL_PLAZA, parada: P.P_PARADA,
+  posta: P.P_POSTA, mesa: P.P_MESA, maceta: P.P_MACETA, publicidad: P.P_PUBLICIDAD, subte: P.P_SUBTE, arte: P.P_ESTATUA, monumento: P.P_ESTATUA, hidrante: P.P_HIDRANTE, gabinete: P.P_GABINETE, bolardo: P.P_BOLARDO, cajero: P.P_CAJERO, bebedero: P.P_BEBEDERO, reloj: P.P_RELOJ, farola: P.P_FAROL_PLAZA, parada: P.P_PARADA,
 };
 
 export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
@@ -256,8 +258,11 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
     const a = suelo.v(0, 0, 0, CERO, S_BASE), b = suelo.v(C, 0, 0, CERO, S_BASE), c = suelo.v(C, 0, C, CERO, S_BASE), d = suelo.v(0, 0, C, CERO, S_BASE);
     suelo.q(a, d, c, b);
   }
-  const orden: Record<string, number> = { arena: 0, cancha: 1, juegos: 1, pasto: 2, parque: 3, bosque: 4, cementerio: 4, agua: 5 };
-  const TIPO_AREA: Record<string, number> = { arena: S_ARENA, cancha: S_CANCHA, juegos: S_JUEGOS, pasto: S_PASTO, parque: S_PARQUE, bosque: S_BOSQUE, cementerio: S_CEMENTERIO, agua: S_AGUA };
+  const orden: Record<string, number> = { terreno: 0, obra: 0, balasto: 0, playa: 0, arena: 1, arbustos: 2, pasto: 2, parque: 3, bosque: 4, cementerio: 4, plazaseca: 5, cancha: 6, juegos: 6, canil: 6, agua: 7 };
+  const TIPO_AREA: Record<string, number> = {
+    arena: S_ARENA, cancha: S_CANCHA, juegos: S_JUEGOS, pasto: S_PASTO, arbustos: S_PASTO, parque: S_PARQUE, bosque: S_BOSQUE, cementerio: S_CEMENTERIO, agua: S_AGUA, canil: S_CANIL,
+    obra: S_TERRENO, terreno: S_TERRENO, playa: S_PLAYA, balasto: S_BALASTO, plazaseca: S_PLAZA,
+  };
   const polis = [...ind.polis].sort((a, b) => orden[a.tipo] - orden[b.tipo]);
   for (const p of polis) {
     const plano: number[] = [], huecos: number[] = [];
@@ -416,6 +421,29 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
     if (b.hw >= 4.8) rect(e.x + b.dx * (D + 2.7), e.z + b.dz * (D + 2.7), 0, -b.dz, b.dx, b.hw - 0.3, 0.2, BLANCO, S_MARCA, 1);
   }
 
+  /* Rampas en todas las esquinas: una calcomanía inclinada que baja la vereda y tapa el cordón */
+  const rampa = (x: number, z: number, nx: number, nz: number) => {
+    /* (nx,nz) apunta de la vereda a la calle */
+    const tx = -nz, tz = nx, a = 0.75, f = 1.15, X = x - ox, Z = z - oz, col: C4 = [172, 168, 156, 255];
+    const q0 = suelo.v(X + tx * a, 0.01, Z + tz * a, col, S_RAMPA), q1 = suelo.v(X - tx * a, 0.01, Z - tz * a, col, S_RAMPA);
+    const q2 = suelo.v(X - tx * a - nx * f, ALTO_VEREDA, Z - tz * a - nz * f, col, S_RAMPA), q3 = suelo.v(X + tx * a - nx * f, ALTO_VEREDA, Z + tz * a - nz * f, col, S_RAMPA);
+    suelo.q(q0, q1, q2, q3);
+  };
+  for (const e of esquinas) for (const b of e.brazos) {
+    if (b.clase === "motorway") continue;
+    let otro = 0;
+    for (const o of e.brazos) if (Math.abs(o.dx * b.dx + o.dz * b.dz) < 0.75) otro = Math.max(otro, o.hw);
+    const D = otro + 3.4, nx = -b.dz, nz = b.dx;
+    for (const s of [1, -1]) {
+      const x = e.x + b.dx * D + nx * s * (b.hw + 0.02), z = e.z + b.dz * D + nz * s * (b.hw + 0.02);
+      const d = distCalzada(mapa, x, z);
+      if (Math.abs(d) < 1.6 && adentro(x, z)) rampa(x, z, -nx * s, -nz * s);
+      /* Boca de tormenta contra el cordón, un poco antes de la esquina */
+      const gx = e.x + b.dx * (D + 4.5) + nx * s * (b.hw - 0.3), gz = e.z + b.dz * (D + 4.5) + nz * s * (b.hw - 0.3);
+      if (adentro(gx, gz) && hash(Math.round(gx), Math.round(gz)) < 0.6) rect(gx, gz, 0, b.dx, b.dz, 0.5, 0.22, [40, 40, 42, 255], S_REJILLA);
+    }
+  }
+
   /* Parches de asfalto, tapas y bocas de tormenta */
   for (const v of ind.vias) {
     if (!v.auto || v.tunel || v.puente || v.clase === "service") continue;
@@ -428,7 +456,6 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
         const k = Math.round((s + q) / 13), r = hash(v.id, k), of = (hash(k, v.id) - 0.5) * (v.hw * 2 - 2), x = ax + dx * q + nx * of, z = az + dz * q + nz * of;
         if (!adentro(x, z) || cercaEsquina(x, z, v.hw + 2)) continue;
         if (r < 0.32) rect(x, z, 0, dx, dz, 0.9 + r * 7, 0.7 + hash(k, 3) * 1.1, [46, 45, 48, 255], S_PARCHE, Math.floor(r * 255));
-        else if (r < 0.46) mancha(x, 0, z, 0.42, [70, 66, 62, 255], S_TAPA);
       }
       s += L;
     }
@@ -444,7 +471,7 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
     for (let k = 0; k < 4; k++) { eV.push(ven[0], ven[1], ven[2], ven[3]); eE.push(est[0], est[1], est[2], est[3]); eN.push(n[0], n[1], n[2], n[3]); eC.push(col[0], col[1], col[2], sem); }
     eI.push(i, i + 2, i + 1, i, i + 3, i + 2);
   };
-  const VEN0 = [3, 0, 0, 0], EST_LISO = [M_MEDIANERA, 0, 0, 0];
+  const VEN0 = [1, 0, 0, 0], EST_LISO = [M_MEDIANERA, 0, 0, 0];
 
   const cajaEdif = (x: number, z: number, y0: number, y1: number, a: number, b: number, g: number, col: C3, mat: number, sem: number) => {
     /* Caja de techo: tanque, casilla */
@@ -610,6 +637,7 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
     if (!adentro(e.cx, e.cz) || e.omitir) continue;
     const a = e.anillo, n = a.length / 2, oc = paredes(t, e), sem = Math.floor(e.hash * 255), H = e.h, y0 = e.minH;
     const base = estiloDe(e, prep.zona, 0);
+    if (base.familia === "institucional" && /government|civic|school/.test(e.tipo) && hash(e.id, 61) < 0.6) prop(P.P_BANDERA, e.cx, H - 0.85, e.cz, 0.6, 0.7);
     const conTecho = e.techo === "gabled" || e.techo === "hipped" || e.techo === "skillion" || e.techo === "saltbox";
     const mans = base.mansarda;
     const yMuro = mans ? H - 3.4 : H;
@@ -625,7 +653,8 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
         inset[j * 2] -= nx * 1.5; inset[j * 2 + 1] -= nz * 1.5;
       }
       if (oc[i] === 1) {
-        quad(ax, y0, az, bx, y0, bz, bx, H, bz, ax, H, az, 0, L, y0, H, 3, H, [L, 0, 0, 0], EST_LISO, nx, 0, nz, [188, 180, 168], sem);
+        const m = hash(e.id, i + 51), mural = H > 11 && L > 6 && m < 0.14 ? 1 + Math.floor(m * 40) : 0;
+        quad(ax, y0, az, bx, y0, bz, bx, H, bz, ax, H, az, 0, L, y0, H, 3, H, [1, 0, 0, 0], mural ? [M_MEDIANERA, mural, 0, 0] : EST_LISO, nx, 0, nz, [188, 180, 168], sem);
         continue;
       }
       if (oc[i] === 3) {
@@ -653,7 +682,7 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
         const L = Math.hypot(bx - ax, bz - az);
         if (L < 0.3) continue;
         const nx = (bz - az) / L, nz = -(bx - ax) / L;
-        quad(ax, yMuro, az, bx, yMuro, bz, cx2, H, cz2, dx, H, dz, 0, L, 0, 3.7, 3, H, [L, 0, 0, 0], [M_PIZARRA, 0, 0, 0], nx * 0.9, 0.42, nz * 0.9, [78, 82, 92], sem);
+        quad(ax, yMuro, az, bx, yMuro, bz, cx2, H, cz2, dx, H, dz, 0, L, 0, 3.7, 3, H, [1, 0, 0, 0], [M_PIZARRA, 0, 0, 0], nx * 0.9, 0.42, nz * 0.9, [78, 82, 92], sem);
       }
       techo(e, r2, H, [84, 86, 92], M_TEJA);
     } else {
@@ -666,7 +695,7 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
           const j = (i + 1) % n, ax = a[i * 2], az = a[i * 2 + 1], bx = a[j * 2], bz = a[j * 2 + 1], L = Math.hypot(bx - ax, bz - az);
           if (L < 0.5 || oc[i] === 2) continue;
           const nx = -(bz - az) / L, nz = (bx - ax) / L;
-          quad(bx, yT, bz, ax, yT, az, ax, H, az, bx, H, bz, 0, L, yT, H, 3, H, [L, 0, 0, 0], [M_LOSA, 0, 0, 0], nx, 0, nz, [170, 166, 160], sem);
+          quad(bx, yT, bz, ax, yT, az, ax, H, az, bx, H, bz, 0, L, yT, H, 3, H, [1, 0, 0, 0], [M_LOSA, 0, 0, 0], nx, 0, nz, [170, 166, 160], sem);
         }
         /* Tanque de agua y casilla de ascensor */
         if (H >= 11 && e.area > 70) {
@@ -711,6 +740,17 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
       det.q(q0, q1, q2, q3, [rx, 0, rz], [0, 0, 1, 1], col, 5);
       det.q(q1, q0, q3, q2, [-rx, 0, -rz], [0, 0, 1, 1], col, 5);
     }
+    /* Mesas en la vereda en bares, cafés y restaurantes con lugar */
+    if (/cafe|bar|restaurante|helados|panaderia/.test(rubro.id)) {
+      const sem = hash(gx * 13 + locales.length, gy), n = Math.min(3, Math.floor(w / 1.9));
+      for (let q = 0; q < n && sem > 0.2; q++) {
+        const r = (q - (n - 1) / 2) * 1.95, a = PP(r, ALTO_VEREDA, 1.75), wx = a[0] + ox, wz = a[2] + oz;
+        if (distCalzada(mapa, wx, wz) < 1) continue;
+        prop(P.P_CAFE, wx, ALTO_VEREDA, wz, sem * 6 + q);
+        if (sem > 0.7) prop(P.P_SOMBRILLA, wx, ALTO_VEREDA, wz, 0, 1, col[0] / 255, col[1] / 255, col[2] / 255);
+      }
+    }
+    if (rubro.toldo && hash(gx + locales.length, 5) > 0.6) for (const s2 of [-1, 1]) { const a = PP(s2 * (h + 0.25), ALTO_VEREDA, 0.35); prop(P.P_MACETA, a[0] + ox, ALTO_VEREDA, a[2] + oz, 0); }
     const [g0x, , g0z] = PP(0, 0, 1.2);
     mancha(g0x + ox, ALTO_VEREDA, g0z + oz, Math.min(5.5, w * 0.8), [255, 218, 165, 150], S_LUZ, 1);
 
@@ -730,6 +770,25 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
   const semaforos: { x: number; z: number; ax: number; corr: number }[] = [];
   for (const o of ind.objetos) {
     if (o.tipo === "arbol") continue;
+    if (o.tipo === "tapa") {
+      if (distCalzada(mapa, o.x, o.z) < 0) mancha(o.x, 0, o.z, 0.4, [70, 66, 62, 255], S_TAPA);
+      else rect(o.x, o.z, ALTO_VEREDA, 1, 0, 0.3, 0.3, [84, 82, 78, 255], S_TAPA, 255);
+      continue;
+    }
+    if (o.tipo === "terraza") { prop(P.P_CAFE, o.x, ALTO_VEREDA, o.z, hash(Math.round(o.x), 3) * 3); continue; }
+    if (o.tipo === "bandera") { prop(P.P_BANDERA, o.x, altoEn(o.x, o.z), o.z, 0.6, 1); continue; }
+    if (o.tipo === "pare" || o.tipo === "ceda" || o.tipo === "radar") {
+      const c = viaCerca(t, o.x, o.z, 10);
+      if (!c) continue;
+      const nx = -c.dz, nz = c.dx, lado = (o.x - c.px) * nx + (o.z - c.pz) * nz >= 0 ? 1 : -1, x = c.px + nx * lado * (c.v.hw + 0.4), z = c.pz + nz * lado * (c.v.hw + 0.4);
+      if (!enEdif(t, x, z)) prop(P.P_SENAL, x, ALTO_VEREDA, z, Math.atan2(c.dx, c.dz), 1, o.tipo === "pare" ? 0.8 : 0.95, o.tipo === "pare" ? 0.1 : 0.92, o.tipo === "pare" ? 0.1 : o.tipo === "radar" ? 0.3 : 0.9);
+      continue;
+    }
+    if (o.tipo === "lomo") {
+      const c = viaCerca(t, o.x, o.z, 5);
+      if (c) rect(c.px, c.pz, 0, c.dz, -c.dx, c.v.hw, 0.32, [226, 190, 60, 255], S_MARCA, 1);
+      continue;
+    }
     if (o.tipo === "semaforo") {
       const c = viaCerca(t, o.x, o.z, 9);
       if (!c) continue;
@@ -771,6 +830,12 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
     if (!/kiosk|newsagent/.test(p.categoria) || enEdif(t, p.x, p.z)) continue;
     const c = viaCerca(t, p.x, p.z, 10);
     if (c && c.d > 0.5) prop(P.P_KIOSCO, p.x, ALTO_VEREDA, p.z, Math.atan2(c.px - p.x, c.pz - p.z));
+  }
+  /* Puestos de flores: florerías sin edificio, en la vereda */
+  for (const p of ind.pois) {
+    if (!/florist/.test(p.categoria) || enEdif(t, p.x, p.z)) continue;
+    const c = viaCerca(t, p.x, p.z, 12);
+    if (c && c.d > 0.3) prop(P.P_FLORES, p.x, ALTO_VEREDA, p.z, Math.atan2(c.px - p.x, c.pz - p.z));
   }
 
   /* ───────── Árboles ───────── */
@@ -831,7 +896,7 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
   }
   /* Autos estacionados junto al cordón: en cada cuadra hay un lado permitido */
   for (const v of ind.vias) {
-    if (!v.auto || v.tunel || v.puente || v.hw < 3.8 || v.hw > 7.5 || v.bus || !/residential|tertiary|unclassified|secondary/.test(v.clase)) continue;
+    if (!v.auto || v.tunel || v.puente || v.hw < 3.8 || v.hw > 7.5 || v.bus || !v.estaciona || !/residential|tertiary|unclassified|secondary/.test(v.clase)) continue;
     const lado = hash(v.id, 2) < 0.7 ? -1 : 1;
     let s = 0;
     for (let i = 0; i + 3 < v.pts.length; i += 2) {
@@ -848,15 +913,149 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
     }
   }
 
-  /* Árboles de plaza en una grilla con ruido, donde el dato no alcanza */
+  /* Plazas: arboleda densa donde el dato no alcanza, nunca peladas */
   for (const p of polis) {
-    if (p.tipo !== "parque" && p.tipo !== "bosque" && p.tipo !== "pasto") continue;
-    const r = p.anillos[0], paso = p.tipo === "bosque" ? 8 : 12.5;
-    for (let i = Math.ceil(ox / paso); i * paso < ox + C; i++) for (let j = Math.ceil(oz / paso); j * paso < oz + C; j++) {
-      const h = hash(i + t.tx * 97, j + t.ty * 89), x = i * paso + (hash(j, i) - 0.5) * paso * 0.8, z = j * paso + (h - 0.5) * paso * 0.8;
-      if (h < 0.4 || !adentro(x, z) || !dentroDe(r, x, z) || enEdif(t, x, z) || distCalzada(mapa, x, z) < 1.5 || cerca(x, z, 5.5)) continue;
-      if (ind.vias.some((v) => v.peaton && cercaLinea(v.pts, x, z, 1.8))) continue;
-      plantar(x, z, ALTO_VEREDA, especieDe("", hash(i >> 2, j >> 2)), h);
+    const verde = p.tipo === "parque" || p.tipo === "bosque" || p.tipo === "pasto";
+    const r = p.anillos[0];
+    if (verde || p.tipo === "arbustos") {
+      const paso = p.tipo === "bosque" ? 7 : p.tipo === "parque" ? 9.5 : p.tipo === "arbustos" ? 3 : 13;
+      for (let i = Math.ceil(ox / paso); i * paso < ox + C; i++) for (let j = Math.ceil(oz / paso); j * paso < oz + C; j++) {
+        const h = hash(i + t.tx * 97, j + t.ty * 89), x = i * paso + (hash(j, i) - 0.5) * paso * 0.85, z = j * paso + (h - 0.5) * paso * 0.85;
+        if (!adentro(x, z) || !dentroDe(r, x, z) || enEdif(t, x, z) || distCalzada(mapa, x, z) < 2.5 || distSenda(mapa, x, z) < 1.3) continue;
+        if (p.tipo === "arbustos" || h < 0.16) { if (h < 0.7) prop(P.P_ARBUSTO, x, ALTO_VEREDA, z, h * 6, 0.8 + h, 0.75 + h * 0.3, 0.9, 0.7); continue; }
+        if (cerca(x, z, 5)) continue;
+        plantar(x, z, ALTO_VEREDA, especieDe("", hash(i >> 2, j >> 2)), h);
+      }
+    }
+    if (p.tipo === "juegos") {
+      const m = centroAnillo(r);
+      if (adentro(m[0], m[1])) prop(P.P_JUEGOS, m[0], ALTO_VEREDA, m[1], hash(Math.round(m[0]), 2) * 6);
+    }
+    if (p.tipo === "canil" || p.tipo === "juegos") {
+      const n = r.length / 2;
+      for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n, ax = r[i * 2], az = r[i * 2 + 1], bx = r[j * 2], bz = r[j * 2 + 1], L = Math.hypot(bx - ax, bz - az), mx = (ax + bx) / 2, mz = (az + bz) / 2;
+        if (L < 0.5 || !adentro(mx, mz)) continue;
+        const rx = (bx - ax) / L, rz = (bz - az) / L;
+        fijo.poner(P.K_REJA, mx - ox, ALTO_VEREDA, mz - oz, rx, rz, -rz, rx, L, 1.15, 0.03, [40, 74, 56]);
+      }
+    }
+    if (p.tipo === "obra") {
+      const n = r.length / 2;
+      for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n, ax = r[i * 2], az = r[i * 2 + 1], bx = r[j * 2], bz = r[j * 2 + 1], L = Math.hypot(bx - ax, bz - az), mx = (ax + bx) / 2, mz = (az + bz) / 2;
+        if (L < 0.5 || !adentro(mx, mz)) continue;
+        const rx = (bx - ax) / L, rz = (bz - az) / L;
+        fijo.poner(P.K_CAJA, mx - ox, 0, mz - oz, rx, rz, -rz, rx, L, 2.3, 0.04, [120, 124, 120]);
+      }
+    }
+  }
+  /* Bancos, faroles y cestos a lo largo de los senderos reales de la plaza */
+  const enPlaza = (x: number, z: number) => polis.some((p) => (p.tipo === "parque" || p.tipo === "pasto" || p.tipo === "plazaseca") && dentroDe(p.anillos[0], x, z));
+  for (const v of ind.vias) {
+    if (!v.peaton || v.tunel || v.puente || v.vereda || v.escalera) continue;
+    let s = 0;
+    for (let i = 0; i + 3 < v.pts.length; i += 2) {
+      const ax = v.pts[i], az = v.pts[i + 1], bx = v.pts[i + 2], bz = v.pts[i + 3], L = Math.hypot(bx - ax, bz - az);
+      if (L < 0.5) continue;
+      const dx = (bx - ax) / L, dz = (bz - az) / L, nx = -dz, nz = dx;
+      for (let q = Math.ceil(s / 7) * 7 - s; q < L; q += 7) {
+        const k = Math.round((s + q) / 7), lado = k % 2 ? 1 : -1, x = ax + dx * q + nx * lado * (v.hw + 0.55), z = az + dz * q + nz * lado * (v.hw + 0.55);
+        if (!adentro(x, z) || !enPlaza(x, z) || enEdif(t, x, z)) continue;
+        if (k % 3 === 0) prop(P.P_BANCO, x, ALTO_VEREDA, z, Math.atan2(-nx * lado, -nz * lado) + Math.PI);
+        else if (k % 6 === 1) { prop(P.P_FAROL_PLAZA, x, ALTO_VEREDA, z, 0); mancha(x, ALTO_VEREDA, z, 6, [255, 214, 158, 110], S_LUZ); }
+        else if (k % 12 === 5) prop(P.P_CESTO, x, ALTO_VEREDA, z, Math.atan2(nx * lado, nz * lado));
+        else if (k % 12 === 8) mancha(x + nx * lado * 1.5, ALTO_VEREDA, z + nz * lado * 1.5, 1.5, [255, 255, 255, 255], S_CANTERO);
+      }
+      s += L;
+    }
+  }
+
+  /* Mobiliario de vereda: cestos en las esquinas, contenedores, parquímetros, señales */
+  for (const e of esquinas) {
+    const b = e.brazos[0], o = e.brazos.find((q) => Math.abs(q.dx * b.dx + q.dz * b.dz) < 0.7);
+    if (!o) continue;
+    const s1 = hash(Math.round(e.x), 1) < 0.5 ? 1 : -1, s2 = hash(Math.round(e.z), 2) < 0.5 ? 1 : -1;
+    const x = e.x + b.dx * s1 * (o.hw + 3.2) + o.dx * s2 * (b.hw + 0.8), z = e.z + b.dz * s1 * (o.hw + 3.2) + o.dz * s2 * (b.hw + 0.8);
+    if (adentro(x, z) && distCalzada(mapa, x, z) > 0.3 && !enEdif(t, x, z)) prop(P.P_CESTO, x, ALTO_VEREDA, z, Math.atan2(-o.dx * s2, -o.dz * s2));
+    /* Señal de sentido o de no estacionar, sobre el cartel de calle no: en la esquina opuesta */
+    const x2 = e.x - b.dx * s1 * (o.hw + 2.4) - o.dx * s2 * (b.hw + 0.5), z2 = e.z - b.dz * s1 * (o.hw + 2.4) - o.dz * s2 * (b.hw + 0.5);
+    if (adentro(x2, z2) && distCalzada(mapa, x2, z2) > 0.1 && !enEdif(t, x2, z2)) prop(P.P_SENAL, x2, ALTO_VEREDA, z2, Math.atan2(b.dx, b.dz), 1, 0.12, 0.3, 0.72);
+  }
+  for (const v of ind.vias) {
+    if (!v.auto || v.tunel || v.puente || v.clase === "service" || /link|motorway/.test(v.clase) || v.hw < 3.6) continue;
+    let s = 0;
+    for (let i = 0; i + 3 < v.pts.length; i += 2) {
+      const ax = v.pts[i], az = v.pts[i + 1], bx = v.pts[i + 2], bz = v.pts[i + 3], L = Math.hypot(bx - ax, bz - az);
+      if (L < 0.5) continue;
+      const dx = (bx - ax) / L, dz = (bz - az) / L, nx = -dz, nz = dx, lado = hash(v.id, 7) < 0.5 ? 1 : -1;
+      for (let q = Math.ceil(s / 46) * 46 - s; q < L; q += 46) {
+        const k = Math.round((s + q) / 46), x = ax + dx * q + nx * lado * (v.hw - 1), z = az + dz * q + nz * lado * (v.hw - 1);
+        if (!adentro(x, z) || cercaEsquina(x, z, v.hw + 12)) continue;
+        if (k % 2 === 0) { const ve = hash(k, v.id) < 0.4; prop(P.P_CONTENEDOR, x, 0, z, Math.atan2(dx, dz) + Math.PI / 2, 1, ve ? 0.16 : 0.08, ve ? 0.34 : 0.08, ve ? 0.2 : 0.09); }
+        else if (prep.zona === 1 || v.hw > 5) { const x3 = ax + dx * q + nx * lado * (v.hw + 0.5), z3 = az + dz * q + nz * lado * (v.hw + 0.5); if (distCalzada(mapa, x3, z3) > 0.1 && !enEdif(t, x3, z3)) prop(P.P_PARQUIMETRO, x3, ALTO_VEREDA, z3, Math.atan2(nx * lado, nz * lado)); }
+      }
+      s += L;
+    }
+  }
+
+  /* Cableado aéreo en los barrios bajos: postes de madera a lo largo de la cuadra */
+  if (prep.zona === 2) for (const v of ind.vias) {
+    if (!v.auto || v.tunel || v.puente || !/residential|tertiary/.test(v.clase)) continue;
+    const lado = hash(v.id, 31) < 0.5 ? 1 : -1;
+    let s = 0, antX = 0, antZ = 0, hay = false;
+    for (let i = 0; i + 3 < v.pts.length; i += 2) {
+      const ax = v.pts[i], az = v.pts[i + 1], bx = v.pts[i + 2], bz = v.pts[i + 3], L = Math.hypot(bx - ax, bz - az);
+      if (L < 0.5) continue;
+      const dx = (bx - ax) / L, dz = (bz - az) / L, nx = -dz, nz = dx;
+      for (let q = Math.ceil(s / 33) * 33 - s; q < L; q += 33) {
+        const x = ax + dx * q + nx * lado * (v.hw + 0.4), z = az + dz * q + nz * lado * (v.hw + 0.4);
+        if (!adentro(x, z) || distCalzada(mapa, x, z) < 0.1 || enEdif(t, x, z)) { hay = false; continue; }
+        prop(P.P_POSTE_LUZ, x, ALTO_VEREDA, z, Math.atan2(dx, dz));
+        if (hay) for (const al of [7.1, 6.6]) {
+          const mx = (antX + x) / 2, mz = (antZ + z) / 2, LL = Math.hypot(x - antX, z - antZ) || 1, rx = (x - antX) / LL, rz = (z - antZ) / LL;
+          fijo.poner(P.K_CAJA, mx - ox, al, mz - oz, rx, rz, -rz, rx, LL, 0.018, 0.018, [24, 24, 26]);
+        }
+        antX = x; antZ = z; hay = true;
+      }
+      s += L;
+    }
+  }
+
+  /* Sin huecos: donde en la línea de edificación no hay nada, un tapial o una reja cierra el lote */
+  for (const v of ind.vias) {
+    if (!v.auto || v.tunel || v.puente || v.acera < 1.5 || /link|motorway|service/.test(v.clase)) continue;
+    for (const lado of [1, -1]) {
+      let ini: number[] | null = null, fin: number[] | null = null, s = 0;
+      const cerrar = () => {
+        if (ini && fin) {
+          const L = Math.hypot(fin[0] - ini[0], fin[1] - ini[1]);
+          if (L > 1.5) {
+            const mx = (ini[0] + fin[0]) / 2, mz = (ini[1] + fin[1]) / 2, rx = (fin[0] - ini[0]) / L, rz = (fin[1] - ini[1]) / L, r = hash(Math.round(mx / 9), Math.round(mz / 9));
+            if (r < 0.62) {
+              const c0 = PARED_LOTE[Math.floor(r * 97) % PARED_LOTE.length];
+              fijo.poner(P.K_CAJA, mx - ox, 0, mz - oz, rx, rz, -rz, rx, L, 2.5 + (r * 7 % 1) * 0.8, 0.2, c0);
+            } else {
+              fijo.poner(P.K_CAJA, mx - ox, 0, mz - oz, rx, rz, -rz, rx, L, 0.7, 0.2, [186, 180, 168]);
+              fijo.poner(P.K_REJA, mx - ox, 0.7, mz - oz, rx, rz, -rz, rx, L, 1.5, 0.03, [32, 36, 38]);
+            }
+            colision.push(ini[0] - ox, ini[1] - oz, fin[0] - ox, fin[1] - oz);
+          }
+        }
+        ini = fin = null;
+      };
+      for (let i = 0; i + 3 < v.pts.length; i += 2) {
+        const ax = v.pts[i], az = v.pts[i + 1], bx = v.pts[i + 2], bz = v.pts[i + 3], L = Math.hypot(bx - ax, bz - az);
+        if (L < 0.5) continue;
+        const dx = (bx - ax) / L, dz = (bz - az) / L, nx = -dz, nz = dx, of = v.hw + v.acera + 0.3;
+        for (let q = Math.ceil(s / 2.4) * 2.4 - s; q < L; q += 2.4) {
+          const x = ax + dx * q + nx * lado * of, z = az + dz * q + nz * lado * of;
+          const hueco = adentro(x, z) && distPared(mapa, x, z) > 2.2 && distCalzada(mapa, x, z) > v.acera - 0.6 && distSenda(mapa, x, z) > 1 && !enEdif(t, x, z) && !cercaEsquina(x, z, v.hw + v.acera + 9) && !polis.some((p) => p.tipo !== "terreno" && p.tipo !== "obra" && dentroDe(p.anillos[0], x, z));
+          if (hueco) { if (!ini) ini = [x, z]; fin = [x, z]; } else cerrar();
+        }
+        s += L;
+      }
+      cerrar();
     }
   }
 
@@ -915,6 +1114,20 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
         else {
           fijo.poner(P.K_CAJA, mx - ox, 0, mz - oz, rx, rz, nx, nz, L, alto, 0.25, /hedge/.test(v.clase) ? [64, 92, 52] : [176, 168, 152]);
           colision.push(ax - ox, az - oz, bx - ox, bz - oz);
+        }
+      }
+      continue;
+    }
+    if (v.plataforma && !v.tunel) {
+      const techo = v.clase === "platform";
+      for (let i = 0; i + 3 < p.length; i += 2) {
+        const ax = p[i], az = p[i + 1], bx = p[i + 2], bz = p[i + 3], L = Math.hypot(bx - ax, bz - az), mx = (ax + bx) / 2, mz = (az + bz) / 2;
+        if (L < 0.5 || !adentro(mx, mz)) continue;
+        const rx = (bx - ax) / L, rz = (bz - az) / L;
+        fijo.poner(P.K_CAJA, mx - ox + rz * 1.5, 0, mz - oz - rx * 1.5, rx, rz, -rz, rx, L, 0.32, 3, [168, 164, 154]);
+        if (techo) {
+          fijo.poner(P.K_CAJA, mx - ox + rz * 1.7, 3, mz - oz - rx * 1.7, rx, rz, -rz, rx, L, 0.12, 3.4, [70, 92, 110]);
+          for (let q = 0; q < L; q += 6) fijo.poner(P.K_CAJA, ax + rx * q - ox, 0.3, az + rz * q - oz, rx, rz, -rz, rx, 0.12, 2.7, 0.12, [60, 66, 72]);
         }
       }
       continue;
@@ -1019,12 +1232,9 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
 
 const CON_AUTOS = new Set(["motorway", "trunk", "primary", "secondary", "tertiary", "unclassified", "residential", "primary_link", "secondary_link", "tertiary_link", "trunk_link", "motorway_link"]);
 
-function cercaLinea(p: number[], x: number, z: number, m: number) {
-  for (let i = 0; i + 3 < p.length; i += 2) {
-    const ax = p[i], az = p[i + 1], dx = p[i + 2] - ax, dz = p[i + 3] - az, L2 = dx * dx + dz * dz;
-    if (!L2) continue;
-    const q = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L2));
-    if (Math.hypot(x - ax - dx * q, z - az - dz * q) < m) return true;
-  }
-  return false;
+function centroAnillo(r: number[]): [number, number] {
+  let x = 0, z = 0;
+  const n = r.length / 2;
+  for (let i = 0; i < n; i++) { x += r[i * 2]; z += r[i * 2 + 1]; }
+  return [x / n, z / n];
 }

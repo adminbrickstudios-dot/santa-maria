@@ -123,6 +123,10 @@ export function geoProp(t: number): THREE.BufferGeometry {
       return fundir([
         cola(tubo(0.05, 0.065, 3.4, 0, 0, -0.1), hex("#30343A")), caja(0.3, 0.8, 0.22, 0, 2.62, 0.02, hex("#17191C")),
         caja(0.36, 0.86, 0.02, 0, 2.62, -0.08, hex("#E9E2CE")), caja(0.24, 0.04, 0.12, 0, 2.97, 0.17, hex("#17191C")), caja(0.24, 0.04, 0.12, 0, 2.73, 0.17, hex("#17191C")), caja(0.24, 0.04, 0.12, 0, 2.49, 0.17, hex("#17191C")), ...luces,
+        /* Peatonal, mirando de costado sobre el mismo poste */
+        caja(0.22, 0.46, 0.18, 0.2, 2.02, -0.1, hex("#17191C")),
+        (() => { const g = new THREE.PlaneGeometry(0.13, 0.13); g.rotateY(Math.PI / 2); g.translate(0.315, 2.14, -0.1); return { geo: g, color: [1, 0.12, 0.08], parte: 16 }; })(),
+        (() => { const g = new THREE.PlaneGeometry(0.13, 0.13); g.rotateY(Math.PI / 2); g.translate(0.315, 1.9, -0.1); return { geo: g, color: [0.12, 1, 0.45], parte: 17 }; })(),
       ]);
     }
     case P.P_GARITA: {
@@ -139,13 +143,78 @@ export function geoProp(t: number): THREE.BufferGeometry {
       ...[-0.72, 0.72].flatMap((x) => [caja(0.05, 0.44, 0.42, x, 0.22, 0.02, FIERRO), caja(0.05, 0.42, 0.04, x, 0.62, -0.13, FIERRO)]),
     ]);
     case P.P_CESTO: return fundir([cola(tubo(0.03, 0.03, 1.1, 0, 0, -0.16), FIERRO), cola(tubo(0.17, 0.15, 0.55, 0, 0.45, 0, 8), hex("#D76A1A")), cola(tubo(0.18, 0.18, 0.04, 0, 1, 0, 8), hex("#22282C"))]);
+    case P.P_POSTA: return fundir([barra([-0.8, 0, 0], [-0.8, 2.3, 0], 0.05, hex("#2E6E8E")), barra([0.8, 0, 0], [0.8, 2.3, 0], 0.05, hex("#2E6E8E")), barra([-0.8, 2.3, 0], [0.8, 2.3, 0], 0.04, hex("#D8D8D2")), barra([-0.8, 1.4, 0], [0.8, 1.4, 0], 0.03, hex("#D8D8D2")), caja(1.3, 0.1, 0.5, 0, 0.5, 0.9, hex("#2E6E8E")), caja(0.1, 0.5, 0.1, 0, 0.25, 0.9, FIERRO)]);
+    case P.P_MESA: return fundir([caja(1.8, 0.06, 0.7, 0, 0.74, 0, MADERA), caja(1.8, 0.05, 0.28, 0, 0.45, 0.62, MADERA), caja(1.8, 0.05, 0.28, 0, 0.45, -0.62, MADERA), ...[-0.7, 0.7].map((x) => caja(0.08, 0.74, 1.3, x, 0.37, 0, FIERRO))]);
+    case P.P_BANDERA: {
+      /* Mástil y paño celeste y blanco, que ondea en el shader (parte 18) */
+      const f = new THREE.PlaneGeometry(1.9, 1.15, 8, 3);
+      f.translate(0.98, 9.2, 0);
+      const f2 = f.clone();
+      f2.rotateY(Math.PI);
+      f2.translate(1.96, 0, 0);
+      return fundir([cola(tubo(0.035, 0.06, 9.9, 0, 0, 0), hex("#C9CDD2")), { geo: f, color: BL, parte: 18 }, { geo: f2, color: BL, parte: 18 }]);
+    }
+    case P.P_MACETA: {
+      const g = new THREE.IcosahedronGeometry(0.34, 1);
+      g.scale(1, 1.1, 1);
+      g.translate(0, 0.86, 0);
+      return fundir([cola(tubo(0.3, 0.22, 0.5, 0, 0, 0, 8), hex("#9A6A4C")), cola(g, hex("#4D7A3C"))]);
+    }
+    case P.P_CAFE: {
+      const silla = (x: number, z: number) => [caja(0.38, 0.03, 0.38, x, 0.46, z, hex("#6B4A32")), caja(0.38, 0.4, 0.03, x, 0.68, z + (z > 0 ? 0.18 : -0.18), hex("#6B4A32")), caja(0.03, 0.46, 0.03, x - 0.16, 0.23, z - 0.16, FIERRO), caja(0.03, 0.46, 0.03, x + 0.16, 0.23, z + 0.16, FIERRO)];
+      const t2 = new THREE.CylinderGeometry(0.36, 0.36, 0.03, 12);
+      t2.translate(0, 0.74, 0);
+      return fundir([cola(t2, hex("#E6E2D8")), cola(tubo(0.03, 0.03, 0.72, 0, 0, 0), FIERRO), cola(tubo(0.22, 0.24, 0.03, 0, 0, 0, 8), FIERRO), ...silla(0, 0.62), ...silla(0, -0.62)]);
+    }
+    case P.P_SOMBRILLA: {
+      const g = new THREE.ConeGeometry(1.5, 0.5, 8, 1, true);
+      g.translate(0, 2.5, 0);
+      return fundir([cola(g, BL, P_PINTABLE), cola(tubo(0.025, 0.025, 2.6, 0, 0, 0), hex("#D8D8D2"))]);
+    }
+    case P.P_PUBLICIDAD: return fundir([caja(1.3, 1.9, 0.14, 0, 1.75, 0, hex("#2F3338")), caja(1.14, 1.72, 0.16, 0, 1.75, 0, [0.82, 0.84, 0.86], P_EMISIVO), caja(0.14, 0.82, 0.14, 0, 0.41, 0, hex("#2F3338"))]);
+    case P.P_SENAL: {
+      const d = new THREE.CircleGeometry(0.3, 12);
+      d.translate(0, 2.42, 0.045);
+      const d2 = new THREE.CircleGeometry(0.31, 12);
+      d2.rotateY(Math.PI);
+      d2.translate(0, 2.42, 0.04);
+      return fundir([cola(tubo(0.03, 0.03, 2.5, 0, 0, 0), hex("#8A8F94")), { geo: d, color: BL, parte: P_PINTABLE }, cola(d2, hex("#8A8F94"))]);
+    }
+    case P.P_PARQUIMETRO: return fundir([cola(tubo(0.05, 0.05, 1.05, 0, 0, 0), hex("#3A4148")), caja(0.26, 0.44, 0.2, 0, 1.25, 0, hex("#2E5E9E")), caja(0.17, 0.12, 0.03, 0, 1.33, 0.11, [0.7, 0.9, 0.8], P_EMISIVO)]);
+    case P.P_FLORES: return fundir([
+      caja(2.6, 2.2, 1.5, 0, 1.1, -0.6, hex("#3A5A48")), caja(3.2, 0.08, 2.2, 0, 2.3, 0.1, hex("#2E4A3A")), caja(2.8, 0.1, 0.5, 0, 0.72, 0.5, hex("#6B5138")), caja(2.8, 0.1, 0.5, 0, 0.42, 0.85, hex("#6B5138")),
+      ...Array.from({ length: 16 }, (_, i) => { const g = new THREE.IcosahedronGeometry(0.15, 0); g.translate(-1.2 + (i % 8) * 0.34, 0.92 - Math.floor(i / 8) * 0.28, 0.5 + Math.floor(i / 8) * 0.34); return cola(g, hex(["#D8476A", "#E8C23C", "#E86A3C", "#F2EDE4", "#B04AA8", "#D8476A", "#7A5AC8", "#E86A3C"][i % 8])); }),
+    ]);
+    case P.P_JUEGOS: return fundir([
+      /* Hamacas */
+      barra([-2.6, 0, 0.7], [-2.1, 2.4, 0], 0.05, hex("#D8532C")), barra([-2.6, 0, -0.7], [-2.1, 2.4, 0], 0.05, hex("#D8532C")), barra([1.1, 0, 0.7], [0.6, 2.4, 0], 0.05, hex("#D8532C")), barra([1.1, 0, -0.7], [0.6, 2.4, 0], 0.05, hex("#D8532C")), barra([-2.1, 2.4, 0], [0.6, 2.4, 0], 0.05, hex("#2E6E8E")),
+      barra([-1.5, 2.4, 0], [-1.5, 0.55, 0], 0.012, FIERRO), barra([-0.7, 2.4, 0], [-0.7, 0.55, 0], 0.012, FIERRO), barra([-0.2, 2.4, 0], [-0.2, 0.55, 0], 0.012, FIERRO), caja(0.5, 0.04, 0.2, -1.1, 0.55, 0, hex("#E0B020")), caja(0.5, 0.04, 0.2, 0.05, 0.55, 0, hex("#E0B020")),
+      /* Tobogán */
+      caja(1, 0.08, 1, 3.4, 1.8, 2.4, hex("#2E6E8E")), ...[[2.95, 1.95], [3.85, 1.95], [2.95, 2.85], [3.85, 2.85]].map(([x, z]) => caja(0.08, 1.8, 0.08, x, 0.9, z, hex("#D8532C"))),
+      (() => { const g = new THREE.BoxGeometry(0.7, 0.05, 3.1); g.rotateX(0.62); g.translate(3.4, 0.95, 0.75); return cola(g, hex("#E0B020")); })(),
+      /* Subibaja */
+      (() => { const g = new THREE.BoxGeometry(3, 0.08, 0.26); g.rotateZ(0.16); g.translate(-3, 0.5, -2.6); return cola(g, hex("#3C8E5A")); })(), caja(0.2, 0.42, 0.3, -3, 0.21, -2.6, hex("#D8532C")),
+    ]);
+    case P.P_ARBUSTO: {
+      const g = new THREE.IcosahedronGeometry(0.62, 1);
+      g.scale(1.2, 0.86, 1.2);
+      g.translate(0, 0.46, 0);
+      const h = new THREE.IcosahedronGeometry(0.42, 0);
+      h.translate(0.5, 0.36, 0.22);
+      return fundir([{ geo: g, color: hex("#4C7234"), parte: P_PINTABLE }, { geo: h, color: hex("#42682E"), parte: P_PINTABLE }]);
+    }
+    case P.P_POSTE_LUZ: return fundir([cola(tubo(0.09, 0.13, 7.6, 0, 0, 0), hex("#5E4A38")), caja(1.2, 0.08, 0.08, 0, 7.05, 0, hex("#5E4A38")), caja(0.1, 0.18, 0.1, -0.5, 7.14, 0, hex("#D8D8D2")), caja(0.1, 0.18, 0.1, 0.5, 7.14, 0, hex("#D8D8D2"))]);
+    case P.P_VALLA: return fundir([caja(2.4, 0.1, 0.05, 0, 1, 0, hex("#D8532C")), caja(2.4, 0.1, 0.05, 0, 0.55, 0, hex("#E8E4D8")), caja(0.06, 1.05, 0.06, -1.1, 0.52, 0, FIERRO), caja(0.06, 1.05, 0.06, 1.1, 0.52, 0, FIERRO)]);
     case P.P_CONTENEDOR: {
       const t2 = new THREE.BoxGeometry(1.86, 0.3, 1.2); const a = t2.getAttribute("position");
       for (let i = 0; i < a.count; i++) if (a.getY(i) > 0 && a.getZ(i) < 0) a.setY(i, a.getY(i) - 0.16);
       t2.translate(0, 1.33, 0);
-      return fundir([caja(1.8, 1.08, 1.14, 0, 0.66, 0, hex("#30403A")), cola(t2, hex("#26332E")), ...[-0.72, 0.72].map((x) => caja(0.12, 0.14, 0.12, x, 0.07, 0.42, FIERRO)), caja(1.8, 0.05, 0.02, 0, 0.72, 0.58, hex("#E8E6DE"))]);
+      return fundir([caja(1.8, 1.08, 1.14, 0, 0.66, 0, BL, P_PINTABLE), { geo: t2, color: [0.8, 0.8, 0.8], parte: P_PINTABLE }, ...[-0.72, 0.72].map((x) => caja(0.12, 0.14, 0.12, x, 0.07, 0.42, FIERRO)), caja(1.8, 0.05, 0.02, 0, 0.72, 0.58, hex("#E8E6DE"))]);
     }
-    case P.P_RECICLADO: return fundir([caja(1.6, 1.3, 1.1, 0, 0.75, 0, hex("#2E7A4B")), caja(1.7, 0.08, 1.2, 0, 1.44, 0, hex("#1F5A36")), caja(0.8, 0.2, 0.02, 0, 1.15, 0.56, hex("#0F2C1B"))]);
+    case P.P_RECICLADO: {
+      const g = new THREE.LatheGeometry([[0.72, 0], [0.76, 0.9], [0.62, 1.5], [0.28, 1.8], [0, 1.86]].map(([r, y]) => new THREE.Vector2(r, y)), 10);
+      return fundir([cola(g, hex("#2E7A4B")), caja(0.4, 0.14, 0.05, 0, 1.15, 0.72, hex("#0F2C1B")), caja(0.3, 0.3, 0.02, 0, 0.7, 0.76, hex("#E8E4D8"))]);
+    }
     case P.P_FUENTE: return fundir([
       cola(tubo(2.5, 2.7, 0.5, 0, 0, 0, 18), hex("#B9B2A2")), cola(tubo(2.32, 2.32, 0.02, 0, 0.49, 0, 18), [0.1, 0.2, 0.22], P_ESPEJO), cola(tubo(0.3, 0.5, 1.2, 0, 0.5, 0, 8), hex("#A9A293")), cola(tubo(0.8, 0.5, 0.18, 0, 1.7, 0, 10), hex("#B9B2A2")), cola(tubo(0.12, 0.18, 0.5, 0, 1.88, 0, 6), hex("#A9A293")),
     ]);

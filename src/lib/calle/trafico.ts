@@ -2,7 +2,7 @@
    y gente genérica por las veredas. Nadie tiene rostro, patente ni nada que identifique. */
 import * as THREE from "three";
 import type { Calidad, Mundo, ViaMundo } from "./mundo";
-import { geoBici, geoCamioneta, geoColectivo, geoPersona, geoSedan, geoTaxi } from "./objetos";
+import { geoBici, geoCamioneta, geoColectivo, geoPerro, geoPersona, geoSedan, geoTaxi } from "./objetos";
 import { luzSemaforo } from "./piezas";
 
 const col = (h: string) => new THREE.Color().setStyle(h, THREE.LinearSRGBColorSpace);
@@ -19,6 +19,7 @@ const VEL_TIPO = [8, 10, 10.5, 9, 5.5], LARGO = [11.5, 4.3, 4.3, 4.8, 1.8];
 export class Trafico {
   private mallas: THREE.InstancedMesh[];
   private gente: THREE.InstancedMesh;
+  private perros: THREE.InstancedMesh;
   private fases: Float32Array;
   private vehiculos: Vehiculo[] = [];
   private personas: Persona[] = [];
@@ -58,6 +59,13 @@ export class Trafico {
       this.personas.push({ ax: 0, az: 0, bx: 0, bz: 0, t: 0, dir: 1, of: 0, vel: 1.2, viva: false });
     }
     escena.add(this.gente);
+    const gd = geoPerro();
+    gd.setAttribute("aFase", new THREE.InstancedBufferAttribute(Float32Array.from({ length: 6 }, () => Math.random() * 6), 1));
+    this.perros = new THREE.InstancedMesh(gd, mat, 6);
+    this.perros.frustumCulled = false;
+    this.perros.count = 0;
+    ["#C9A06A", "#2E2A26", "#E6DFCF", "#8A6544", "#6E6E6A", "#B8884A"].forEach((h, i) => this.perros.setColorAt(i, col(h)));
+    escena.add(this.perros);
 
     /* Sombrita blanda bajo cada cosa que se mueve: un solo llamado de dibujo */
     const cv = document.createElement("canvas");
@@ -209,7 +217,7 @@ export class Trafico {
     this.mallas.forEach((m, i) => { m.count = cuenta[i]; m.instanceMatrix.needsUpdate = true; });
 
     /* Gente */
-    let n = 0;
+    let n = 0, nd = 0;
     for (let i = 0; i < this.personas.length; i++) {
       const p = this.personas[i];
       if (i >= cal.gente) continue;
@@ -224,10 +232,18 @@ export class Trafico {
       this.m.compose(this.p, this.q, this.s);
       this.gente.setMatrixAt(n, this.m);
       this.sombraEn(px, 0.15, pz, 0, 0.95, 0.95);
+      if (i % 5 === 2 && nd < 6) {
+        /* Algunos pasean al perro */
+        this.p.set(px + dx * p.dir * 1.1 - dz * 0.35, 0.15, pz + dz * p.dir * 1.1 + dx * 0.35);
+        this.m.compose(this.p, this.q, this.s);
+        this.perros.setMatrixAt(nd++, this.m);
+      }
       if (this.fases[n] !== this.fases[i]) this.fases[n] = this.fases[i];
       n++;
     }
     this.gente.count = n;
+    this.perros.count = nd;
+    this.perros.instanceMatrix.needsUpdate = true;
     this.gente.instanceMatrix.needsUpdate = true;
     this.sombras.count = this.nSombra;
     this.sombras.instanceMatrix.needsUpdate = true;
@@ -250,7 +266,7 @@ export class Trafico {
   }
 
   destruir() {
-    for (const m of [...this.mallas, this.gente, this.sombras]) { m.removeFromParent(); m.geometry.dispose(); m.dispose(); }
+    for (const m of [...this.mallas, this.gente, this.perros, this.sombras]) { m.removeFromParent(); m.geometry.dispose(); m.dispose(); }
     this.texSombra.dispose();
     (this.sombras.material as THREE.Material).dispose();
   }

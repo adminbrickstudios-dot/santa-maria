@@ -149,6 +149,14 @@ export function geoBici() {
   ]);
 }
 
+export function geoPerro() {
+  const b = [1, 1, 1], pata = (x: number, z: number, k: number): Parte => caja(0.05, 0.26, 0.05, x, 0.13, z, b, k);
+  return fundir([
+    caja(0.17, 0.17, 0.5, 0, 0.34, 0, b, P_PINTABLE), caja(0.13, 0.13, 0.17, 0, 0.47, 0.3, b, P_PINTABLE), caja(0.03, 0.03, 0.2, 0, 0.43, -0.32, b, P_PINTABLE),
+    pata(-0.06, 0.18, P_PIERNA_A), pata(0.06, 0.18, P_PIERNA_B), pata(-0.06, -0.18, P_PIERNA_B), pata(0.06, -0.18, P_PIERNA_A),
+  ], true);
+}
+
 export function geoPersona() {
   const piel = hex("#CDB29A"), pant = hex("#3E4757");
   const pecho = new THREE.CylinderGeometry(0.2, 0.16, 0.6, 6);

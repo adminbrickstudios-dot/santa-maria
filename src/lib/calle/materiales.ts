@@ -24,13 +24,14 @@ export interface Comunes {
   uTS0: { value: THREE.Texture | null };
   uTS1: { value: THREE.Texture | null };
   uRui: { value: THREE.Texture | null };
+  uLluvia: { value: number };
 }
 
 export function crearComunes(): Comunes {
   return {
     uSol: { value: new THREE.Vector3(0, 1, 0) }, uLuzSol: { value: new THREE.Color() }, uLuzCielo: { value: new THREE.Color() }, uLuzSuelo: { value: new THREE.Color() },
     uNiebla: { value: new THREE.Color() }, uNieblaD: { value: new THREE.Vector2(60, 0.008) }, uNoche: { value: 0 }, uTiempo: { value: 0 }, uExpo: { value: 0.6 }, uCenit: { value: new THREE.Color() },
-    uRKit: { value: 80 }, uConSombra: { value: 0 }, uSM0: { value: new THREE.Matrix4() }, uSM1: { value: new THREE.Matrix4() }, uTS0: { value: null }, uTS1: { value: null }, uRui: { value: null },
+    uRKit: { value: 80 }, uConSombra: { value: 0 }, uSM0: { value: new THREE.Matrix4() }, uSM1: { value: new THREE.Matrix4() }, uTS0: { value: null }, uTS1: { value: null }, uRui: { value: null }, uLluvia: { value: 0 },
   };
 }
 
@@ -48,7 +49,7 @@ vec3 conNiebla(vec3 c, vec3 w){
 const COMUN_FRAG = /* glsl */ `
 uniform vec3 uSol, uLuzSol, uLuzCielo, uLuzSuelo, uNiebla, uCenit;
 uniform vec2 uNieblaD;
-uniform float uNoche, uTiempo, uExpo, uConSombra;
+uniform float uNoche, uTiempo, uExpo, uConSombra, uLluvia;
 uniform mat4 uSM0, uSM1;
 uniform sampler2DShadow uTS0, uTS1;
 uniform sampler2D uRui;
@@ -177,13 +178,28 @@ export function matSuelo(c: Comunes, tex: { baldosa: THREE.Texture }, mapa: THRE
             ao*=mix(.8,1.,smoothstep(0.,1.6,m.x));
           }
           vec3 c=alb*luzSuelo(N,ao,W);
+          if(uLluvia>.5){
+            /* Mojado: más oscuro y con cielo reflejado en los charcos */
+            vec3 Vn=normalize(V);
+            float ch=smoothstep(.42,.6,ru.r), fr=.03+.97*pow(1.-max(Vn.y,0.),5.);
+            c=mix(c*.6,ambiente(reflect(-Vn,normalize(vec3(rf.b*.04-.02,1.,rf.g*.04-.02))))*.75,fr*(.35+.65*ch));
+          }
           gl_FragColor=vec4(tono(conNiebla(c,vW)),1.);
           return;
         }
-        if(tipo<9.5){
+        if(tipo<9.5||tipo>20.5&&tipo<23.5){
           vec4 m=mapa(vL);
-          if(tipo<3.5||tipo>4.5&&tipo<8.5) if(m.x<.15||m.w<-.1||m.y<0.) discard;
-          if(tipo>7.5){ alb=vec3(.42,.4,.36)*(.8+.4*ru.g); }
+          if(tipo<3.5||tipo>4.5&&tipo<9.5||tipo>20.5) if(m.x<.15||m.w<-.1||m.y<0.) discard;
+          if(tipo>22.5){ alb=mix(vec3(.13,.1,.075),vec3(.18,.16,.1),ru.g)*(.75+.5*rf.b); }
+          else if(tipo>21.5){
+            vec4 b=texture2D(uBal,vW.xz/3.2);
+            alb=mix(vec3(.17,.16,.14),vec3(.3,.285,.25),b.b)*(.85+.3*ru.g);
+          }else if(tipo>20.5){
+            vec2 f=abs(fract(vW.xz/2.6)-.5);
+            alb=vec3(.16,.155,.15)*(.8+.4*ru.g);
+            alb=mix(alb,vec3(.55,.54,.5),smoothstep(.46,.47,f.x)*.6);
+          }else if(tipo>8.5){ alb=mix(vec3(.24,.19,.12),vec3(.2,.2,.1),ru.g)*(.8+.4*rf.b); }
+          else if(tipo>7.5){ alb=vec3(.42,.4,.36)*(.8+.4*ru.g); }
           else if(tipo>6.5){ alb=vec3(.3,.13,.1)*(.8+.3*rf.g); }
           else if(tipo>5.5){ alb=mix(vec3(.13,.22,.1),vec3(.2,.16,.1),ru.r); }
           else if(tipo>4.5){ alb=vec3(.6,.5,.34)*(.8+.3*rf.b); }
@@ -233,8 +249,20 @@ export function matSuelo(c: Comunes, tex: { baldosa: THREE.Texture }, mapa: THRE
           alb=vec3(.1,.1,.11)*(.8+.4*rf.g);
         }else if(tipo<19.5){
           alb=vec3(.14,.12,.1)*(.5+1.*texture2D(uRui,vW.xz*2.).b);
-        }else{
+        }else if(tipo<20.5){
           alb=vec3(.3,.3,.32);
+        }else if(tipo<24.5){
+          /* Rampa: cemento rayado */
+          alb=vec3(.24,.235,.22)*(.85+.3*rf.g)*(.92+.08*step(.5,fract((vW.x+vW.z)*5.)));
+        }else if(tipo<25.5){
+          vec2 d=vec2(dot(vW.xz,vec2(.707,.707)),dot(vW.xz,vec2(-.707,.707)));
+          alb=vec3(.03)*(1.+1.5*step(.45,fract(d.x*11.)));
+        }else{
+          /* Cantero: tierra con flores */
+          float fl=step(.56,texture2D(uRui,vW.xz*2.3).b), mt=texture2D(uRui,vW.xz*.7).r;
+          vec3 c1=mix(vec3(.5,.06,.12),vec3(.62,.46,.05),step(.5,mt));
+          alb=mix(vec3(.05,.04,.03),mix(vec3(.08,.14,.04),c1,step(.62,texture2D(uRui,vW.xz*3.7).b)),fl);
+          a=smoothstep(.0,.25,vMat.y);
         }
         gl_FragColor=vec4(tono(conNiebla(alb*luzSuelo(N,.9,vW),vW)),a);
       }`,
@@ -327,6 +355,16 @@ export function matEdificio(c: Comunes, calidad: { value: number }) {
         float rel;
         vec3 base=lin(vCol);
         vec3 col=muroDe(mat,base,pm,y,H,sem,dF,rel);
+        if(mat>5.5&&mat<6.5&&vE.y>.5){
+          /* Mural abstracto, sin marcas ni personas: colores planos con la textura del muro encima */
+          vec2 q=pm/max(H,6.);
+          float id=mod(vE.y,5.);
+          vec3 c0=lin(vec3(.86,.32,.22)),c1=lin(vec3(.12,.46,.56)),c2=lin(vec3(.95,.74,.2)),c3=lin(vec3(.9,.86,.78));
+          float f=id<1.?fract(q.x*2.+q.y*3.):id<2.?fract(length(q-vec2(.5,.5+.3*sin(sem*20.)))*4.):id<3.?fract(q.x*3.+sin(q.y*6.+sem*9.)*.3):id<4.?fract(q.y*4.+.4*sin(q.x*9.)):fract(atan(q.y-.5,q.x-.5)*.95+sem);
+          vec3 mu=f<.25?c0:f<.5?c1:f<.75?c2:c3;
+          float borde=smoothstep(.0,.04,min(min(pm.y-3.,H-pm.y-.6),min(pm.x-.4,20.)));
+          col=mix(col,mu*(.8+.3*texture2D(uRui,pm*.09).g),borde*.92);
+        }
         vec3 emi=vec3(0.);
         float aoP=1., vid=mat>3.5&&mat<4.5?1.:0.;
         bool haceVent=vA>.01||vid>.5;
@@ -610,6 +648,11 @@ export function matProp(c: Comunes) {
         if(aParte>2.5&&aParte<4.5){
           p.z+=(aParte<3.5?1.:-1.)*sin(uTiempo*6.2+aFase)*(.94-p.y)*.5;
         }
+        if(aParte>17.5){
+          float q=abs(p.x);
+          p.z+=sin(q*2.6-uTiempo*5.)*.14*q*.6+sin(q*5.-uTiempo*7.)*.04*q;
+          p.y+=sin(q*2.-uTiempo*4.)*.04*q;
+        }
         if(aParte>5.5&&aParte<7.5){
           p.z+=(aParte<6.5?-1.:1.)*sin(uTiempo*6.2+aFase)*(1.42-p.y)*.38;
         }
@@ -617,7 +660,7 @@ export function matProp(c: Comunes) {
         #ifdef USE_INSTANCING
           w=modelMatrix*instanceMatrix*vec4(p,1.);
           n=mat3(instanceMatrix)*normal;
-          vU=vec2(p.x*length(instanceMatrix[0].xyz),p.y*length(instanceMatrix[1].xyz));
+          vU=aParte>17.5?p.xy:vec2(p.x*length(instanceMatrix[0].xyz),p.y*length(instanceMatrix[1].xyz));
         #else
           w=modelMatrix*vec4(p,1.);
           n=mat3(modelMatrix)*normal;
@@ -636,6 +679,18 @@ export function matProp(c: Comunes) {
         float p=vP;
         if(p>.5&&p<1.5) col*=lin(vCi);
         if(p>1.5&&p<2.5) emi=col*(.08+uNoche*2.5);
+        if(p>15.5&&p<17.5){
+          /* Peatonal: siga cuando el auto de esa mano tiene rojo */
+          float f=fract((uTiempo+vCi.g*uCiclo)/uCiclo+vCi.r*.5);
+          float siga=f>.52&&f<.9?1.:0.;
+          float on=p<16.5?1.-siga:siga;
+          emi=vC*on*(1.1+uNoche*1.5); col=vec3(.01);
+        }
+        if(p>17.5){
+          /* Bandera: celeste, blanco, celeste */
+          float z=(vU.y-8.625)/1.15;
+          col=lin(z>.333&&z<.666?vec3(.95,.95,.93):vec3(.46,.68,.87));
+        }
         if(p>7.5&&p<10.5){
           /* Semáforo: la fase y el corrimiento vienen en el color de instancia */
           float f=fract((uTiempo+vCi.g*uCiclo)/uCiclo+vCi.r*.5);

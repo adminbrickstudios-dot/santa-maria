@@ -97,7 +97,7 @@ class Mobiliario {
   }
   destruir() { for (const m of this.mallas) { m.removeFromParent(); m.geometry.dispose(); m.dispose(); } }
 }
-const TOPES: Record<number, number> = { 29: 500, 0: 260, 2: 160, 4: 200, 24: 400, 5: 120, 25: 40, 26: 420, 27: 40, 28: 80 };
+const TOPES: Record<number, number> = { 34: 160, 35: 40, 37: 160, 33: 120, 38: 40, 41: 300, 42: 120, 29: 500, 0: 260, 2: 160, 4: 200, 24: 400, 5: 120, 25: 40, 26: 420, 27: 40, 28: 80 };
 
 export class Mundo {
   celdas = new Map<string, Celda>();

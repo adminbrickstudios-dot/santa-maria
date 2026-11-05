@@ -39,14 +39,14 @@ export interface Via {
   sentido: number;
   carriles: number;
   auto: boolean; peaton: boolean; tunel: boolean; puente: boolean; capa: number;
-  superficie: string; ciclo: number; bus: boolean; vereda: boolean; escalera: boolean;
+  superficie: string; ciclo: number; bus: boolean; vereda: boolean; escalera: boolean; plataforma: boolean; estaciona: boolean;
   caja: [number, number, number, number];
 }
 export interface Poi { x: number; z: number; nombre: string; categoria: string; telefono: string; web: string; red: string; whatsapp: string; horario: string; direccion: string }
 export interface Puerta { x: number; z: number; num: string; tipo: string }
 export interface Objeto { tipo: string; x: number; z: number; detalle: string }
 export interface Cruce { x: number; z: number; tipo: string }
-export type TipoArea = "parque" | "pasto" | "bosque" | "agua" | "cancha" | "juegos" | "cementerio" | "arena";
+export type TipoArea = "parque" | "pasto" | "bosque" | "agua" | "cancha" | "juegos" | "cementerio" | "arena" | "canil" | "obra" | "playa" | "balasto" | "terreno" | "arbustos" | "plazaseca";
 export interface Poligono { tipo: TipoArea; anillos: number[][]; caja: [number, number, number, number] }
 
 interface Indice { edifs: Edif[]; vias: Via[]; polis: Poligono[]; pois: Poi[]; objetos: Objeto[]; cruces: Cruce[] }
@@ -154,8 +154,9 @@ interface TileCrudo { e?: Fila[]; l?: Fila[]; o?: Fila[]; p?: Fila[]; k?: Fila[]
 function leerVia(f: Fila, k: number): Via | null {
   const clase = String(f[1]), extra = (f[4] ?? {}) as Record<string, string>;
   const auto = clase in CLASES, peaton = clase in PEATON, riel = clase.startsWith("rail:"), muro = clase.startsWith("muro:");
-  if (!auto && !peaton && !riel && !muro) return null;
-  if (riel && !/^rail:(rail|tram|light_rail|subway|narrow_gauge)$/.test(clase)) return null;
+  const plataforma = clase === "platform" || clase === "rail:platform";
+  if (!auto && !peaton && !riel && !muro && !plataforma) return null;
+  if (riel && !plataforma && !/^rail:(rail|tram|light_rail|subway|narrow_gauge)$/.test(clase)) return null;
   const tunel = extra.tunnel != null && extra.tunnel !== "no", puente = extra.bridge != null && extra.bridge !== "no";
   if (extra.location === "underground") return null;
   const pts = (f[3] as number[]).map((v) => v * k);
@@ -178,7 +179,7 @@ function leerVia(f: Fila, k: number): Via | null {
   return {
     id: Number(f[0]), clase, nombre: String(f[2] ?? ""), pts, hw, acera, sentido, carriles, auto, peaton, tunel, puente,
     capa: num(extra.layer), superficie: String(extra.surface ?? ""), ciclo: /lane|track|separate/.test(cl) ? 1 : 0, bus: extra.busway != null && extra.busway !== "no" || clase === "busway",
-    vereda: extra.footway === "sidewalk", escalera: clase === "steps", caja: cajaDe(pts),
+    vereda: extra.footway === "sidewalk", escalera: clase === "steps", plataforma, estaciona: !/^(no|separate)/.test(extra["parking:both"] ?? ""), caja: cajaDe(pts),
   };
 }
 

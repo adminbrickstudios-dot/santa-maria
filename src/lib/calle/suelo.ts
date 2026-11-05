@@ -39,7 +39,7 @@ function grabar(d: Float32Array, L: number, paso: number, ox: number, oz: number
   }
 }
 
-export interface MapaSuelo { mapa: Uint8Array; lado: number; paso: number; ox: number; oz: number; cal: Float32Array }
+export interface MapaSuelo { mapa: Uint8Array; lado: number; paso: number; ox: number; oz: number; cal: Float32Array; pared: Float32Array; senda: Float32Array }
 
 export function armarMapa(vias: Via[], edifs: Edif[], ox: number, oz: number, C: number): MapaSuelo {
   const L = Math.round(C) + 1, paso = C / (L - 1), n = L * L;
@@ -85,12 +85,16 @@ export function armarMapa(vias: Via[], edifs: Edif[], ox: number, oz: number, C:
     mapa[k * 4 + 2] = cod(pared[k]);
     mapa[k * 4 + 3] = cod(acera[k]);
   }
-  return { mapa, lado: L, paso, ox, oz, cal };
+  return { mapa, lado: L, paso, ox, oz, cal, pared, senda };
 }
 
 /** Distancia a la calzada en un punto (interpolada). Sirve para saber si algo va sobre la vereda. */
-export function distCalzada(m: MapaSuelo, x: number, z: number) {
+export const distCalzada = (m: MapaSuelo, x: number, z: number) => leer(m, m.cal, x, z);
+export const distPared = (m: MapaSuelo, x: number, z: number) => leer(m, m.pared, x, z);
+export const distSenda = (m: MapaSuelo, x: number, z: number) => leer(m, m.senda, x, z);
+
+function leer(m: MapaSuelo, c: Float32Array, x: number, z: number) {
   const fx = Math.max(0, Math.min(m.lado - 1.001, (x - m.ox) / m.paso)), fz = Math.max(0, Math.min(m.lado - 1.001, (z - m.oz) / m.paso));
-  const i = Math.floor(fx), j = Math.floor(fz), a = fx - i, b = fz - j, c = m.cal, L = m.lado;
+  const i = Math.floor(fx), j = Math.floor(fz), a = fx - i, b = fz - j, L = m.lado;
   return (c[j * L + i] * (1 - a) + c[j * L + i + 1] * a) * (1 - b) + (c[(j + 1) * L + i] * (1 - a) + c[(j + 1) * L + i + 1] * a) * b;
 }
