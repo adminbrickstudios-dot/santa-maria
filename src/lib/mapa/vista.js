@@ -68,6 +68,7 @@ function poner(src,data,sig){if(!mapa)return;const k=sig??JSON.stringify(data);i
 const PILLS=new Map();
 function pill(k,tx,btn){tx?PILLS.set(k,{tx,btn}):PILLS.delete(k);const b=$('avisos');if(!b)return;b.innerHTML=[...PILLS.entries()].map(([id,p])=>`<div class="m-pill" data-p="${id}"><span>${esc(p.tx)}</span>${p.btn?`<button data-a="${p.btn.a}">${esc(p.btn.n)}</button>`:''}</div>`).join('');}
 
+let esperaRed=4000;
 function relojEstilo(){clearTimeout(tEstilo);const v=verEstilo;tEstilo=setTimeout(()=>{if(v===verEstilo&&!estiloListo&&!usandoPlano)caerAPlano();},8000);}
 async function ponerEstilo(){
   if(!mapa)return;
@@ -82,7 +83,8 @@ async function ponerEstilo(){
 /* Si el mapa de internet no llega, se dibuja el plano propio y se vuelve solo apenas responda */
 function caerAPlano(){
   if(usandoPlano||!mapa)return;
-  usandoPlano=true;clearTimeout(tEstilo);pill('red','Sin conexión con el mapa: te muestro el plano guardado.');ponerEstilo();sondear(4000);
+  /* La espera crece en cada caída: si el estilo responde y los tiles no, no queda yendo y viniendo */
+  usandoPlano=true;clearTimeout(tEstilo);pill('red','Sin conexión con el mapa: te muestro el plano guardado.');ponerEstilo();sondear(esperaRed);esperaRed=Math.min(60000,esperaRed*2);
 }
 function sondear(ms){clearTimeout(tSondeo);const yoS=sesion;tSondeo=setTimeout(()=>probarRed(yoS,ms),ms);}
 async function probarRed(yoS,ms){
@@ -133,7 +135,7 @@ async function crearMapa(contenedor,cam){
   mapa.on('style.load',()=>{clearTimeout(tEstilo);estiloListo=false;SIG={};intentarCapas();});
   mapa.on('styleimagemissing',e=>{if(!mapa||mapa.hasImage(e.id))return;const im=dibujarImagen(e.id);if(im)mapa.addImage(e.id,im,{pixelRatio:RATIO_IMAGEN});});
   mapa.once('idle',()=>{document.querySelector('.maplibregl-compact-show')?.classList.remove('maplibregl-compact-show');rehechos=0;});
-  mapa.on('sourcedata',e=>{if(e.tile&&e.sourceId!=='sat')fTiles=0;if(e.tile&&e.sourceId==='sat')fSat=0;});
+  mapa.on('sourcedata',e=>{if(e.tile?.state!=='loaded')return;if(e.sourceId==='sat')fSat=0;else if(/^openmaptiles/i.test(e.sourceId)){fTiles=0;esperaRed=4000;}});
   mapa.on('click',alClick);
   mapa.on('error',alError);
   mapa.on('webglcontextlost',alPerderContexto);
@@ -272,7 +274,7 @@ function pintarVistas(){pintarMenu();const b=$('gps');if(b){b.dataset.modo=U.mod
 function render(){
   if(!$('panel'))return;
   pintarTabs();pintarFichas();
-  const P=$('panel'),v=S.buscando?vistaBusqueda:S.herr==='medir'?vistaMedir:S.herr==='medio'?vistaMedio:S.herr==='listas'?vistaListas:S.filtro?vistaFicha:{ir:vistaIr,cerca:vistaCerca,junta:vistaJunta,explorar:vistaExplorar}[S.tab];
+  const P=$('panel'),v=S.buscando?vistaBusqueda:S.herr==='medir'?vistaMedir:S.herr==='medio'?vistaMedio:S.herr==='listas'?vistaListas:S.herr==='vivo'?vistaVivo:S.filtro?vistaFicha:{ir:vistaIr,cerca:vistaCerca,junta:vistaJunta,explorar:vistaExplorar}[S.tab];
   P.innerHTML=`<div class="pila">${v()}</div>`;
 }
 const avisoDatos=()=>S.datos==='error'?`<div class="nota"><h3>No pude bajar las rutas</h3><p>El mapa funciona igual. Vuelvo a probar solo, o tocá acá.</p><button class="btn sec2 chico" data-a="reintentar-datos">Probar de nuevo</button></div>`:'<div class="m-carga-fila"><i></i><span>Preparando las rutas…</span></div>';
@@ -1071,13 +1073,15 @@ export function montarMapa(raiz,api){
   M.listas=M.listas||[];M.favs=M.favs||[];M.recientes=M.recientes||[];
   if(M.capas)S.capas={...S.capas,...M.capas,ecobici:false};
   colores();vistaBase=M.vista==='noche'?'noche':'mapa';vistaEstiloOscuro=baseOscura();
-  usandoPlano=false;trid=false;rehechos=0;fTiles=0;fSat=0;SIG={};
+  usandoPlano=false;trid=false;rehechos=0;fTiles=0;fSat=0;esperaRed=4000;SIG={};
   L.places=(api.lugares||[]).map(q=>{const wxx=wx(q.lon),wyy=wy(q.lat),k={facu:'f',salida:'p',transporte:'t'}[q.tipo];return {k,n:q.nombre,d:q.descripcion,wx:wxx,wy:wyy,prim:!!q.destacado,place:{k:'l:'+q.id,nombre:q.nombre,x:wxx,y:wyy,tipo:'lugar',d:q.descripcion,sub:q.descripcion}};});
   L.places.sort((a,b)=>b.prim-a.prim);L.places.forEach(q=>reg(q.place));
   armarPersonas();Object.values(M.conocidos||{}).forEach(q=>REG.set(q.k,q));
   (M.listas||[]).forEach(l=>l.lugares.forEach(lugarDeLista));
   if(api.tab&&TABS.some(t=>t[0]===api.tab))S.tab=api.tab;
   hojaArrastrable();
+  /* Un foco dentro del panel no puede correr la pantalla entera */
+  const rz=$('raiz');rz.addEventListener('scroll',()=>{rz.scrollTop=0;rz.scrollLeft=0;});
   const clic=e=>{
     if(S.menu&&!e.target.closest('#m-menu,[data-a="menu"]')){S.menu=false;pintarMenu();}
     const b=e.target.closest('[data-a]');if(!b||!raiz.contains(b)||b.disabled)return;const f=ACC[b.dataset.a];if(f){e.preventDefault();f(b);}

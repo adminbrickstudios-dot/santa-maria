@@ -1,4 +1,5 @@
 /* Mapa: lo que flota arriba del plano. Todo opaco o casi: un desenfoque sobre un mapa en movimiento baja los cuadros. */
+.mp,.mp.mapa-grande,.mp .stage{overflow:clip}
 .m-hoja{background:var(--suelo);-webkit-backdrop-filter:none;backdrop-filter:none;contain:layout paint}
 .mp .stage{background:#E9E6DF}
 #m-mapa .maplibregl-canvas{outline:none}
