@@ -55,10 +55,16 @@ function Calle() {
     },
     apagar: async () => { await sb.from("ubicaciones_temporales").delete().eq("perfil_id", s.perfil.id); },
   }), [s.perfil.id, s.perfil.grupo_id, s.personas]);
+  /* /calle?ir=lat,lon&n=Nombre abre con ese destino elegido, listo para "Iniciar recorrido" */
+  const destino = useMemo(() => {
+    const [a, o] = (q.get("ir") ?? "").split(",").map(Number);
+    return Number.isFinite(a) && Number.isFinite(o) && a !== 0 && Math.abs(a) <= 90 && Math.abs(o) <= 180 ? { nombre: q.get("n") || "Destino", lat: a, lon: o } : null;
+  }, [q]);
   const mem = s.perfil.preferencias?.calle;
   return <>
     <CalleVista lat={num(q.get("lat"), -90, 90, LAT)} lon={num(q.get("lon"), -180, 180, LON)} puntoPedido={q.has("lat") && q.has("lon")} hora={hora ? num(hora, 0, 24, 12) : null}
       calidadFija={process.env.NEXT_PUBLIC_DEMO && q.has("cal") ? num(q.get("cal"), 0, 3, 1) : undefined} rumboInicial={q.has("rumbo") ? num(q.get("rumbo"), 0, 360, 0) : null}
+      destinoInicial={destino}
       lugares={mem?.lugares} guardarLugares={(l) => guardarMemoria({ lugares: l })} visitados={mem?.visitados} guardarVisitados={(l) => guardarMemoria({ visitados: l })}
       alMotor={process.env.NEXT_PUBLIC_DEMO ? (m) => { (window as unknown as { __motor: unknown }).__motor = m; } : undefined}
       mandar={setEnvio} casa={casa} facu={facu} amigos={amigos} cargarTemas={cargarTemas} ubicacion={ubicacion} />

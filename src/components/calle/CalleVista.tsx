@@ -45,6 +45,8 @@ export interface PropsCalle {
   crearWorkerCiudad?: () => Worker;
   calidadFija?: number;
   alMotor?: (m: Motor) => void;
+  /** Lugar al que querés ir apenas abre: viene de otra pantalla, como "Cómo ir". */
+  destinoInicial?: Destino | null;
   /** Rumbo inicial en grados, para abrir una vista compartida. */
   rumboInicial?: number | null;
   /** Lugares guardados y visitados: viven en el perfil, que solo lee su dueño. */
@@ -82,7 +84,7 @@ function Maqueta({ progreso, titulo, detalle, children }: { progreso: number; ti
   );
 }
 
-function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, crearWorker, crearWorkerCiudad, calidadFija, alMotor, rumboInicial, lugares, guardarLugares, visitados, guardarVisitados, mandar, casa, facu, amigos, cargarTemas, ubicacion }: PropsCalle) {
+function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, crearWorker, crearWorkerCiudad, calidadFija, alMotor, rumboInicial, destinoInicial, lugares, guardarLugares, visitados, guardarVisitados, mandar, casa, facu, amigos, cargarTemas, ubicacion }: PropsCalle) {
   const router = useRouter();
   const lienzo = useRef<HTMLDivElement>(null);
   const motor = useRef<Motor | null>(null);
@@ -328,6 +330,8 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
     m.ponerCarteles(lista.map((c) => ({ lat: c.lat, lon: c.lon, texto: c.nombre, sub: `${c.categoria} · ${distancia(c.dist)}` })));
   }
   function quitarFiltro() { setFiltro(null); setHoja(null); motor.current?.ponerCarteles(null); }
+
+  useEffect(() => { if (listo && destinoInicial) elegirDestino(destinoInicial); }, [listo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ───────── La cuadra: qué tenés alrededor ───────── */
   useEffect(() => {
@@ -671,7 +675,7 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
           )}
           {filtro && !buscando && <button className="calle-filtro" onClick={quitarFiltro} aria-label={`Sacar los carteles de ${etiquetaFiltro}`}><span>{etiquetaFiltro}: {filtro.lista.length}</span><Icono n="x" t={18} /></button>}
 
-          {!enReal && tactil && !buscando && !local && !destino && !enViaje && <button className="calle-iniciar flotante" onClick={() => iniciarRecorrido(null)}>Iniciar recorrido</button>}
+          {!enReal && tactil && !buscando && !local && !destino && !enViaje && !cerca && <button className="calle-iniciar flotante" onClick={() => iniciarRecorrido(null)}>Iniciar recorrido</button>}
           {!enReal && <div className={`calle-marcha ${modosAbiertos ? "abierta" : ""}`}>
             {modo === "volar" && !modosAbiertos && (
               <div className="calle-altura" role="group" aria-label={`Altura del dron: ${Math.round(viaje?.altura ?? 70)} metros`}>
@@ -695,8 +699,8 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
           {compartiendo && <button className="calle-filtro compartiendo" onClick={() => setCompartiendo(false)}><span>Compartiendo tu ubicación</span><Icono n="x" t={18} /></button>}
 
           {ayuda && !buscando && <p className="calle-ayuda" role="status">{tactil ? "Mové con el dedo izquierdo, arrastrá para mirar y tocá un local o un edificio." : "Caminá con WASD o las flechas, arrastrá para mirar y tocá un local o un edificio."}</p>}
-          {cerca && !local && !enViaje && !destino && modo !== "volar" && !volando && !buscando && (
-            <button className="calle-cerca" onClick={() => motor.current?.abrir(cerca)}>
+          {cerca && !local && (!enViaje || enReal) && !destino && modo !== "volar" && !volando && !buscando && (
+            <button className={`calle-cerca ${enReal ? "real" : ""}`} onClick={() => motor.current?.abrir(cerca)}>
               <i style={{ background: cerca.rubro.color }} /><span><b>{cerca.nombre}</b><small>{cerca.rubro.nombre}</small></span><Icono n="flecha" t={20} />
             </button>
           )}

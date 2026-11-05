@@ -238,6 +238,7 @@ body:has(.calle) .toast{z-index:122}
   .calle-filtro{top:calc(var(--st) + 74px)}
   .calle-filtro.compartiendo{top:calc(var(--st) + 124px)}
   .calle-iniciar.flotante{bottom:calc(var(--sb) + 22px);max-width:170px;min-height:60px}
+  .calle-cerca.real{left:var(--sl);right:auto;width:min(380px,40%);max-width:none;bottom:calc(var(--sb) + 12px)}
   .calle-recorrido{left:auto;right:var(--sr);bottom:calc(var(--sb) + 8px);width:min(420px,56%);margin:0}
   .calle-recordatorio{bottom:calc(var(--sb) + 150px);left:30%}
   .calle-paseo{left:auto;right:var(--sr);width:min(340px,50%);bottom:calc(var(--sb) + 104px);margin:0}
