@@ -100,7 +100,8 @@
 
 .maplibregl-ctrl-bottom-left{top:calc(env(safe-area-inset-top,0px) + 118px)!important;left:2px}
 @media (min-width:920px){
-  .m-arriba{left:446px;right:12px;grid-template-columns:minmax(0,420px)}
+  .m-arriba{left:446px;right:164px}
+  .m-barra{max-width:440px}
   .m-fichas{grid-column:1/-1;margin:0;padding:0 0 4px}
   #m-avisos{grid-column:1/-1}
   .m-der{top:calc(env(safe-area-inset-top,0px) + 14px)}
