@@ -83,12 +83,13 @@ export function HojaPracticar({ casa, facu, guardados, practicar, cerrar }: { ca
 
 export interface Activo { id: string; nombre: string; lat: number; lon: number; hasta: string }
 
-export function HojaEncuentro({ amigos, buscar, cerrar, activos, compartiendo, compartir, dejar, irA }: {
+export function HojaEncuentro({ amigos, buscar, cerrar, activos, compartiendo, elegibles, compartir, dejar, irA }: {
   amigos: Amigo[]; buscar: (ids: string[]) => Promise<{ nombre: string; lat: number; lon: number; detalle: string } | null>; cerrar: () => void;
   /** null: esta función todavía no está disponible. */
-  activos: Activo[] | null; compartiendo: boolean; compartir: () => void; dejar: () => void; irA: (a: Activo) => void;
+  activos: Activo[] | null; compartiendo: boolean; elegibles: { id: string; nombre: string }[]; compartir: (ids: string[]) => void; dejar: () => void; irA: (a: Activo) => void;
 }) {
   const [sel, setSel] = useState<string[]>([]);
+  const [con, setCon] = useState<string[]>([]);
   const [r, setR] = useState<{ nombre: string; lat: number; lon: number; detalle: string } | null>(null);
   const [nada, setNada] = useState(false);
   const alternar = (id: string) => { setR(null); setNada(false); setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id])); };
@@ -104,8 +105,13 @@ export function HojaEncuentro({ amigos, buscar, cerrar, activos, compartiendo, c
         <h3 className="calle-sec">Ir hasta una persona</h3>
         {activos.map((a) => <button key={a.id} className="calle-fila" onClick={() => irA(a)}><span className="calle-fila-ic"><Icono n="usuario" t={22} /></span><span><b>{a.nombre}</b><small>Comparte su ubicación por ahora</small></span></button>)}
         {!activos.length && <p className="calle-vacio">Nadie está compartiendo su ubicación ahora.</p>}
-        <button className="calle-btn calle-ancho" onClick={compartiendo ? dejar : compartir}>{compartiendo ? "Dejar de compartir mi ubicación" : "Compartir mi ubicación 30 minutos"}</button>
-        <p className="calle-nota izq">Solo la ve tu grupo, se apaga sola a los 30 minutos y la podés apagar cuando quieras.</p>
+        {!compartiendo && elegibles.length > 0 && <>
+          <h3 className="calle-sec">¿Quién puede ver tu ubicación?</h3>
+          {elegibles.map((p) => <button key={p.id} className="calle-fila" aria-pressed={con.includes(p.id)} onClick={() => setCon((l) => (l.includes(p.id) ? l.filter((x) => x !== p.id) : [...l, p.id]))}><span className="calle-fila-ic"><Icono n={con.includes(p.id) ? "ok" : "usuario"} t={22} /></span><span><b>{p.nombre}</b></span></button>)}
+        </>}
+        {!compartiendo && !elegibles.length && <p className="calle-vacio">Agregá un contacto para compartir tu ubicación.</p>}
+        {(compartiendo || elegibles.length > 0) && <button className="calle-btn calle-ancho" disabled={!compartiendo && !con.length} onClick={compartiendo ? dejar : () => compartir(con)}>{compartiendo ? "Dejar de compartir mi ubicación" : "Compartir mi ubicación 30 minutos"}</button>}
+        <p className="calle-nota izq">Solo la ven las personas que elijas. Se apaga sola a los 30 minutos y la podés apagar cuando quieras.</p>
       </>}
       {r && <>
         <h3 className="calle-sec">Te proponemos</h3>

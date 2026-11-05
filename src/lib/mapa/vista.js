@@ -861,7 +861,8 @@ function alternarFav(p){
 const V={sin:false,comp:false,para:new Set(),dur:60,hasta:0,off:null,ult:null,tPub:0,tFin:null,tLeer:null,gente:[]};
 const compartidos=()=>PERSONAS.filter(p=>V.para.has(p.id)).map(p=>p.nombre);
 function vistaVivo(){
-  const otros=PERSONAS.filter(p=>p.id!==API.yoId);
+  const contactos=new Set(API.personas.filter(p=>p.trato==null||p.trato==='libre').map(p=>p.id));
+  const otros=PERSONAS.filter(p=>p.id!==API.yoId&&contactos.has(p.id)).slice(0,50);
   if(V.comp)return `${cabHerr('Tu ubicación')}<div class="nota"><h3>La están viendo: ${esc(compartidos().join(', '))}</h3><p>Hasta las ${hhmm(ahoraMin(V.hasta))}, mientras tengas el mapa abierto.</p></div><button class="btn pri" data-a="vivo-parar">Dejar de compartir</button>`;
   return `${cabHerr('Compartir mi ubicación')}
   <p class="expl">Está apagado. Solo la ven las personas que elijas, hasta la hora que elijas, y se corta sola cuando salís del mapa.</p>

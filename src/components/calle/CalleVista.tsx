@@ -63,7 +63,9 @@ export interface PropsCalle {
   /** Temas de la guía con paradas reales. */
   cargarTemas?: () => Promise<Tema[]>;
   /** Ubicación compartida a propósito y por un rato. Sin esto, esa parte no aparece. */
-  ubicacion?: { activos(): Promise<Activo[] | null>; enviar(p: { lat: number; lon: number }, minutos: number): Promise<boolean>; apagar(): Promise<void> };
+  ubicacion?: { activos(): Promise<Activo[] | null>; enviar(p: { lat: number; lon: number }, minutos: number, para: string[]): Promise<boolean>; apagar(): Promise<void> };
+  /** A quiénes les podés mostrar tu ubicación. */
+  elegibles?: { id: string; nombre: string }[];
 }
 
 function Maqueta({ progreso, titulo, detalle, children }: { progreso: number; titulo: string; detalle?: string; children?: React.ReactNode }) {
@@ -84,7 +86,7 @@ function Maqueta({ progreso, titulo, detalle, children }: { progreso: number; ti
   );
 }
 
-function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, crearWorker, crearWorkerCiudad, calidadFija, alMotor, rumboInicial, destinoInicial, lugares, guardarLugares, visitados, guardarVisitados, mandar, casa, facu, amigos, cargarTemas, ubicacion }: PropsCalle) {
+function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, crearWorker, crearWorkerCiudad, calidadFija, alMotor, rumboInicial, destinoInicial, lugares, guardarLugares, visitados, guardarVisitados, mandar, casa, facu, amigos, cargarTemas, ubicacion, elegibles }: PropsCalle) {
   const router = useRouter();
   const lienzo = useRef<HTMLDivElement>(null);
   const motor = useRef<Motor | null>(null);
@@ -133,6 +135,7 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
   const [temas, setTemas] = useState<Tema[] | null>(null);
   const [activos, setActivos] = useState<Activo[] | null>(null);
   const [compartiendo, setCompartiendo] = useState(false);
+  const [compartirCon, setCompartirCon] = useState<string[]>([]);
   const [permisos, setPermisos] = useState<{ destino: Destino | null } | null>(null);
   const [cliente, setCliente] = useState<ClienteCiudad | null>(null);
   const hayHoja = useRef(false), saliendo = useRef(false), habiaAntes = useRef(false), inicio = useRef({ lat, lon }), edifActual = useRef<DatosEdificio | null>(null);
@@ -627,12 +630,12 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
     if (!compartiendo || !ubicacion) return;
     const fin = Date.now() + 30 * 60000;
     const enviar = () => navigator.geolocation.getCurrentPosition((p) => {
-      void ubicacion.enviar({ lat: p.coords.latitude, lon: p.coords.longitude }, 30).then((ok) => { if (!ok) { setCompartiendo(false); setAviso("No se pudo compartir tu ubicación."); } });
+      void ubicacion.enviar({ lat: p.coords.latitude, lon: p.coords.longitude }, 30, compartirCon).then((ok) => { if (!ok) { setCompartiendo(false); setAviso("No se pudo compartir tu ubicación."); } });
     }, () => { setCompartiendo(false); setAviso("Sin permiso de ubicación no se puede compartir."); }, { enableHighAccuracy: true, timeout: 15000 });
     enviar();
     const t = setInterval(() => { if (Date.now() > fin) { setCompartiendo(false); return; } enviar(); }, 30000);
     return () => { clearInterval(t); void ubicacion.apagar(); };
-  }, [compartiendo, ubicacion]);
+  }, [compartiendo, ubicacion, compartirCon]);
 
   const parar = (e: React.SyntheticEvent) => e.stopPropagation();
   if (!montado) return null;
@@ -757,12 +760,12 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
       <div className={`calle-nube ${nube ? "on" : ""}`} aria-hidden="true" />
       <div className={`calle-fundido ${fundido ? "on" : ""}`} aria-hidden="true" />
 
-      {menu && <MenuCalle cerrar={() => setMenu(false)} abrir={(h) => { if (h === "recorridos") abrirRecorridos(); else setHoja(h); if (h === "encuentro") void ubicacion?.activos().then(setActivos); }} enMapa={abrirMapa} modoFoto={() => setModoFoto(true)} compartir={compartirPunto} iniciar={() => iniciarRecorrido(null)} salir={() => setSalirHoja(true)} posicion={pos} recorrido={motor.current?.recorrido() ?? { metros: 0, pasos: 0, kcal: 0 }} tactil={tactil} />}
+      {menu && <MenuCalle fotos={process.env.NEXT_PUBLIC_GOOGLE_3D_KEY ? `/calle/real?lat=${posicion()?.lat ?? lat}&lon=${posicion()?.lon ?? lon}` : null} cerrar={() => setMenu(false)} abrir={(h) => { if (h === "recorridos") abrirRecorridos(); else setHoja(h); if (h === "encuentro") void ubicacion?.activos().then(setActivos); }} enMapa={abrirMapa} modoFoto={() => setModoFoto(true)} compartir={compartirPunto} iniciar={() => iniciarRecorrido(null)} salir={() => setSalirHoja(true)} posicion={pos} recorrido={motor.current?.recorrido() ?? { metros: 0, pasos: 0, kcal: 0 }} tactil={tactil} />}
       {hoja === "filtros" && <HojaFiltros activo={filtro?.id ?? null} elegir={ponerFiltro} quitar={quitarFiltro} cerrar={() => setHoja(null)} />}
       {hoja === "cuadra" && <HojaCuadra c={cuadra} calleMotor={calle} tocar={(l) => { setHoja(null); elegirDestino(destinoDe(l)); }} cerrar={() => setHoja(null)} />}
       {hoja === "recorridos" && <HojaRecorridos temas={temas} cerca={empezarPaseo} elegir={empezarTema} cerrar={() => setHoja(null)} />}
       {hoja === "practicar" && <HojaPracticar casa={casa ?? null} facu={facu ?? null} guardados={favs} practicar={practicar} cerrar={() => setHoja(null)} />}
-      {hoja === "encuentro" && <HojaEncuentro amigos={amigos ?? []} buscar={puntoMedio} cerrar={() => setHoja(null)} activos={ubicacion ? activos : null} compartiendo={compartiendo} compartir={() => setCompartiendo(true)} dejar={() => setCompartiendo(false)} irA={(a) => { setHoja(null); iniciarRecorrido({ nombre: a.nombre, lat: a.lat, lon: a.lon }); }} />}
+      {hoja === "encuentro" && <HojaEncuentro amigos={amigos ?? []} buscar={puntoMedio} cerrar={() => setHoja(null)} activos={ubicacion ? activos : null} compartiendo={compartiendo} elegibles={elegibles ?? []} compartir={(ids) => { setCompartirCon(ids); setCompartiendo(true); }} dejar={() => setCompartiendo(false)} irA={(a) => { setHoja(null); iniciarRecorrido({ nombre: a.nombre, lat: a.lat, lon: a.lon }); }} />}
       {permisos && <HojaPermisos cerrar={() => setPermisos(null)} seguir={() => { guardar("sm-calle-real-ok", "1"); const d = permisos.destino; setPermisos(null); camina.iniciar(d); }} />}
       {camina.lejos && <HojaLejos destino={camina.lejos.destino} metros={camina.lejos.metros} aPie={camina.irDesdeLejos} cerrar={() => camina.setLejos(null)} />}
       {hoja === "clima" && <HojaClima hora={horaSim} setHora={cambiarHora} cerrar={() => setHoja(null)} />}

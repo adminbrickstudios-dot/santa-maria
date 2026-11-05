@@ -42,18 +42,19 @@ function Calle() {
       paradas: ((it ?? []) as { titulo: string; bajada: string | null; seccion: string; direccion: string | null; lat: number; lon: number }[]).filter((i) => i.seccion === x.slug && cerca(i)).slice(0, 6).map((i) => ({ nombre: i.titulo, lat: i.lat, lon: i.lon, direccion: i.direccion ?? undefined, bajada: i.bajada ?? undefined })),
     })).filter((t) => t.paradas.length >= 2);
   }, [casa]);
-  /* Ubicación compartida a propósito. Si la tabla todavía no existe, esa parte no aparece */
+  /* Ubicación compartida a propósito, con quienes elegís. Si la tabla todavía no existe, esa parte no aparece */
+  const elegibles = useMemo(() => s.personas.filter((p) => p.id !== s.perfil.id && (p.trato == null || p.trato === "libre")).slice(0, 50).map((p) => ({ id: p.id, nombre: p.nombre })), [s.personas, s.perfil.id]);
   const ubicacion = useMemo(() => ({
     activos: async () => {
-      const { data, error } = await sb.from("ubicaciones_temporales").select("perfil_id,lat,lon,hasta").gte("hasta", new Date().toISOString());
+      const { data, error } = await sb.from("ubicaciones_vivas").select("perfil_id,lat,lon,hasta").gte("hasta", new Date().toISOString());
       if (error) return null;
-      return ((data ?? []) as { perfil_id: string; lat: number; lon: number; hasta: string }[]).filter((u) => u.perfil_id !== s.perfil.id).map((u) => ({ id: u.perfil_id, nombre: s.personas.find((p) => p.id === u.perfil_id)?.nombre ?? "Alguien del grupo", lat: u.lat, lon: u.lon, hasta: u.hasta }));
+      return ((data ?? []) as { perfil_id: string; lat: number; lon: number; hasta: string }[]).filter((u) => u.perfil_id !== s.perfil.id).map((u) => ({ id: u.perfil_id, nombre: s.personas.find((p) => p.id === u.perfil_id)?.nombre ?? "Tu contacto", lat: u.lat, lon: u.lon, hasta: u.hasta }));
     },
-    enviar: async (p: { lat: number; lon: number }, minutos: number) => {
-      const { error } = await sb.from("ubicaciones_temporales").upsert({ perfil_id: s.perfil.id, grupo_id: s.perfil.grupo_id, lat: p.lat, lon: p.lon, hasta: new Date(Date.now() + minutos * 60000).toISOString(), actualizado: new Date().toISOString() });
+    enviar: async (p: { lat: number; lon: number }, minutos: number, para: string[]) => {
+      const { error } = await sb.from("ubicaciones_vivas").upsert({ perfil_id: s.perfil.id, grupo_id: s.perfil.grupo_id, lat: p.lat, lon: p.lon, para, hasta: new Date(Date.now() + minutos * 60000).toISOString(), actualizado_en: new Date().toISOString() });
       return !error;
     },
-    apagar: async () => { await sb.from("ubicaciones_temporales").delete().eq("perfil_id", s.perfil.id); },
+    apagar: async () => { await sb.from("ubicaciones_vivas").delete().eq("perfil_id", s.perfil.id); },
   }), [s.perfil.id, s.perfil.grupo_id, s.personas]);
   /* /calle?ir=lat,lon&n=Nombre abre con ese destino elegido, listo para "Iniciar recorrido" */
   const destino = useMemo(() => {
@@ -67,7 +68,7 @@ function Calle() {
       destinoInicial={destino}
       lugares={mem?.lugares} guardarLugares={(l) => guardarMemoria({ lugares: l })} visitados={mem?.visitados} guardarVisitados={(l) => guardarMemoria({ visitados: l })}
       alMotor={process.env.NEXT_PUBLIC_DEMO ? (m) => { (window as unknown as { __motor: unknown }).__motor = m; } : undefined}
-      mandar={setEnvio} casa={casa} facu={facu} amigos={amigos} cargarTemas={cargarTemas} ubicacion={ubicacion} />
+      mandar={setEnvio} casa={casa} facu={facu} amigos={amigos} cargarTemas={cargarTemas} ubicacion={ubicacion} elegibles={elegibles} />
     {envio && <MandarA texto={envio.texto} adjunto={envio.adjunto} cerrar={() => setEnvio(null)} />}
   </>;
 }
