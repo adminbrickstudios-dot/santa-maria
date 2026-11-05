@@ -663,7 +663,16 @@ function itemsFicha(){
   const f=ficha(S.filtro);if(!f)return [];
   const l=[];
   if(f.local&&hayDatos())for(const q of L.pois)if(q.c===f.local)l.push({n:q.n,d:q.d,x:q.wx,y:q.wy,h:''});
-  if(f.osm)for(const q of lugaresOSM(f.id))l.push({n:q.n||'Baño público',d:q.d,x:wx(q.lo),y:wy(q.la),h:q.h});
+  if(f.osm){
+    /* El mismo local puede estar en las dos fuentes: queda uno solo, con el horario de OpenStreetMap */
+    const celdas=new Map(),clave=(x,y)=>Math.floor(x/120)*1e5+Math.floor(y/120);
+    for(const q of l){const k=clave(q.x,q.y);(celdas.get(k)||celdas.set(k,[]).get(k)).push(q);}
+    for(const q of lugaresOSM(f.id)){
+      const x=wx(q.lo),y=wy(q.la);let igual=null;
+      for(let i=-1;i<=1&&!igual;i++)for(let j=-1;j<=1&&!igual;j++)igual=(celdas.get(clave(x+i*120,y+j*120))||[]).find(u=>Math.hypot(u.x-x,u.y-y)<60)||null;
+      if(igual){if(!igual.h)igual.h=q.h;}else l.push({n:q.n||'Baño público',d:q.d,x,y,h:q.h});
+    }
+  }
   if(!S.soloAbierto)return l;
   const a=ahora();return l.filter(q=>estadoHorario(q.h,a.wd,a.min)?.abierto);
 }
@@ -674,6 +683,7 @@ function pintarFichaEnMapa(){
   const l=itemsFicha(),sig=`${f.id}|${S.soloAbierto}|${l.length}`;if(SIG.pois===sig)return;
   for(const k of [...PTS.keys()])if(k[0]==='i')PTS.delete(k);
   const ic=`bg|${f.col}|${f.ic}`;
+  if(mapa.getLayer('pois-cl'))mapa.setLayoutProperty('pois-cl','icon-image',['concat',`cl|${f.col}|`,['to-string',['get','point_count']]]);
   poner('pois',fc(l.map((q,i)=>{PTS.set('i'+i,{nombre:q.n,x:q.x,y:q.y,tipo:'poi',sub:q.d,h:q.h});return punto(q.x,q.y,{id:'i'+i,ic});})),sig);
 }
 async function actualizarFicha(){
@@ -770,7 +780,7 @@ async function abrirBarrio(b){
   const nom=nombreBarrio(b),t=[];
   const dato=(n,s)=>{if(n)t.push([n,s]);};
   dato(f.lineas,f.lineas===1?'línea de colectivo':'líneas de colectivo');dato(f.est.length,f.est.length===1?'estación de subte':'estaciones de subte');dato(f.cuenta.f,f.cuenta.f===1?'farmacia':'farmacias');dato(f.nPlazas,f.nPlazas===1?'plaza o parque':'plazas y parques');dato(f.verde,f.verde===1?'hectárea verde':'hectáreas verdes');dato(f.cuenta.c,f.cuenta.c===1?'bar notable':'bares notables');
-  const cards=[{tipo:'portada',t:nom,datos:t.slice(0,6),x:ce?wx(ce[1]):null,y:ce?wy(ce[2]):null}];
+  const cards=[{tipo:'portada',t:'En números',datos:t.slice(0,6),x:ce?wx(ce[1]):null,y:ce?wy(ce[2]):null}];
   const lugar=(tipo,n,x,y,sub,ic)=>cards.push({tipo,t:n,sub,ic,x,y,place:{nombre:n,x,y,tipo:'poi',sub}});
   f.plazas.slice(0,3).forEach(p=>lugar('plaza',p.n,p.x,p.y,`Plaza o parque de ${(p.area/10000).toFixed(1).replace('.',',')} hectáreas`,'plaza'));
   f.cafes.slice(0,3).forEach(q=>lugar('cafe',q.n,q.wx,q.wy,`Bar notable · ${q.d||''}`,'cafe'));

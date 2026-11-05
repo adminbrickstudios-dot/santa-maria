@@ -64,6 +64,9 @@
 :root[data-theme="dark"] .m-abre{color:#35D68C!important}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .m-abre{color:#35D68C!important}}
 
+.mp .btn svg{width:22px;height:22px;flex:none}
+.mp .ico-btn svg{width:24px;height:24px}
+.mp .btn{gap:8px}
 #m-carga{z-index:4}
 #m-carga[hidden]{display:none}
 #m-carga p{margin-bottom:10px}.m-sub{font-weight:500;font-size:15px}
