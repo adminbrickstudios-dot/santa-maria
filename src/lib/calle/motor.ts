@@ -589,7 +589,7 @@ export class Motor {
 
   /** "Ir ya": sube, cruza y baja. Con movimiento reducido es un fundido. */
   volarA(lat: number, lon: number, alLlegar?: () => void) {
-    if (this.vuelo) return;
+    if (this.vuelo && this.vuelo.fase !== "bajar") return;
     this.cancelarRuta(true);
     const p = mundoDeLonLat(this.o, lon, lat), dist = Math.hypot(p.x - this.x, p.z - this.z);
     this.vuelo = {
