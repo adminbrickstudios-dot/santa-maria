@@ -15,8 +15,22 @@ export class Sombras {
   private uso = 0;
   private turno = 0;
 
+  /* Los samplers de sombra necesitan siempre una textura de profundidad válida, aunque no se use */
+  private vacio: THREE.WebGLRenderTarget;
+
   constructor(private r: THREE.WebGLRenderer, private c: Comunes, atlas: THREE.Texture) {
     this.mH = matProfundidadHojas(atlas);
+    this.vacio = this.objetivo(1);
+    c.uTS0.value = c.uTS1.value = this.vacio.depthTexture;
+  }
+
+  private objetivo(s: number) {
+    const prof = new THREE.DepthTexture(s, s, THREE.UnsignedIntType);
+    prof.compareFunction = THREE.LessEqualCompare;
+    prof.magFilter = prof.minFilter = THREE.LinearFilter;
+    const rt = new THREE.WebGLRenderTarget(s, s, { depthTexture: prof, depthBuffer: true, generateMipmaps: false, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
+    this.r.initRenderTarget(rt);
+    return rt;
   }
 
   /** `conf`: lista de [radio, tamaño] de cerca a lejos. Vacía apaga las sombras. */
@@ -26,14 +40,10 @@ export class Sombras {
     if (!conf.length) return;
     const slots = conf.length === 2 ? [[this.c.uSM0, this.c.uTS0], [this.c.uSM1, this.c.uTS1]] : [[this.c.uSM1, this.c.uTS1]];
     conf.forEach(([radio, s], i) => {
-      const prof = new THREE.DepthTexture(s, s, THREE.UnsignedIntType);
-      prof.compareFunction = THREE.LessEqualCompare;
-      prof.magFilter = prof.minFilter = THREE.LinearFilter;
-      const rt = new THREE.WebGLRenderTarget(s, s, { depthTexture: prof, depthBuffer: true, generateMipmaps: false, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
+      const rt = this.objetivo(s);
       const cam = new THREE.OrthographicCamera(-radio, radio, radio, -radio, 1, 1400);
       const [mat, tex] = slots[i] as [{ value: THREE.Matrix4 }, { value: THREE.Texture | null }];
-      this.r.initRenderTarget(rt);
-      tex.value = prof;
+      tex.value = rt.depthTexture;
       this.cas.push({ rt, cam, radio, cx: Infinity, cz: Infinity, sucia: true, mat, tex });
     });
   }
@@ -96,9 +106,9 @@ export class Sombras {
   }
 
   private liberar() {
-    for (const c of this.cas) { c.rt.depthTexture?.dispose(); c.rt.dispose(); c.tex.value = null; }
+    for (const c of this.cas) { c.rt.depthTexture?.dispose(); c.rt.dispose(); c.tex.value = this.vacio.depthTexture; }
     this.cas = [];
   }
 
-  destruir() { this.liberar(); this.mS.dispose(); this.mH.dispose(); }
+  destruir() { this.liberar(); this.vacio.depthTexture?.dispose(); this.vacio.dispose(); this.mS.dispose(); this.mH.dispose(); }
 }

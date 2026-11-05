@@ -844,7 +844,9 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
   const pozo = (x: number, z: number, dx: number, dz: number) => {
     rect(x, z, ALTO_VEREDA, dx, dz, 0.62, 0.55, [58, 44, 32, 255], S_TIERRA);
   };
+  const claros = prep.singulares.filter((b) => b.id === "floralis" || b.id === "obelisco");
   const plantar = (x: number, z: number, y: number, esp: number, sem: number) => {
+    if (claros.some((b) => Math.hypot(b.x - x, b.z - z) < 30)) return;
     const escala = 0.82 + sem * 0.5;
     arboles.push(x - ox, y, z - oz, escala, sem * 6.28, esp, sem, 0);
     hayArbol.push([x, z]);

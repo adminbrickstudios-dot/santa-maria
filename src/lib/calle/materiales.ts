@@ -393,7 +393,7 @@ export function matEdificio(c: Comunes, calidad: { value: number }) {
             return;
           }
           /* Hueco de ventana con profundidad real: se sigue el rayo adentro del muro */
-          float d=.2;
+          float d=uCalidad<.5?0.:.2;
           float vn=max(dot(V,N),.08), vt=dot(V,T)/vn, vy=V.y/vn;
           vec2 q=vec2(px-vt*d,py-vy*d);
           float cy=(v0+v1)*.5, hy=(v1-v0)*.5;
@@ -770,12 +770,12 @@ export function matFollaje(c: Comunes, atlas: THREE.Texture, alphaToCoverage: bo
         if(t.a<.36) discard;
         vec3 alb=lin(t.rgb/t.a)*vTint;
         vec3 N=normalize(vN);
-        float s=sombra(vW+uSol*.5);
+        float s=.3+.7*sombra(vW+uSol*.5);
         float nl=dot(N,uSol);
         vec3 V=normalize(cameraPosition-vW);
         /* El sol atraviesa las hojas */
         float tr=pow(max(dot(-V,uSol),0.),3.)*.8;
-        vec3 l=(uLuzCielo*(.55+.45*N.y)+uLuzSuelo*.3*(1.-N.y)*.5)*(.5+.5*vS)+uLuzSol*(max(nl*.75+.25,0.)+tr)*s*(.5+.5*vS);
+        vec3 l=(uLuzCielo*(.62+.38*N.y)+uLuzSuelo*.4*(1.-N.y)*.5)*(.62+.38*vS)+uLuzSol*(max(nl*.75+.25,0.)+tr)*s*(.5+.5*vS);
         vec3 noc=vec3(1.,.74,.42)*uNoche*.2*exp(-vW.y*.14);
         gl_FragColor=vec4(tono(conNiebla(alb*(l+noc),vW)),1.);
       }`,
