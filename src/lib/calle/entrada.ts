@@ -5,15 +5,21 @@ export interface ManejadoresEntrada {
   dobleToque(x: number, y: number): void;
   joystick(activo: boolean, x: number, y: number, dx: number, dy: number): void;
   alMover?(): void;
+  /** Rueda del mouse: sube o baja el dron. */
+  rueda?(d: number): void;
 }
 
 const RADIO_JOY = 56;
+/* El joystick nunca se acerca al borde: de ahí sale el gesto de volver del iPhone */
+const BORDE_JOY = 92, BORDE_JOY_ACOSTADO = 124, BORDE_ABAJO = 88;
 
 export class Entrada {
   /** -1..1 en cada eje, del joystick o del teclado. */
   x = 0;
   y = 0;
   correr = false;
+  /** Q baja y E sube, solo con teclado. */
+  subir = 0;
   private teclas = new Set<string>();
   private joy: { id: number; ox: number; oy: number } | null = null;
   private mira = new Map<number, { x: number; y: number; t: number; ix: number; iy: number; movio: boolean }>();
@@ -25,20 +31,29 @@ export class Entrada {
     el.addEventListener("pointerup", this.sube);
     el.addEventListener("pointercancel", this.sube);
     el.addEventListener("contextmenu", this.nada);
+    /* No es pasivo a propósito: es la única forma de frenar el gesto del navegador en el touchstart */
+    el.addEventListener("touchstart", this.tactil, { passive: false });
+    el.addEventListener("touchmove", this.tactil, { passive: false });
+    el.addEventListener("wheel", this.girar, { passive: false });
+    document.addEventListener("gesturestart", this.nada);
     window.addEventListener("keydown", this.tecla);
     window.addEventListener("keyup", this.tecla);
     window.addEventListener("blur", this.limpiar);
   }
 
   private nada = (e: Event) => e.preventDefault();
+  private tactil = (e: TouchEvent) => { if (e.cancelable) e.preventDefault(); };
+  private girar = (e: WheelEvent) => { e.preventDefault(); this.h.rueda?.(e.deltaY); };
   private limpiar = () => { this.teclas.clear(); this.calc(); };
 
   private baja = (e: PointerEvent) => {
     this.el.setPointerCapture(e.pointerId);
     const r = this.el.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-    if (e.pointerType !== "mouse" && !this.joy && x < r.width * 0.5 && y > r.height * 0.42) {
-      this.joy = { id: e.pointerId, ox: x, oy: y };
-      this.h.joystick(true, x, y, 0, 0);
+    if (e.pointerType !== "mouse" && !this.joy && x < r.width * 0.5 && y > r.height * 0.38) {
+      const izq = r.width > r.height ? BORDE_JOY_ACOSTADO : BORDE_JOY;
+      const ox = Math.max(izq, x), oy = Math.min(r.height - BORDE_ABAJO, y);
+      this.joy = { id: e.pointerId, ox, oy };
+      this.h.joystick(true, ox, oy, 0, 0);
       return;
     }
     this.mira.set(e.pointerId, { x, y, t: performance.now(), ix: x, iy: y, movio: false });
@@ -95,7 +110,7 @@ export class Entrada {
     const t = e.target as HTMLElement | null;
     if (t && /INPUT|TEXTAREA|SELECT/.test(t.tagName)) return;
     const c = e.code;
-    if (!/^(Key[WASD]|Arrow(Up|Down|Left|Right)|Shift(Left|Right))$/.test(c)) return;
+    if (!/^(Key[WASDQE]|Arrow(Up|Down|Left|Right)|Shift(Left|Right))$/.test(c)) return;
     if (c.startsWith("Arrow")) e.preventDefault();
     if (e.type === "keydown") this.teclas.add(c); else this.teclas.delete(c);
     this.calc();
@@ -108,6 +123,7 @@ export class Entrada {
     this.x = x || this.joyX;
     this.y = y || this.joyY;
     this.correr = t.has("ShiftLeft") || t.has("ShiftRight");
+    this.subir = (t.has("KeyE") ? 1 : 0) - (t.has("KeyQ") ? 1 : 0);
     if (this.x || this.y) this.h.alMover?.();
   }
 
@@ -118,6 +134,10 @@ export class Entrada {
     el.removeEventListener("pointerup", this.sube);
     el.removeEventListener("pointercancel", this.sube);
     el.removeEventListener("contextmenu", this.nada);
+    el.removeEventListener("touchstart", this.tactil);
+    el.removeEventListener("touchmove", this.tactil);
+    el.removeEventListener("wheel", this.girar);
+    document.removeEventListener("gesturestart", this.nada);
     window.removeEventListener("keydown", this.tecla);
     window.removeEventListener("keyup", this.tecla);
     window.removeEventListener("blur", this.limpiar);
