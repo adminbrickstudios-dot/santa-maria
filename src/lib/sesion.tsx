@@ -8,6 +8,7 @@ import { Cargando } from "@/components/Cargando";
 type Ctx = {
   perfil: any; grupo: any; personas: any[]; sinLeer: number; avisos: number; lugares: any[];
   recargar: () => Promise<void>; recuentos: () => Promise<void>; toast: (t: string) => void; pantalla: (n: string) => boolean;
+  asegurarPersonas: (ids: string[]) => Promise<void>;
 };
 const C = createContext<Ctx>(null as any);
 /* Copia para abrir rápido. No confundir con "sm-sesion", donde Supabase guarda el inicio de sesión. */
@@ -35,12 +36,17 @@ export function Sesion({ children }: { children: ReactNode }) {
     setMsg(t); clearTimeout(tm.current); tm.current = setTimeout(() => setMsg(null), 2800);
   }, []);
   const recuentos = useCallback(async () => {
-    const [{ data: c }, { count }] = await Promise.all([
-      sb.rpc("mis_conversaciones"),
-      sb.from("notificaciones").select("id", { count: "exact", head: true }).eq("leida", false),
-    ]);
-    setS((c || []).reduce((a: number, x: any) => a + Number(x.sin_leer || 0), 0));
-    setA(count || 0);
+    const { data } = await sb.rpc("mis_recuentos");
+    setS(Number(data?.sin_leer || 0)); setA(Number(data?.avisos || 0));
+  }, []);
+  /* En un grupo grande la lista inicial no trae a todos: completa solo a quien hace falta */
+  const conocidas = useRef(new Set<string>());
+  const asegurarPersonas = useCallback(async (ids: string[]) => {
+    const faltan = [...new Set(ids.filter(Boolean))].filter((i) => !conocidas.current.has(i));
+    if (!faltan.length) return;
+    faltan.forEach((i) => conocidas.current.add(i));
+    const { data } = await sb.rpc("personas_por_id", { p_ids: faltan.slice(0, 200) });
+    if (data?.length) setPs((l) => [...l, ...data.filter((x: any) => !l.some((y) => y.id === x.id))]);
   }, []);
   const recargar = useCallback(async () => {
     const { data: u, error } = await sb.auth.getSession();
@@ -62,6 +68,7 @@ export function Sesion({ children }: { children: ReactNode }) {
       sb.from("lugares").select("*").order("orden"),
     ]);
     setG((a: any) => igual(a, g)); setPs((a) => igual(a, ps || [])); setL((a) => igual(a, ls || []));
+    conocidas.current = new Set((ps || []).map((x: any) => x.id));
     try { localStorage.setItem(FOTO, JSON.stringify({ perfil: p, grupo: g, personas: ps || [], lugares: ls || [] })); } catch {}
     recuentos();
   }, [router, recuentos]);
@@ -76,12 +83,27 @@ export function Sesion({ children }: { children: ReactNode }) {
   useEffect(() => { recargar(); }, [recargar]);
   useEffect(() => {
     if (!perfil?.id) return;
-    const canal = sb.channel("mis-avisos").on("postgres_changes", { event: "INSERT", schema: "public", table: "notificaciones", filter: `perfil_id=eq.${perfil.id}` }, () => recuentos()).subscribe();
-    return () => { sb.removeChannel(canal); };
+    /* Un canal por persona y solo con la app a la vista: cada conexión abierta cuenta contra el cupo de Realtime.
+       Varios avisos seguidos se resuelven con una sola consulta. */
+    let canal: any = null, t: any = null;
+    const abrir = () => { if (!canal) canal = sb.channel("mis-avisos").on("postgres_changes", { event: "INSERT", schema: "public", table: "notificaciones", filter: `perfil_id=eq.${perfil.id}` }, () => { clearTimeout(t); t = setTimeout(recuentos, 1500); }).subscribe(); };
+    const cerrar = () => { if (canal) { sb.removeChannel(canal); canal = null; } };
+    const vis = () => { if (document.hidden) cerrar(); else { abrir(); recuentos(); } };
+    if (!document.hidden) abrir();
+    document.addEventListener("visibilitychange", vis);
+    return () => { clearTimeout(t); document.removeEventListener("visibilitychange", vis); cerrar(); };
   }, [perfil?.id, recuentos]);
+  useEffect(() => {
+    /* Fallas de la app: sin datos de la persona, con tope por visita */
+    let n = 0;
+    const anotar = (m: unknown) => { if (n++ < 5) sb.rpc("registrar_error", { p_origen: "app", p_codigo: "", p_mensaje: String(m).slice(0, 300), p_ruta: location.pathname }).then(() => {}, () => {}); };
+    const e1 = (e: ErrorEvent) => anotar(e.message), e2 = (e: PromiseRejectionEvent) => anotar((e.reason as any)?.message || e.reason);
+    addEventListener("error", e1); addEventListener("unhandledrejection", e2);
+    return () => { removeEventListener("error", e1); removeEventListener("unhandledrejection", e2); };
+  }, []);
 
   const pantalla = useCallback((n: string) => grupo?.pantallas?.[n] !== false, [grupo]);
-  const v = useMemo(() => ({ perfil, grupo, personas, lugares, sinLeer, avisos, recargar, recuentos, toast, pantalla }), [perfil, grupo, personas, lugares, sinLeer, avisos, recargar, recuentos, toast, pantalla]);
+  const v = useMemo(() => ({ perfil, grupo, personas, lugares, sinLeer, avisos, recargar, recuentos, toast, pantalla, asegurarPersonas }), [perfil, grupo, personas, lugares, sinLeer, avisos, recargar, recuentos, toast, pantalla, asegurarPersonas]);
   if (!perfil) return <Cargando />;
   return <C.Provider value={v}>{children}{msg && <div className="toast" role="status">{msg}</div>}</C.Provider>;
 }

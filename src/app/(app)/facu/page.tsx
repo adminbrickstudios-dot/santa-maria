@@ -22,7 +22,7 @@ function Facu() {
     const [a, b, c, d] = await Promise.all([
       sb.from("materias").select("*").order("creado_en"),
       sb.from("clases").select("*, materias(nombre,color)").order("hora_inicio"),
-      sb.from("eventos").select("*").order("fecha"),
+      sb.from("eventos").select("id,titulo,tipo,fecha,hecho").gte("fecha", new Date(Date.now() - 120 * 864e5).toISOString()).order("fecha").limit(500),
       sb.from("apuntes").select("*").order("creado_en", { ascending: false }).limit(100),
     ]);
     setM(a.data || []); setC(b.data || []); setE(c.data || []); setA(d.data || []);

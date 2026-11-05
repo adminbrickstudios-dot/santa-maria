@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { sb } from "@/lib/sb";
+import { sb, traerTodo } from "@/lib/sb";
 import { useSesion } from "@/lib/sesion";
 import { Icono } from "@/components/Icono";
 import { lanzarEfecto } from "@/components/Efectos";
@@ -22,7 +22,7 @@ export function Foco({ materias }: { materias: any[] }) {
 
   const setF = useCallback((x: EstadoFoco | null) => { setF0(x); guardarLocal(CLAVE, x); }, []);
   const cargar = useCallback(async () => {
-    const { data } = await sb.from("sesiones_foco").select("id,materia_id,inicio,minutos").order("inicio", { ascending: false }).limit(2000);
+    const data = await traerTodo((d, h) => sb.from("sesiones_foco").select("id,materia_id,inicio,minutos").order("inicio", { ascending: false }).order("id").range(d, h), 2000);
     setS(data || []); setCargado(true);
   }, []);
   useEffect(() => { cargar(); const g = leerLocal<EstadoFoco>(CLAVE); if (g?.inicio) setF0(g); }, [cargar]);

@@ -49,6 +49,9 @@ export function crearDemo() {
       const d = await carga();
       if (n === "personas_del_grupo") return { data: d.perfiles.map((x: any) => ({ ...x, lat: x.casa_lat, lon: x.casa_lon, barrio: x.casa_barrio })) };
       if (n === "mis_conversaciones") return { data: d.conversaciones_v || [] };
+      if (n === "mis_recuentos") return { data: { sin_leer: 0, avisos: 0 } };
+      if (n === "mis_solicitudes" || n === "admin_denuncias") return { data: [] };
+      if (n === "buscar_personas") return { data: d.perfiles.filter((x: any) => x.nombre.toLowerCase().includes(p.q.toLowerCase())).slice(0, 30) };
       if (n === "abrir_directa") return { data: "demo-" + p.otro };
       if (n === "usuario_disponible") return { data: true };
       if (n === "buscar_guia") return { data: d.guia_items.filter((i: any) => (i.titulo + " " + (i.bajada || "")).toLowerCase().includes(p.q.toLowerCase())).slice(0, 30) };

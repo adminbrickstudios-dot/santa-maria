@@ -3,7 +3,7 @@
 import { tic } from "@/lib/tic";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { sb } from "@/lib/sb";
+import { sb, traerTodo } from "@/lib/sb";
 import { useSesion } from "@/lib/sesion";
 import { Icono } from "@/components/Icono";
 import { Vacio } from "@/components/organizar/Comun";
@@ -36,10 +36,12 @@ function Agenda() {
   const [ev, setEv] = useState<any[]>(memo.ev), [extra, setExtra] = useState<any[]>(memo.extra), [ext, setExt] = useState<{ txt: string; c: any }[]>([]);
   const [ab, setAb] = useState<Ocurrencia | null>(null), [nuevo, setNuevo] = useState<string | null>(null), [con, setCon] = useState(false), [dir, setDir] = useState(0);
   const cargar = useCallback(async () => {
-    const [{ data: e }, { data: c }, { data: j }, { data: cal }] = await Promise.all([
-      sb.from("eventos").select("*").order("fecha").limit(3000),
+    const desde = new Date(Date.now() - 400 * 864e5).toISOString();
+    const [e, { data: c }, { data: j }, { data: cal }] = await Promise.all([
+      /* Lo que se repite más lo del último año: el resto no cabe en el calendario que se abre */
+      traerTodo((d, h) => sb.from("eventos").select("*").or(`repetir.neq.no,fecha.gte.${desde}`).order("fecha").order("id").range(d, h), 3000),
       sb.from("clases").select("*, materias(nombre,color)"),
-      sb.from("juntadas").select("id,titulo,cuando,lugar_nombre,lat,lon,juntada_respuestas(perfil_id,estado)").gte("cuando", new Date(Date.now() - 60 * 864e5).toISOString()),
+      sb.from("juntadas").select("id,titulo,cuando,lugar_nombre,lat,lon,juntada_respuestas!inner(perfil_id,estado)").eq("juntada_respuestas.perfil_id", perfil.id).gte("cuando", new Date(Date.now() - 60 * 864e5).toISOString()).limit(200),
       sb.from("calendarios_externos").select("*"),
     ]);
     setEv(e || []); memo.ev = e || [];

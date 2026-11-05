@@ -3,7 +3,7 @@
 import "@/app/organizar.css";
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { sb } from "@/lib/sb";
+import { sb, traerTodo } from "@/lib/sb";
 import { useSesion } from "@/lib/sesion";
 import { Hoja } from "@/components/Hoja";
 import { Icono } from "@/components/Icono";
@@ -87,9 +87,9 @@ function Compras() {
   const [listas, setListas] = useState<any[]>([]), [items, setItems] = useState<any[]>([]), [cargado, setCargado] = useState(false), [sel, setSel] = useState<number | null>(null);
   const [f, setF] = useState({ nombre: "", cantidad: "", precio: "" }), [lf, setLf] = useState<any>(null), [ed, setEd] = useState<any>(null), [pasar, setPasar] = useState(false);
   const cargar = useCallback(async () => {
-    const [a, b] = await Promise.all([sb.from("compra_listas").select("*").order("creado_en"), sb.from("compra_items").select("*").order("id").limit(3000)]);
+    const [a, b] = await Promise.all([sb.from("compra_listas").select("*").order("creado_en"), traerTodo((d, h) => sb.from("compra_items").select("*").order("id").range(d, h), 3000)]);
     const ls = a.data || [];
-    setListas(ls); setItems(b.data || []); setCargado(true);
+    setListas(ls); setItems(b); setCargado(true);
     setSel((s) => { const g = s ?? leerLocal<number>(CLAVE); return ls.some((x: any) => x.id === g) ? g : ls[0]?.id ?? null; });
   }, []);
   useEffect(() => { cargar(); const v = () => { if (!document.hidden) cargar(); }; document.addEventListener("visibilitychange", v); return () => document.removeEventListener("visibilitychange", v); }, [cargar]);

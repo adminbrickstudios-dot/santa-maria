@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useState } from "react";
-import { sb } from "@/lib/sb";
+import { sb, traerTodo } from "@/lib/sb";
 import { useSesion } from "@/lib/sesion";
 import { Hoja } from "@/components/Hoja";
 import { Icono } from "@/components/Icono";
@@ -42,7 +42,7 @@ function MateriaHoja({ m, lista, cerrar }: { m: any; lista: any[]; cerrar: () =>
 export function Faltas({ materias, cambio, irACarrera }: { materias: any[]; cambio: () => void; irACarrera: () => void }) {
   const { perfil, toast } = useSesion();
   const [fal, setFal] = useState<any[]>([]), [abierta, setAbierta] = useState<number | null>(null);
-  const cargar = useCallback(async () => { const { data } = await sb.from("faltas").select("*").order("fecha", { ascending: false }).limit(3000); setFal(data || []); }, []);
+  const cargar = useCallback(async () => { setFal(await traerTodo((d, h) => sb.from("faltas").select("*").order("fecha", { ascending: false }).order("id").range(d, h), 3000)); }, []);
   useEffect(() => { cargar(); const f = () => { cargar(); cambio(); }; addEventListener("sm-faltas", f); return () => removeEventListener("sm-faltas", f); }, [cargar, cambio]);
   const lista = materias.filter((m) => m.estado === "cursando"), m = materias.find((x) => x.id === abierta);
   const suma = (id: number) => fal.filter((x) => x.materia_id === id).reduce((a, x) => a + +x.cantidad, 0);

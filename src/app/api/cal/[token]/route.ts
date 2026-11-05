@@ -10,10 +10,13 @@ const dobla = (l: string) => { const r: string[] = []; let s = l; while (s.lengt
 const FREQ: Record<string, string> = { diario: "FREQ=DAILY", semanal: "FREQ=WEEKLY", quincenal: "FREQ=WEEKLY;INTERVAL=2", mensual: "FREQ=MONTHLY" };
 
 export async function GET(_: Request, { params }: { params: Promise<{ token: string }> }) {
-  const { token } = await params;
+  const { token } = await params, tk = token.replace(/\.ics$/, "");
+  /* Un enlace que no puede existir no llega a la base */
+  if (!/^[0-9a-f]{32,128}$/.test(tk)) return new Response("No existe", { status: 404, headers: { "Cache-Control": "no-store" } });
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false } });
-  const { data } = await sb.rpc("agenda_feed", { p_token: token.replace(/\.ics$/, "") });
-  if (!data) return new Response("No existe", { status: 404 });
+  const { data, error } = await sb.rpc("agenda_feed", { p_token: tk });
+  if (error) { await sb.rpc("registrar_error", { p_origen: "api/cal", p_codigo: error.code || "", p_mensaje: error.message, p_ruta: "/api/cal" }); return new Response("Probá más tarde", { status: 503, headers: { "Cache-Control": "no-store", "Retry-After": "300" } }); }
+  if (!data) return new Response("No existe", { status: 404, headers: { "Cache-Control": "no-store" } });
   const l = ["BEGIN:VCALENDAR", "VERSION:2.0", `PRODID:-//${MARCA.nombre}//Agenda//ES`, "CALSCALE:GREGORIAN", `X-WR-CALNAME:${MARCA.nombre}`, "X-WR-TIMEZONE:America/Argentina/Buenos_Aires", "REFRESH-INTERVAL;VALUE=DURATION:PT1H"];
   for (const e of data as any[]) {
     l.push("BEGIN:VEVENT", `UID:evento-${e.id}@santa-maria`, `DTSTAMP:${utc(new Date())}`, dobla(`SUMMARY:${esc(e.titulo)}`));
@@ -26,5 +29,5 @@ export async function GET(_: Request, { params }: { params: Promise<{ token: str
     l.push("END:VEVENT");
   }
   l.push("END:VCALENDAR");
-  return new Response(l.join("\r\n") + "\r\n", { headers: { "Content-Type": "text/calendar; charset=utf-8", "Cache-Control": "private, max-age=300", "X-Robots-Tag": "noindex" } });
+  return new Response(l.join("\r\n") + "\r\n", { headers: { "Content-Type": "text/calendar; charset=utf-8", /* Google y Apple piden este enlace seguido: 15 minutos en la CDN evitan ir a la base. El enlace mismo es la clave. */ "Cache-Control": "public, max-age=0, s-maxage=900", "X-Robots-Tag": "noindex" } });
 }
