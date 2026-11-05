@@ -36,7 +36,7 @@ export class FiltroGPS {
       return true;
     }
     this.dudosas = [];
-    this.varianza += (1.8 * dt) ** 2;
+    this.varianza += (3 * dt) ** 2;
     const k = this.varianza / (this.varianza + l.precision ** 2), antes = this.pos;
     this.pos = { lat: antes.lat + (l.lat - antes.lat) * k, lon: antes.lon + (l.lon - antes.lon) * k };
     this.varianza *= 1 - k;

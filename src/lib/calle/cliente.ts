@@ -24,6 +24,21 @@ export interface ClienteCiudad {
 type SinId<T> = T extends unknown ? Omit<T, "id"> : never;
 interface Espera { ok: (v: unknown) => void; mal: (e: Error) => void; progreso?: (f: number) => void }
 
+/* Turbopack arranca todos los workers desde el mismo archivo y dice cuál es en el #fragmento de la URL.
+   El navegador reusa la respuesta de esa URL, fragmento incluido, y este worker terminaba corriendo el
+   código de otro (o el de tiles el de este, y la calle no cargaba). Con una URL distinta no pasa. */
+function conUrlPropia(crear: () => Worker) {
+  const Real = globalThis.Worker;
+  globalThis.Worker = class extends Real {
+    constructor(u: string | URL, o?: WorkerOptions) {
+      const url = new URL(u, location.href);
+      url.searchParams.set("w", "ciudad");
+      super(url, o);
+    }
+  };
+  try { return crear(); } finally { globalThis.Worker = Real; }
+}
+
 export function crearCliente(crear?: () => Worker): ClienteCiudad {
   const esperas = new Map<number, Espera>();
   let sec = 0, w: Worker | null = null, local: Promise<(p: PedidoCiudad) => void> | null = null, listo = false;
@@ -52,7 +67,7 @@ export function crearCliente(crear?: () => Worker): ClienteCiudad {
     if (p.length) void respaldo().then((f) => p.forEach(f));
   };
   try {
-    w = crear ? crear() : new Worker(new URL("./ciudad.worker.ts", import.meta.url), { type: "module" });
+    w = crear ? crear() : conUrlPropia(() => new Worker(new URL("./ciudad.worker.ts", import.meta.url), { type: "module" }));
     w.onmessage = (e: MessageEvent<RespuestaCiudad>) => oir(e.data);
     w.onerror = caido;
     setTimeout(() => { if (!listo) caido(); }, 12000);
