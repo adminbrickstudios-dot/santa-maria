@@ -31,7 +31,8 @@ export function procesadorLocal(oir: Oyente): Procesador {
     if (!vivo) return;
     try {
       if (p.t === "tile") {
-        tiles.set(`${p.tx}/${p.ty}`, dec.decodificarTile(p.buf, p.tx, p.ty, p.m));
+        tiles.set(`${p.tx}/${p.ty}`, await dec.decodificarTile(p.buf, p.tx, p.ty, p.m));
+        if (!vivo) return;
         oir({ t: "tile", tx: p.tx, ty: p.ty });
       } else if (p.t === "soltar") {
         tiles.delete(`${p.tx}/${p.ty}`);

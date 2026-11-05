@@ -5,9 +5,12 @@ import { cieloEn, fechaEnHora } from "./cielo";
 import { Entrada } from "./entrada";
 import { DIV, crearOrigen, lonLatDeMundo, mundoDeLonLat } from "./geo";
 import { crearInterior, type Interior } from "./interior";
-import { aplicarCielo, crearComunes, matCielo, matDisco, matEdificio, matObjeto, matSombra, matSuelo, texturaDetalle } from "./materiales";
+import { Ambiente } from "./ambiente";
+import { crearAtlasHojas } from "./arboles";
+import { aplicarCielo, crearComunes, matCielo, matDisco, matEdificio, matFollaje, matProp, texturaBaldosa, texturaRuido } from "./materiales";
 import { Mundo, type Calidad } from "./mundo";
 import { crearProcesador, type Procesador } from "./procesador";
+import { Sombras } from "./sombras";
 import { Trafico } from "./trafico";
 import type { Local, ProveedorTiles } from "./tipos";
 
@@ -40,10 +43,10 @@ export interface OpcionesMotor {
 }
 
 const NIVELES: Omit<Calidad, "nivel">[] = [
-  { dpr: 0.85, radio: 170, rDet: 90, rAtlas: 60, rProps: 110, rSombra: 0, autos: 5, gente: 0, atlas: 0.5, ventanas: 0 },
-  { dpr: 1.1, radio: 210, rDet: 130, rAtlas: 80, rProps: 150, rSombra: 0, autos: 9, gente: 10, atlas: 0.5, ventanas: 1 },
-  { dpr: 1.4, radio: 270, rDet: 170, rAtlas: 95, rProps: 200, rSombra: 180, autos: 14, gente: 18, atlas: 0.75, ventanas: 1 },
-  { dpr: 1.75, radio: 330, rDet: 210, rAtlas: 120, rProps: 250, rSombra: 260, autos: 20, gente: 30, atlas: 1, ventanas: 1 },
+  { dpr: 0.9, radio: 190, rDet: 80, rKit: 0, rAtlas: 55, rProps: 90, rArbolCerca: 0, rTronco: 60, rArbol: 190, autos: 5, gente: 0, atlas: 0.5, ventanas: 0, sombras: [], memoria: 90e6 },
+  { dpr: 1.15, radio: 230, rDet: 110, rKit: 42, rAtlas: 75, rProps: 130, rArbolCerca: 32, rTronco: 90, rArbol: 230, autos: 9, gente: 10, atlas: 0.5, ventanas: 1, sombras: [[190, 1024]], memoria: 130e6 },
+  { dpr: 1.45, radio: 290, rDet: 150, rKit: 54, rAtlas: 95, rProps: 170, rArbolCerca: 48, rTronco: 120, rArbol: 290, autos: 14, gente: 18, atlas: 0.75, ventanas: 1, sombras: [[62, 1536], [300, 1024]], memoria: 190e6 },
+  { dpr: 1.8, radio: 360, rDet: 190, rKit: 76, rAtlas: 120, rProps: 220, rArbolCerca: 70, rTronco: 170, rArbol: 360, autos: 22, gente: 30, atlas: 1, ventanas: 1, sombras: [[78, 2048], [380, 2048]], memoria: 300e6 },
 ];
 const VEL: Record<ModoMarcha, number> = { caminar: 2.3, correr: 5.2, bici: 8.5 };
 const OJO = 1.62, RADIO = 0.36;
@@ -53,22 +56,29 @@ export class Motor {
   private escena = new THREE.Scene();
   private camara: THREE.PerspectiveCamera;
   private comunes = crearComunes();
-  private detalle: THREE.Texture;
-  private mats: { suelo: THREE.ShaderMaterial; edif: THREE.ShaderMaterial; sombra: THREE.ShaderMaterial; objeto: THREE.ShaderMaterial };
+  private ruido: THREE.Texture;
+  private baldosa: THREE.Texture;
+  private hojas: THREE.Texture;
+  private mats: { edif: THREE.ShaderMaterial; prop: THREE.ShaderMaterial; follaje: THREE.ShaderMaterial };
+  private sombras: Sombras;
+  private versionSombra = -1;
+  private elevacion = 50;
   private cieloMesh: THREE.Mesh;
   private disco: THREE.Mesh;
   private matCieloM: THREE.ShaderMaterial;
-  private cen = { value: new THREE.Color() };
-  private hor = { value: new THREE.Color() };
   private proc: Procesador;
   mundo: Mundo;
   private trafico: Trafico;
+  private ambiente: Ambiente;
+  private lluvia = false;
   private entrada: Entrada;
   private o: ReturnType<typeof crearOrigen>;
   private nivel: number;
   private fijo: boolean;
   private calidadUni = { value: 1 };
-  private sombrasActivas = true;
+  /** Metros sobre la calle: 0 caminando. Para vuelo y pruebas. */
+  altura = 0;
+  private yPie = 0.15;
 
   /* Caminante */
   x = 0;
@@ -98,6 +108,7 @@ export class Motor {
   private tAnt = performance.now();
   private tCielo = -999;
   private tCalle = 0;
+  private tPerdido = 0;
   private tCerca = 0;
   private calleAct: string | null | undefined = undefined;
   private rumboAnt = -999;
@@ -117,25 +128,29 @@ export class Motor {
     const modesto = (nav.hardwareConcurrency ?? 8) <= 4 || (nav.deviceMemory ?? 8) <= 3;
     this.nivel = op.calidadFija ?? (modesto ? 2 : 3);
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: this.nivel >= 2, stencil: true, alpha: false, powerPreference: "high-performance" });
+    this.renderer = new THREE.WebGLRenderer({ antialias: this.nivel >= 2, stencil: false, alpha: false, powerPreference: "high-performance" });
     this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.calidad().dpr));
     this.renderer.domElement.className = "calle-canvas";
     this.renderer.domElement.setAttribute("aria-label", "Vista en primera persona de la calle");
     cont.appendChild(this.renderer.domElement);
 
-    this.camara = new THREE.PerspectiveCamera(68, 1, 0.25, 520);
+    this.camara = new THREE.PerspectiveCamera(68, 1, 0.25, 900);
     this.camara.rotation.order = "YXZ";
 
-    this.detalle = texturaDetalle();
+    this.ruido = texturaRuido();
+    this.baldosa = texturaBaldosa();
+    this.comunes.uRui.value = this.ruido;
+    this.hojas = crearAtlasHojas(this.nivel >= 3 ? 1 : 0.75);
     this.mats = {
-      suelo: matSuelo(this.comunes, this.detalle, this.o.m / DIV),
       edif: matEdificio(this.comunes, this.calidadUni),
-      sombra: matSombra(this.comunes),
-      objeto: matObjeto(this.comunes),
+      prop: matProp(this.comunes),
+      follaje: matFollaje(this.comunes, this.hojas, this.nivel >= 2),
     };
+    this.sombras = new Sombras(this.renderer, this.comunes, this.hojas);
+    this.sombras.configurar(this.calidad().sombras);
 
-    this.matCieloM = matCielo(this.comunes, this.cen, this.hor);
+    this.matCieloM = matCielo(this.comunes);
     this.cieloMesh = new THREE.Mesh(new THREE.SphereGeometry(10, 16, 10), this.matCieloM);
     this.cieloMesh.renderOrder = 50; // al final: solo pinta lo que quedó libre
     this.cieloMesh.frustumCulled = false;
@@ -159,12 +174,13 @@ export class Motor {
       if (r.t === "caido") this.mundo.reiniciarPendientes();
       else this.mundo.alRecibir(r);
     });
-    this.mundo = new Mundo(this.escena, this.o, { ...this.mats, comunes: this.comunes }, () => this.proc, op.proveedorTiles, () => this.calidad(), {
+    this.mundo = new Mundo(this.escena, this.o, { ...this.mats, comunes: this.comunes, baldosa: this.baldosa }, () => this.proc, op.proveedorTiles, () => this.calidad(), {
       progreso: (f) => op.eventos.progreso(f),
       fallo: (m) => { if (!this.listo) op.eventos.fallo(m); },
       aviso: (m) => op.eventos.aviso(m),
-    });
-    this.trafico = new Trafico(this.escena, this.mats.objeto);
+    }, this.mats.prop);
+    this.trafico = new Trafico(this.escena, this.mats.prop);
+    this.ambiente = new Ambiente(this.escena, this.mats.prop, this.comunes);
 
     this.entrada = new Entrada(this.renderer.domElement, {
       mirar: (dx, dy) => {
@@ -182,6 +198,7 @@ export class Motor {
     window.addEventListener("resize", this.ajustar);
     document.addEventListener("visibilitychange", this.visibilidad);
     this.renderer.domElement.addEventListener("webglcontextlost", this.contextoPerdido);
+    this.renderer.domElement.addEventListener("webglcontextrestored", this.contextoRecuperado);
     this.ponerCielo();
     this.raf = requestAnimationFrame(this.cuadro);
   }
@@ -205,22 +222,45 @@ export class Motor {
 
   private contextoPerdido = (e: Event) => {
     e.preventDefault();
-    this.op.eventos.fallo("Se perdió el 3D en este celular. Probá entrar de nuevo.");
+    this.pausa = true;
+    cancelAnimationFrame(this.raf);
+    this.op.eventos.aviso("Se cortó el 3D. Estamos intentando recuperarlo…");
+    /* Si en unos segundos el sistema no lo devuelve, se avisa y queda el botón de reintentar */
+    this.tPerdido = window.setTimeout(() => { if (this.vivo) this.op.eventos.fallo("Se perdió el 3D en este celular. Probá entrar de nuevo."); }, 6000);
+  };
+
+  private contextoRecuperado = () => {
+    window.clearTimeout(this.tPerdido);
+    if (!this.vivo) return;
+    /* Three vuelve a subir geometrías y texturas solo; las sombras hay que rehacerlas */
+    this.sombras.marcarSucio();
+    this.versionSombra = -1;
+    this.pausa = false;
+    this.tAnt = performance.now();
+    this.raf = requestAnimationFrame(this.cuadro);
+    this.op.eventos.aviso("Listo, volvió el 3D.");
   };
 
   private ponerCielo() {
     const e = cieloEn(fechaEnHora(this.op.hora), this.op.lat, this.op.lon);
+    if (this.lluvia) {
+      /* Nublado: casi sin sol y con cielo gris parejo */
+      const g = (l: number[], k: number) => { const m = (l[0] + l[1] + l[2]) / 3; return l.map((v) => (v * 0.25 + m * 0.75) * k); };
+      e.cenit = g(e.horizonte, 0.5); e.horizonte = g(e.horizonte, 0.62); e.luzSol = e.luzSol.map((v) => v * 0.08); e.luzCielo = g(e.luzCielo, 1.15);
+    }
     aplicarCielo(this.comunes, e);
-    this.cen.value.setRGB(e.cenit[0], e.cenit[1], e.cenit[2], THREE.LinearSRGBColorSpace);
-    this.hor.value.copy(this.comunes.uNiebla.value);
-    const s = this.mats.sombra.uniforms;
-    const y = Math.max(e.sol[1], 0.24);
-    s.uProy.value.set(-e.sol[0] / y, -e.sol[2] / y);
-    s.uFuerza.value = 0.34 * Math.max(0, Math.min(1, e.elevacion / 7));
-    this.sombrasActivas = e.elevacion > 1;
+    this.elevacion = e.elevacion;
+    this.sombras.ponerSol(this.comunes.uSol.value, e.elevacion > 1.5 && !this.lluvia);
   }
 
   setHora(h: number | null) { this.op.hora = h; this.ponerCielo(); }
+
+  /** Lluvia opcional: gotas, calle mojada y cielo cubierto. */
+  setLluvia(a: boolean) {
+    this.lluvia = a;
+    this.ambiente.setLluvia(a);
+    this.ponerCielo();
+  }
 
   setModo(m: ModoMarcha) { this.modo = m; }
 
@@ -349,7 +389,9 @@ export class Motor {
     this.fase += v * dt * 1.9;
     this.balanceo += (mov - this.balanceo) * Math.min(1, dt * 8);
     const r = this.op.reducirMovimiento ? 0 : this.balanceo * q;
-    this.camara.position.set(this.x, (this.modo === "bici" ? 1.74 : OJO) + Math.sin(this.fase * 2) * 0.032 * r, this.z);
+    const piso = this.inter ? 0 : this.mundo.altoSuelo(this.x, this.z);
+    this.yPie += (piso - this.yPie) * Math.min(1, dt * 12);
+    this.camara.position.set(this.x, (this.modo === "bici" ? 1.74 : OJO) + this.yPie + this.altura + Math.sin(this.fase * 2) * 0.032 * r, this.z);
     this.camara.rotation.set(this.pitch + Math.sin(this.fase * 2) * 0.0035 * r, this.yaw, Math.sin(this.fase) * 0.0045 * r);
   }
 
@@ -405,10 +447,13 @@ export class Motor {
     this.ajustar();
     this.nieblaPara(q);
     this.calidadUni.value = q.ventanas;
+    this.sombras.configurar(q.sombras);
+    this.sombras.ponerSol(this.comunes.uSol.value, this.elevacion > 1.5);
   }
 
   private nieblaPara(q: Calidad) {
-    this.comunes.uNieblaD.value.set(q.radio * 0.2, 2 / (q.radio * 0.8));
+    this.comunes.uNieblaD.value.set(q.radio * 0.3, 1.5 / (q.radio * 0.85));
+    this.comunes.uRKit.value = q.rKit;
   }
 
   private cuadro = (ahora: number) => {
@@ -427,7 +472,7 @@ export class Motor {
       return;
     }
 
-    this.mundo.actualizar(this.x, this.z, t);
+    this.mundo.actualizar(this.x, this.z, t, this.vx, this.vz);
     if (!this.ubicado && this.mundo.inicial && this.mundo.celdas.size) {
       /* Espera las celdas de alrededor para arrancar en la vereda y no adentro de un edificio */
       const pendiente = [...this.mundo.inicial].some((k) => !this.mundo.celdas.has(k)) && t < 25 && this.mundo.fallos === 0;
@@ -445,7 +490,8 @@ export class Motor {
     this.cieloMesh.position.copy(this.camara.position);
     this.disco.position.set(this.x, 0, this.z);
     const q = this.calidad();
-    this.trafico.actualizar(dt, this.x, this.z, this.mundo, q);
+    this.trafico.actualizar(dt, this.x, this.z, this.mundo, q, t);
+    this.ambiente.actualizar(dt, t, this.x, this.z, this.camara.position.y, this.mundo, this.nivel < 1);
     this.cerca(t);
     this.rumbo();
     if (t - this.tCalle > 0.4) {
@@ -454,8 +500,9 @@ export class Motor {
       if (c !== this.calleAct) { this.calleAct = c; this.op.eventos.calle(c); }
     }
     if (t - this.tCielo > 30) { this.tCielo = t; this.ponerCielo(); }
-    this.mats.sombra.visible = this.sombrasActivas && q.rSombra > 0;
     this.marca.scale.setScalar(1 + Math.sin(t * 5) * 0.1);
+    if (this.versionSombra !== this.mundo.sombraVersion) { this.versionSombra = this.mundo.sombraVersion; this.sombras.marcarSucio(); }
+    this.sombras.actualizar(this.escena, this.x, this.z);
     this.renderer.render(this.escena, this.camara);
   };
 
@@ -490,12 +537,18 @@ export class Motor {
     window.removeEventListener("resize", this.ajustar);
     document.removeEventListener("visibilitychange", this.visibilidad);
     this.renderer.domElement.removeEventListener("webglcontextlost", this.contextoPerdido);
+    this.renderer.domElement.removeEventListener("webglcontextrestored", this.contextoRecuperado);
+    window.clearTimeout(this.tPerdido);
     this.entrada.destruir();
     this.proc.destruir();
     this.mundo.destruir();
     this.trafico.destruir();
+    this.ambiente.destruir();
     this.inter?.destruir();
-    this.detalle.dispose();
+    this.sombras.destruir();
+    this.ruido.dispose();
+    this.baldosa.dispose();
+    this.hojas.dispose();
     Object.values(this.mats).forEach((m) => m.dispose());
     this.matCieloM.dispose();
     this.cieloMesh.geometry.dispose();

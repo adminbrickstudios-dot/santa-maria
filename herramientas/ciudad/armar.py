@@ -357,7 +357,8 @@ print(" lugares", len(lista))
 print("objetos")
 TIPO = {"street_lamp": "farola", "traffic_signals": "semaforo", "bus_stop": "parada", "bench": "banco", "waste_basket": "cesto", "waste_disposal": "contenedor", "recycling": "reciclado",
         "fountain": "fuente", "bicycle_parking": "bicis", "bicycle_rental": "ecobici", "post_box": "buzon", "telephone": "telefono", "subway_entrance": "subte", "artwork": "arte",
-        "fire_hydrant": "hidrante", "street_cabinet": "gabinete", "bollard": "bolardo", "atm": "cajero", "drinking_water": "bebedero", "clock": "reloj", "memorial": "monumento", "monument": "monumento"}
+        "fire_hydrant": "hidrante", "street_cabinet": "gabinete", "bollard": "bolardo", "atm": "cajero", "drinking_water": "bebedero", "clock": "reloj", "memorial": "monumento", "monument": "monumento",
+        "fitness_station": "posta", "picnic_table": "mesa", "flagpole": "bandera", "manhole": "tapa", "planter": "maceta", "outdoor_seating": "terraza", "poster_box": "publicidad", "parking_entrance": "cochera", "obelisk": "monumento", "wayside_shrine": "monumento"}
 for o in lineas("osm_cosas.jsonl.gz"):
     p = o["properties"]
     g = o["geometry"]
@@ -369,7 +370,7 @@ for o in lineas("osm_cosas.jsonl.gz"):
         continue
     X, Z_ = ent(x, t[0]), ent(z, t[1])
     tp = None
-    for k in ("highway", "amenity", "railway", "emergency", "man_made", "barrier", "tourism", "historic"):
+    for k in ("highway", "amenity", "railway", "emergency", "man_made", "barrier", "tourism", "historic", "leisure", "advertising"):
         if p.get(k) in TIPO:
             tp = TIPO[p[k]]
             break
@@ -377,8 +378,14 @@ for o in lineas("osm_cosas.jsonl.gz"):
         T[t]["o"].append(["arbol", X, Z_, p.get("species") or p.get("genus") or p.get("taxon") or ""])
     elif p.get("highway") == "crossing":
         T[t]["k"].append([X, Z_, p.get("crossing") or ""])
+    elif tp == "tapa":
+        T[t]["o"].append([tp, X, Z_, ""])
+    elif tp == "bandera":
+        T[t]["o"].append([tp, X, Z_, p.get("flag:type") or ""])
     elif tp:
         T[t]["o"].append([tp, X, Z_, p.get("name") or ""])
+    if p.get("kerb") in ("lowered", "flush"):
+        T[t]["o"].append(["rampa", X, Z_, ""])
     if p.get("entrance") or p.get("door"):
         T[t]["p"].append([X, Z_, p.get("addr:housenumber") or "", p.get("entrance") or p.get("door") or ""])
     elif p.get("addr:housenumber"):
@@ -393,14 +400,50 @@ for o in lineas("ov_dir.jsonl.gz"):
     if t in zona:
         T[t]["p"].append([ent(x, t[0]), ent(z, t[1]), str(q["number"]), "numero"])
 
-# ───────── Calles, senderos y áreas ─────────
-print("red")
-AREA = {"park": "parque", "garden": "parque", "grass": "pasto", "meadow": "pasto", "forest": "bosque", "wood": "bosque", "water": "agua", "pitch": "cancha", "playground": "juegos", "recreation_ground": "parque", "cemetery": "cementerio", "village_green": "pasto", "beach": "arena", "sand": "arena", "riverbank": "agua", "scrub": "pasto", "wetland": "pasto"}
-n_via = 0
+# Señales que en OSM cuelgan de la red, e hileras de árboles (se plantan cada 7 m)
+SENAL = {"stop": "pare", "give_way": "ceda", "speed_camera": "radar"}
 for o in lineas("osm_red.jsonl.gz"):
     p = o["properties"]
     g = o["geometry"]
-    ty = p.get("leisure") or p.get("landuse") or p.get("natural")
+    if g["type"] == "Point" and (p.get("highway") in SENAL or p.get("traffic_calming")):
+        x, z = merc(*g["coordinates"])
+        t = (int(x), int(z))
+        if t in zona:
+            T[t]["o"].append([SENAL.get(p.get("highway"), "lomo"), ent(x, t[0]), ent(z, t[1]), ""])
+    elif p.get("natural") == "tree_row" and g["type"] == "LineString":
+        pts = [merc(a, b) for a, b in g["coordinates"]]
+        s = 0.0
+        for a, b in zip(pts, pts[1:]):
+            L = math.hypot(b[0] - a[0], b[1] - a[1]) * 503
+            while s < L and L:
+                f = s / L
+                x, z = a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f
+                t = (int(x), int(z))
+                if t in zona:
+                    T[t]["o"].append(["arbol", ent(x, t[0]), ent(z, t[1]), p.get("species") or p.get("genus") or ""])
+                s += 7.0
+            s -= L
+
+# ───────── Calles, senderos y áreas ─────────
+print("red")
+AREA = {"park": "parque", "garden": "parque", "grass": "pasto", "meadow": "pasto", "forest": "bosque", "wood": "bosque", "water": "agua", "pitch": "cancha", "playground": "juegos", "recreation_ground": "parque", "cemetery": "cementerio", "village_green": "pasto", "beach": "arena", "sand": "arena", "riverbank": "agua", "scrub": "pasto", "wetland": "pasto",
+        "dog_park": "canil", "construction": "obra", "garages": "playa", "railway": "balasto", "depot": "playa", "brownfield": "terreno", "greenfield": "pasto", "plant_nursery": "parque", "greenery": "pasto",
+        "shrub": "arbustos", "shrubbery": "arbustos", "parking": "playa", "fuel": "playa", "plazaseca": "plazaseca"}
+n_via = 0
+def red_y_cosas():
+    for o in lineas("osm_red.jsonl.gz"):
+        yield o
+    for o in lineas("osm_cosas.jsonl.gz"):
+        if o["geometry"]["type"] != "Point" and o["properties"].get("amenity") in ("parking", "fuel"):
+            yield o
+
+
+for o in red_y_cosas():
+    p = o["properties"]
+    g = o["geometry"]
+    ty = p.get("leisure") or p.get("landuse") or p.get("natural") or p.get("amenity")
+    if p.get("highway") == "pedestrian" and g["type"] in ("Polygon", "MultiPolygon"):
+        ty = "plazaseca"
     if ty in AREA and g["type"] in ("Polygon", "MultiPolygon"):
         for pol in anillos(g):
             rs = [[merc(a, b) for a, b in q] for q in pol]
@@ -424,7 +467,7 @@ for o in lineas("osm_red.jsonl.gz"):
         continue
     pts = [merc(a, b) for a, b in g["coordinates"]]
     n_via += 1
-    extra = {k: p[k] for k in ("lanes", "width", "surface", "oneway", "sidewalk", "bridge", "tunnel", "layer", "maxspeed", "cycleway", "cycleway:left", "cycleway:right", "footway", "lit", "busway") if k in p}
+    extra = {k: p[k] for k in ("lanes", "width", "surface", "oneway", "sidewalk", "bridge", "tunnel", "layer", "maxspeed", "cycleway", "cycleway:left", "cycleway:right", "footway", "lit", "busway", "parking:both", "service") if k in p}
     i = 0
     tocados = collections.defaultdict(list)
     for a, b in zip(pts, pts[1:]):
