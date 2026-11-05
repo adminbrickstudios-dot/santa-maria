@@ -271,7 +271,9 @@ function raptor(aO,aD,c,filtro,rondas=3){
     let pa=par[k][s];
     while(!pa&&k>0){k--;pa=k>0?par[k][s]:null;}
     if(!pa)break;
-    if(pa.walk!==undefined){pier.unshift({t:'trans',de:pa.walk,a:s,d:pa.d});s=pa.walk;pa=par[k][s];if(!pa)continue;}
+    /* puede haber varios transbordos a pie seguidos */
+    while(pa&&pa.walk!==undefined){pier.unshift({t:'trans',de:pa.walk,a:s,d:pa.d});s=pa.walk;pa=par[k][s];}
+    if(!pa)continue;
     pier.unshift({t:'bondi',pi:pa.pi,bi:pa.bi,ai:pa.ai});s=pa.de;k--;
   }
   return {v:mejor.v,fin:mejor.s,ini:s,pier};
@@ -346,7 +348,8 @@ function planificar(o,d,c){
   const {a:aO,r:rO}=alcances(o,W,lim*1.15),{a:aD,r:rD}=alcances(d,W,lim*1.15);
   const usados=new Set(),suma=(j,id,titulo)=>{
     if(!j)return null;
-    const v=armarViaje(o,d,j,rO,rD,c);if(!v)return null;
+    /* si una opción de transporte no se puede armar se descarta sola: a pie, bici y auto siguen */
+    let v=null;try{v=armarViaje(o,d,j,rO,rD,c);}catch{return null;}if(!v)return null;
     const sig=v.pp.filter(p=>p.linea).map(p=>p.linea).join('>');if(usados.has(sig))return null;usados.add(sig);
     const seg=v.pp.reduce((a,p)=>a+p.seg+(p.espera||0),0);
     const hw=v.pp.reduce((a,p)=>a+(p.hw?p.hw*60:0),0),trans=v.pp.filter(p=>p.linea);
