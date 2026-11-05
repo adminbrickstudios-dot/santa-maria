@@ -583,6 +583,7 @@ function pintarYo(){
 
 /* ───── Aviso para bajarse del bondi ───── */
 const A={activa:false,off:null,nom:'',x:0,y:0,previo:false};
+if(demo&&typeof window!=='undefined')window.__alerta=A;
 function pararAlerta(){if(A.off)A.off();A.off=null;A.activa=false;pill('bajar','');}
 function alertaBajar(){
   if(A.activa){pararAlerta();render();return;}
