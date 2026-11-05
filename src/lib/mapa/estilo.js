@@ -9,7 +9,7 @@ export const urlEstilo=oscuro=>'https://tiles.openfreemap.org/styles/'+(oscuro?F
 export function estiloPlano(oscuro,fuente){
   const c=oscuro?{agua:'#0C1A2B',tierra:'#17191D',verde:'#17301F',calle:'#33373E',av:'#4A505A',ruta:'#6A5A36'}:{agua:'#BFDDF2',tierra:'#F2EFE9',verde:'#CFE8C6',calle:'#FFFFFF',av:'#FBE3A0',ruta:'#F5B95F'};
   const k=v=>['==',['get','k'],v],cl=v=>['==',['get','c'],v];
-  return {version:8,sources:{plano:{type:'geojson',data:fuente||fc([])}},layers:[
+  return {version:8,sources:{plano:{type:'geojson',data:fuente||fc([]),attribution:'© OpenStreetMap'}},layers:[
     {id:'fondo',type:'background',paint:{'background-color':c.tierra}},
     {id:'p-tierra',type:'fill',source:'plano',filter:k('tierra'),paint:{'fill-color':c.tierra}},
     {id:'p-agua',type:'fill',source:'plano',filter:k('agua'),paint:{'fill-color':c.agua}},

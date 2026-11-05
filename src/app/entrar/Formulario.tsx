@@ -35,7 +35,7 @@ export function Formulario() {
     const { data: res, error } = await sb.rpc("registrar_usuario", { p_usuario: us, p_nombre: nom.trim() || u, p_clave: c, p_codigo: cod.trim() || null });
     if (error || res !== "ok") {
       setIr(false);
-      return fallo(res === "usuario_ocupado" ? "Ese usuario ya existe. Probá con otro." : res === "codigo_invalido" ? "Ese código de grupo no existe." : "No pude crear la cuenta. Probá de nuevo.");
+      return fallo(res === "usuario_ocupado" ? "Ese usuario ya existe. Probá con otro." : res === "codigo_invalido" ? "Ese código de grupo no existe." : res === "muchos_intentos" ? "Se crearon muchas cuentas desde esta red. Probá en un rato." : "No pude crear la cuenta. Probá de nuevo.");
     }
     const e2 = await sb.auth.signInWithPassword({ email: correoDe(us), password: c });
     setIr(false);
