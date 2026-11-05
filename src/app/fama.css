@@ -112,4 +112,3 @@ html[data-dir="atras"]{--vt-s:22px;--vt-e:-22px}
 .l-marca b{display:block;font-family:var(--f-dis),"Arial Narrow",sans-serif;font-weight:800;font-size:26px;letter-spacing:.03em;color:var(--tinta);line-height:1}
 .mas-t .ic,.bloque .ic{transition:transform .35s var(--resorte)}
 .mas-t:active .ic,.bloque:active .ic{transform:scale(.9)}
-.seg[aria-selected="true"]{transform:scale(1.02)}
