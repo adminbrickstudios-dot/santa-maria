@@ -54,7 +54,7 @@ export function rumboDe(e: DeviceOrientationEvent & { webkitCompassHeading?: num
 }
 
 /** Inclinación de la cámara según cómo sostenés el celular: parado mira al frente. */
-export const inclinacionDe = (beta: number | null) => (beta == null ? 0 : Math.max(-55, Math.min(35, beta - 80)));
+export const inclinacionDe = (beta: number | null) => (beta == null ? 0 : Math.max(-32, Math.min(30, (beta - 80) * 0.8)));
 
 /** iOS exige pedir este permiso dentro del toque. Hay que llamarla sin esperar nada antes. */
 export function pedirBrujula(): Promise<boolean> {
