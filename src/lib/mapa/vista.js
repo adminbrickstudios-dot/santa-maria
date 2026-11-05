@@ -137,6 +137,9 @@ async function crearMapa(contenedor,cam){
   mapa.once('idle',()=>{document.querySelector('.maplibregl-compact-show')?.classList.remove('maplibregl-compact-show');rehechos=0;});
   mapa.on('sourcedata',e=>{if(e.tile?.state!=='loaded')return;if(e.sourceId==='sat')fSat=0;else if(/^openmaptiles/i.test(e.sourceId)){fTiles=0;esperaRed=4000;}});
   mapa.on('click',alClick);
+  /* Doble toque: el segundo no siempre llega como click, pero el zoom sí arranca */
+  const sinToque=()=>{if(tTap){clearTimeout(tTap);tTap=null;}};
+  mapa.on('movestart',sinToque);mapa.on('dblclick',sinToque);
   mapa.on('error',alError);
   mapa.on('webglcontextlost',alPerderContexto);
   mapa.on('webglcontextrestored',alRecuperarContexto);
@@ -220,7 +223,7 @@ function encuadrar(pts,marg=60){
 }
 function abrirP(p){reg(p);S.marca=null;abrirGlobo(p);pedir();}
 /* Un toque espera un instante: si llega otro enseguida es doble toque y hace zoom sin abrir nada */
-function alClick(e){if(tTap){clearTimeout(tTap);tTap=null;return;}tTap=setTimeout(()=>{tTap=null;toque(e);},240);}
+function alClick(e){if(tTap){clearTimeout(tTap);tTap=null;return;}tTap=setTimeout(()=>{tTap=null;toque(e);},280);}
 function toque(e){
   if(!mapa)return;
   const x=wx(e.lngLat.lng),y=wy(e.lngLat.lat);
@@ -1135,7 +1138,9 @@ function topesHoja(){const h=$('hoja'),H=h?h.offsetHeight:0;return [0,Math.max(0
 function abrirHoja(i){if(ponerHoja)ponerHoja(topesHoja()[i],true);}
 function hojaArrastrable(){
   const h=$('hoja'),a=$('asa');let ini=null;
-  const poner=(y,suave)=>{if(!h.isConnected)return;h.style.transition=suave&&!quieto()?'transform .46s cubic-bezier(.32,.72,0,1)':'none';h.style.transform=`translateY(${y}px)`;h.dataset.y=y;$('raiz')?.classList.toggle('mapa-grande',y>=topesHoja()[2]-2);};
+  const poner=(y,suave)=>{if(!h.isConnected)return;h.style.transition=suave&&!quieto()?'transform .46s cubic-bezier(.32,.72,0,1)':'none';h.style.transform=`translateY(${y}px)`;h.dataset.y=y;$('raiz')?.classList.toggle('mapa-grande',y>=topesHoja()[2]-2);
+    /* La hoja corrida deja su parte de abajo fuera de pantalla: se compensa para poder llegar al final. Solo al soltar, no en cada cuadro. */
+    if(!ini)h.style.setProperty('--hoja-y',`${escritorio()?0:Math.round(y)}px`);};
   ponerHoja=poner;poner(topesHoja()[1],false);
   requestAnimationFrame(()=>poner(topesHoja()[1],false));
   alCambiarTam=()=>{const T_=topesHoja(),y=+h.dataset.y||0;poner(T_.reduce((m,q)=>Math.abs(q-y)<Math.abs(m-y)?q:m,T_[1]),false);};

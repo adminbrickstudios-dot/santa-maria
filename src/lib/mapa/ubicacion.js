@@ -22,7 +22,11 @@ function prender(error){
   idGps=navigator.geolocation.watchPosition(p=>{
     const c=p.coords,rg=c.heading!=null&&!Number.isNaN(c.heading)&&(c.speed==null||c.speed>.5)?c.heading:null;
     ult={lat:c.latitude,lon:c.longitude,prec:c.accuracy,vel:c.speed,rumboGps:rg,rumbo:rg??rumboDisp,t:p.timestamp};avisar();
-  },e=>{for(const f of [...oyentes])if(f.alFallar)f.alFallar(e);error&&error(e);},{enableHighAccuracy:true,maximumAge:3000,timeout:15000});
+  },e=>{
+    /* Sin señal un rato o el celu quieto dan error y la lectura sigue sola: solo corta si no hay permiso, o si nunca hubo posición */
+    if(e.code!==1&&ult)return;
+    for(const f of [...oyentes])if(f.alFallar)f.alFallar(e);error&&error(e);
+  },{enableHighAccuracy:true,maximumAge:3000,timeout:15000});
 }
 function apagar(){
   if(idGps!=null){navigator.geolocation.clearWatch(idGps);idGps=null;}

@@ -67,6 +67,7 @@
 .mp .btn svg{width:22px;height:22px;flex:none}
 .mp .ico-btn svg{width:24px;height:24px}
 .mp .btn{gap:8px}
+#m-panel{padding-bottom:calc(var(--hoja-y,0px) + env(safe-area-inset-bottom,0px) + 28px)}
 #m-carga{z-index:4}
 #m-carga[hidden]{display:none}
 #m-carga p{margin-bottom:10px}.m-sub{font-weight:500;font-size:15px}
