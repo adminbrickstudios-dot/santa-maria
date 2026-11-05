@@ -307,7 +307,7 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
     for (let i = 0; i < n; i++) suelo.idx.push(cen, o + ((i + 1) % n), o + i);
   };
 
-  const BLANCO: C4 = [236, 232, 220, 255], AMARILLO: C4 = [222, 176, 52, 255];
+  const BLANCO: C4 = [236, 232, 220, 255], AMARILLO: C4 = [200, 164, 70, 255];
   for (const v of ind.vias) {
     if (v.tunel) continue;
     if (v.clase.startsWith("rail:") && !v.puente) {
@@ -524,7 +524,7 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
       for (let iu = 0; iu < n; iu++) {
         const u = (iu + 0.5) * bw, r = hash(e.id * 31 + iu * 7, ip + 3);
         if (!vidriada) {
-          if (ip < 3) { const [mx, my, mz] = P3(u, yp + es.v0, 0); kit.poner(P.K_MARCO, mx, my, mz, rx, rz, nx, nz, es.vA * 2, es.v1 - es.v0, 0.05, es.moldura ? es.acento : [214, 210, 202]); }
+          if (ip < 2) { const [mx, my, mz] = P3(u, yp + es.v0, 0); kit.poner(P.K_MARCO, mx, my, mz, rx, rz, nx, nz, es.vA * 2, es.v1 - es.v0, 0.05, es.moldura ? es.acento : [214, 210, 202]); }
           if (es.v0 > 0.5 && ip < 7) { const [sx, sy, sz] = P3(u, yp + es.v0 - 0.08, 0); kit.poner(P.K_CAJA, sx, sy, sz, rx, rz, nx, nz, es.vA * 2 + 0.24, 0.08, 0.14, es.acento); }
         }
         if (es.moldura === 3 && !vidriada) {
@@ -545,7 +545,7 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
           const [qx, qy, qz] = P3(u, yp + 0.04, f - 0.05);
           const pieza = b === 0 ? P.K_REJA : b === 3 ? P.K_VIDRIO : P.K_CANO, col = b === 3 ? es.acento : es.metal;
           kit.poner(pieza, qx, qy, qz, rx, rz, nx, nz, a - 0.06, 1, 0.04, col);
-          for (const s of [-1, 1]) {
+          if (ip < 6) for (const s of [-1, 1]) {
             const [sx, sy, sz] = P3(u + (s * (a - 0.06)) / 2, yp + 0.04, f / 2);
             kit.poner(pieza, sx, sy, sz, nz, -nx, rx, rz, f - 0.1, 1, 0.04, col);
           }

@@ -39,8 +39,8 @@ export function geoKit(p: number): THREE.BufferGeometry {
     ]);
     case P.K_MENSULA: {
       const s = new THREE.Shape();
-      s.moveTo(0, 1); s.lineTo(1, 1); s.bezierCurveTo(1, 0.7, 0.5, 0.75, 0.32, 0.4); s.lineTo(0.18, 0); s.lineTo(0, 0); s.closePath();
-      const g = new THREE.ExtrudeGeometry(s, { depth: 1, bevelEnabled: false, curveSegments: 4 });
+      s.moveTo(0, 1); s.lineTo(1, 1); s.lineTo(0.55, 0.62); s.lineTo(0.2, 0); s.lineTo(0, 0); s.closePath();
+      const g = new THREE.ExtrudeGeometry(s, { depth: 1, bevelEnabled: false, curveSegments: 1 });
       g.rotateY(-Math.PI / 2);
       g.translate(0.5, 0, 0);
       return fundir([cola(g, BL, P_PINTABLE)]);
@@ -53,8 +53,7 @@ export function geoKit(p: number): THREE.BufferGeometry {
       return fundir([lado(0.05, 1.04, -0.505, 0.5), lado(0.05, 1.04, 0.505, 0.5), lado(1.05, 0.03, 0, 1.005)]);
     }
     case P.K_AIRE: return fundir([
-      caja(1, 1, 1, 0, 0.5, 0.5, BL, P_PINTABLE), caja(0.72, 0.7, 0.04, -0.08, 0.52, 1.01, [0.42, 0.43, 0.44], P_FIJO),
-      caja(0.05, 0.12, 0.95, -0.4, -0.06, 0.5, [0.4, 0.4, 0.4]), caja(0.05, 0.12, 0.95, 0.4, -0.06, 0.5, [0.4, 0.4, 0.4]),
+      caja(1, 1, 1, 0, 0.5, 0.5, BL, P_PINTABLE), placa(0.72, 0.7, -0.08, 0.52, 1.01, [0.42, 0.43, 0.44]),
     ]);
     case P.K_LUCARNA: {
       /* Buhardilla con frontón y ventana */
@@ -74,8 +73,8 @@ export function geoKit(p: number): THREE.BufferGeometry {
     case P.K_ARCO: {
       const s = new THREE.Shape();
       s.moveTo(-0.5, 0); s.lineTo(-0.5, 0.22); s.quadraticCurveTo(0, 1.25, 0.5, 0.22); s.lineTo(0.5, 0); s.quadraticCurveTo(0, 0.84, -0.5, 0);
-      const g = new THREE.ExtrudeGeometry(s, { depth: 1, bevelEnabled: false, curveSegments: 6 });
-      return fundir([cola(g, BL, P_PINTABLE), caja(0.13, 0.46, 1.2, 0, 0.44, 0.6, BL, P_PINTABLE)]);
+      const g = new THREE.ExtrudeGeometry(s, { depth: 1, bevelEnabled: false, curveSegments: 3 });
+      return fundir([cola(g, BL, P_PINTABLE)]);
     }
     case P.K_VIDRIO: return fundir([
       placa(1, 1, 0, 0.5, 0.5, BL, P_VIDRIO), placa(1, 1, 0, 0.5, 0.5, BL, P_VIDRIO, Math.PI),
@@ -173,12 +172,14 @@ export function geoProp(t: number): THREE.BufferGeometry {
     }
     case P.P_PUBLICIDAD: return fundir([caja(1.3, 1.9, 0.14, 0, 1.75, 0, hex("#2F3338")), caja(1.14, 1.72, 0.16, 0, 1.75, 0, [0.82, 0.84, 0.86], P_EMISIVO), caja(0.14, 0.82, 0.14, 0, 0.41, 0, hex("#2F3338"))]);
     case P.P_SENAL: {
-      const d = new THREE.CircleGeometry(0.3, 12);
-      d.translate(0, 2.42, 0.045);
+      const d = new THREE.CircleGeometry(0.24, 12);
+      d.translate(0, 2.42, 0.05);
+      const a = new THREE.CircleGeometry(0.3, 14);
+      a.translate(0, 2.42, 0.045);
       const d2 = new THREE.CircleGeometry(0.31, 12);
       d2.rotateY(Math.PI);
       d2.translate(0, 2.42, 0.04);
-      return fundir([cola(tubo(0.03, 0.03, 2.5, 0, 0, 0), hex("#8A8F94")), { geo: d, color: BL, parte: P_PINTABLE }, cola(d2, hex("#8A8F94"))]);
+      return fundir([cola(tubo(0.03, 0.03, 2.5, 0, 0, 0), hex("#8A8F94")), { geo: d, color: BL, parte: P_PINTABLE }, cola(a, hex("#D8D6CE")), cola(d2, hex("#8A8F94"))]);
     }
     case P.P_PARQUIMETRO: return fundir([cola(tubo(0.05, 0.05, 1.05, 0, 0, 0), hex("#3A4148")), caja(0.26, 0.44, 0.2, 0, 1.25, 0, hex("#2E5E9E")), caja(0.17, 0.12, 0.03, 0, 1.33, 0.11, [0.7, 0.9, 0.8], P_EMISIVO)]);
     case P.P_FLORES: return fundir([

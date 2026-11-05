@@ -58,7 +58,7 @@ const DIBUJOS: Dib[] = [
   /* jacarandá en flor (noviembre): manchas lilas con algo de verde plumoso */
   (c, s, R) => {
     ramillete(c, s, R, 180, (x, y, g) => hojaOval(c, x, y, s * 0.05, s * 0.01, g, tonos(100, 128, 76, 0.4, R)));
-    ramillete(c, s, R, 300, (x, y) => { c.beginPath(); c.arc(x, y, s * (0.012 + R() * 0.012), 0, 6.3); c.fillStyle = tonos(176, 150, 232, 0.28, R); c.fill(); });
+    ramillete(c, s, R, 760, (x, y) => { c.beginPath(); c.arc(x, y, s * (0.006 + R() * 0.008), 0, 6.3); c.fillStyle = tonos(176, 150, 232, 0.28, R); c.fill(); });
   },
   /* fresno: hoja mediana, verde pareja */
   (c, s, R) => ramillete(c, s, R, 300, (x, y, g) => hojaOval(c, x, y, s * 0.06, s * 0.018, g, tonos(84, 124, 58, 0.45, R))),

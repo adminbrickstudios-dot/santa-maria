@@ -167,7 +167,7 @@ export function matSuelo(c: Comunes, tex: { baldosa: THREE.Texture }, mapa: THRE
               bal=mix(bal,vec3(.2,.195,.185)*(.8+.4*rf.g),pa);
               b.rg=mix(b.rg,vec2(.5),pa);
             }
-            vec3 ter=mix(vec3(.2,.17,.13),vec3(.26,.27,.17),ru.g)*(.8+.4*rf.b);
+            vec3 ter=mix(vec3(.24,.225,.19),vec3(.2,.215,.13),smoothstep(.4,.62,ru.g))*(.8+.4*rf.b);
             alb=mix(ter,bal,vereda);
             if(dist<34.) N=normalize(vec3((b.r-.5)*.9*vereda,1.,(b.g-.5)*.9*vereda));
             /* Cordón de granito */
@@ -417,7 +417,7 @@ export function matEdificio(c: Comunes, calidad: { value: number }) {
               vec3 am=ambiente(Rg);
               /* Adentro: penumbra con cortina clara abajo */
               vec3 pieza=mix(vec3(.018,.02,.024),vec3(.06,.055,.05),smoothstep(.2,.8,fp*r2));
-              float cort=step(.5,r3)*smoothstep(.0,.03,abs(fract(q.x*2.3+r)-.5)-.0)*.0+step(.55,r3)*(.75+.25*sin(q.x*38.));
+              float cort=step(.55,r3)*(.8+.2*sin(q.x*38.)*(1.-smoothstep(.02,.1,dU*8.)));
               pieza=mix(pieza,vec3(.34,.32,.28)*(uLuzCielo*.6),cort*.6);
               vec3 g=mix(pieza,am,clamp(fr+.1,0.,.9));
               float prende=step(.58,h21(vec2(ip,iu)*1.31+sem*17.));
@@ -886,7 +886,7 @@ export function matCielo(c: Comunes) {
         float h=clamp(d.y,0.,1.);
         vec3 c=mix(uNiebla,uCenit,pow(h,.46));
         float s=max(dot(d,uSol),0.);
-        c+=uLuzSol*(pow(s,10.)*.14+pow(s,120.)*.35+smoothstep(.9994,.9998,s)*12.);
+        c+=uLuzSol*(pow(s,10.)*.14+pow(s,120.)*.35+smoothstep(.99975,.99995,s)*14.);
         /* Nubes: dos capas de ruido proyectadas sobre un plano alto */
         vec2 q=d.xz/(d.y+.14);
         float n=texture2D(uRui,q*.06+vec2(uTiempo*.0009,0.)).g*.6+texture2D(uRui,q*.17+vec2(uTiempo*.0013,.3)).b*.28+texture2D(uRui,q*.43).r*.12;

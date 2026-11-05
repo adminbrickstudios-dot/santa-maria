@@ -114,24 +114,22 @@ export function geoCamioneta() {
 }
 
 export function geoColectivo() {
-  const blanco = hex("#EFECE2"), L = 5.7;
+  const blanco = hex("#EFECE2"), L = 5.7, A = 2.5;
+  /* Perfil de costado: frente algo inclinado y techo apenas curvo */
+  const cuerpo = [[-L, 0.42], [L - 0.05, 0.42], [L, 1.2], [L - 0.28, 2.72], [L - 0.7, 2.98], [-L + 0.4, 3.02], [-L, 2.7]];
   const ventanas: Parte[] = [];
-  for (let z = -4.6; z <= 4.4; z += 1.5) for (const s of [-1, 1]) ventanas.push(caja(0.02, 0.9, 1.34, s * 1.27, 2.08, z, VIDRIO, P_ESPEJO));
+  for (let z = -4.7; z <= 4.3; z += 1.5) for (const s of [-1, 1]) ventanas.push(caja(0.03, 0.84, 1.38, s * (A / 2 + 0.03), 2.2, z, VIDRIO, P_ESPEJO));
   return fundir([
-    ...ruedas([-1.1, 1.1], [-3.3, 3.2], 0.5, 0.3),
-    caja(2.5, 1.06, 11.2, 0, 1.04, 0, [1, 1, 1], P_PINTABLE),
-    caja(2.5, 1.02, 11.2, 0, 2.08, 0, blanco),
-    caja(2.42, 0.26, 11, 0, 2.72, 0, [1, 1, 1], P_PINTABLE),
-    caja(2.2, 0.14, 7, 0, 2.92, -0.6, blanco),
-    caja(2.52, 0.08, 11.22, 0, 1.54, 0, blanco),
-    caja(2.2, 1.04, 0.03, 0, 2.02, L - 0.09 + 0.02, VIDRIO, P_ESPEJO),
-    caja(1.9, 0.72, 0.03, 0, 2.06, -L + 0.09 - 0.02, VIDRIO, P_ESPEJO),
+    ...ruedas([-1.08, 1.08], [-3.3, 3.2], 0.5, 0.3),
+    { geo: perfil(cuerpo, A - 0.1), color: [1, 1, 1], parte: P_PINTABLE },
+    /* Franjas típicas de la línea */
+    caja(A + 0.05, 0.1, 11.1, 0, 1.62, 0, blanco), caja(A + 0.05, 0.06, 11.1, 0, 1.46, 0, hex("#D8A020")), caja(A + 0.05, 0.1, 11.1, 0, 0.56, 0, hex("#20242A")),
+    caja(2.1, 1.16, 0.04, 0, 2.08, L - 0.1, VIDRIO, P_ESPEJO), caja(1.9, 0.72, 0.04, 0, 2.2, -L - 0.04, VIDRIO, P_ESPEJO),
     ...ventanas,
-    caja(0.02, 2, 1.2, 1.27, 1.56, 3.8, hex("#20282E")),
-    caja(0.02, 2, 1.2, 1.27, 1.56, -0.8, hex("#20282E")),
-    caja(1.4, 0.26, 0.04, 0, 2.66, L - 0.05, [1, 0.72, 0.2], P_EMISIVO),
-    caja(0.32, 0.18, 0.05, -0.92, 0.9, L - 0.09, [1, 0.96, 0.82], P_EMISIVO), caja(0.32, 0.18, 0.05, 0.92, 0.9, L - 0.09, [1, 0.96, 0.82], P_EMISIVO),
-    caja(0.36, 0.22, 0.05, -0.92, 1.1, -L + 0.09, [0.85, 0.08, 0.08], P_EMISIVO), caja(0.36, 0.22, 0.05, 0.92, 1.1, -L + 0.09, [0.85, 0.08, 0.08], P_EMISIVO),
+    caja(0.04, 2.06, 1.16, A / 2 + 0.03, 1.5, 4, hex("#20282E")), caja(0.04, 2.06, 1.16, A / 2 + 0.03, 1.5, -0.8, hex("#20282E")),
+    caja(1.4, 0.24, 0.04, 0, 2.76, L - 0.26, [1, 0.72, 0.2], P_EMISIVO),
+    caja(0.32, 0.18, 0.05, -0.92, 0.95, L + 0.02, [1, 0.96, 0.82], P_EMISIVO), caja(0.32, 0.18, 0.05, 0.92, 0.95, L + 0.02, [1, 0.96, 0.82], P_EMISIVO),
+    caja(0.36, 0.22, 0.05, -0.92, 1.1, -L - 0.03, [0.85, 0.08, 0.08], P_EMISIVO), caja(0.36, 0.22, 0.05, 0.92, 1.1, -L - 0.03, [0.85, 0.08, 0.08], P_EMISIVO),
   ]);
 }
 
