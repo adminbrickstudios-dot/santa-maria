@@ -1,14 +1,14 @@
-/* El cielo de Buenos Aires según la hora: posición real del sol y una paleta por altura del sol. */
+/* El cielo de Buenos Aires según la hora: posición real del sol y una paleta por altura del sol. Todo en lineal. */
 export interface EstadoCielo {
   sol: [number, number, number]; // dirección hacia el sol
   elevacion: number; // grados
   cenit: number[]; horizonte: number[];
   luzSol: number[]; luzCielo: number[]; luzSuelo: number[];
   noche: number; // 0 día, 1 noche
+  expo: number;
 }
 
 const rad = Math.PI / 180;
-const c = (h: string) => { const n = parseInt(h, 16); return [(n >> 16) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]; };
 
 /** Altura y azimut del sol. Fórmula corta, alcanza y sobra para pintar el cielo. */
 export function posicionSol(fecha: Date, lat: number, lon: number) {
@@ -22,14 +22,14 @@ export function posicionSol(fecha: Date, lat: number, lon: number) {
   return { alt, az };
 }
 
-interface Clave { e: number; cen: number[]; hor: number[]; sol: number[]; cie: number[]; sue: number[]; n: number }
+interface Clave { e: number; cen: number[]; hor: number[]; sol: number[]; cie: number[]; sue: number[]; n: number; x: number }
 const CLAVES: Clave[] = [
-  { e: -16, cen: c("0A1230"), hor: c("1C2A4E"), sol: [0, 0, 0], cie: [0.32, 0.35, 0.5], sue: [0.2, 0.2, 0.28], n: 1 },
-  { e: -5, cen: c("1E2C63"), hor: c("7A6792"), sol: [0.05, 0.03, 0.05], cie: [0.36, 0.38, 0.56], sue: [0.18, 0.16, 0.24], n: 0.85 },
-  { e: 0, cen: c("3F62A8"), hor: c("F6A878"), sol: [0.9, 0.5, 0.3], cie: [0.56, 0.52, 0.62], sue: [0.32, 0.25, 0.26], n: 0.4 },
-  { e: 8, cen: c("5B95DA"), hor: c("FFD9AE"), sol: [1.0, 0.75, 0.5], cie: [0.66, 0.68, 0.76], sue: [0.4, 0.34, 0.3], n: 0 },
-  { e: 25, cen: c("58A3EE"), hor: c("DCEEF4"), sol: [0.86, 0.76, 0.6], cie: [0.74, 0.78, 0.84], sue: [0.44, 0.4, 0.36], n: 0 },
-  { e: 65, cen: c("4A9CF2"), hor: c("E2F1F6"), sol: [0.8, 0.74, 0.62], cie: [0.78, 0.82, 0.88], sue: [0.46, 0.43, 0.4], n: 0 },
+  { e: -16, cen: [0.012, 0.018, 0.05], hor: [0.04, 0.05, 0.1], sol: [0, 0, 0], cie: [0.1, 0.12, 0.2], sue: [0.09, 0.08, 0.09], n: 1, x: 0.82 },
+  { e: -5, cen: [0.05, 0.09, 0.26], hor: [0.42, 0.3, 0.42], sol: [0.02, 0.012, 0.02], cie: [0.16, 0.17, 0.3], sue: [0.1, 0.09, 0.11], n: 0.85, x: 0.8 },
+  { e: 0, cen: [0.18, 0.3, 0.7], hor: [1.5, 0.82, 0.55], sol: [1.5, 0.66, 0.3], cie: [0.36, 0.34, 0.46], sue: [0.2, 0.15, 0.13], n: 0.4, x: 0.74 },
+  { e: 8, cen: [0.24, 0.45, 0.98], hor: [1.5, 1.2, 0.92], sol: [2.7, 1.95, 1.2], cie: [0.48, 0.52, 0.66], sue: [0.3, 0.25, 0.21], n: 0, x: 0.66 },
+  { e: 25, cen: [0.2, 0.44, 1.0], hor: [1.05, 1.22, 1.38], sol: [3.1, 2.75, 2.25], cie: [0.56, 0.63, 0.78], sue: [0.36, 0.33, 0.29], n: 0, x: 0.56 },
+  { e: 65, cen: [0.16, 0.4, 1.0], hor: [1.0, 1.25, 1.45], sol: [3.5, 3.25, 2.85], cie: [0.6, 0.68, 0.84], sue: [0.42, 0.39, 0.35], n: 0, x: 0.5 },
 ];
 const mez = (a: number[], b: number[], t: number) => a.map((v, i) => v + (b[i] - v) * t);
 
@@ -42,7 +42,7 @@ export function cieloEn(fecha: Date, lat: number, lon: number): EstadoCielo {
   return {
     sol: [Math.sin(az) * Math.cos(alt), Math.sin(alt), -Math.cos(az) * Math.cos(alt)],
     elevacion: e, cenit: mez(a.cen, b.cen, t), horizonte: mez(a.hor, b.hor, t),
-    luzSol: mez(a.sol, b.sol, t), luzCielo: mez(a.cie, b.cie, t), luzSuelo: mez(a.sue, b.sue, t), noche: a.n + (b.n - a.n) * t,
+    luzSol: mez(a.sol, b.sol, t), luzCielo: mez(a.cie, b.cie, t), luzSuelo: mez(a.sue, b.sue, t), noche: a.n + (b.n - a.n) * t, expo: a.x + (b.x - a.x) * t,
   };
 }
 

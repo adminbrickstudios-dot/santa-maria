@@ -1,27 +1,30 @@
 /* Acceso a datos abiertos. Todo lo que sale a la red pasa por acá, para poder probar con datos falsos.
-   Solo OpenStreetMap: tiles de OpenFreeMap y consultas a Overpass. */
+   Los tiles son archivos propios armados con datos abiertos; Overpass completa datos de un lugar. */
 import type { ConsultaLugar, DatosExtraLugar, ProveedorLugar, ProveedorTiles } from "./tipos";
 
-const TILEJSON = "https://tiles.openfreemap.org/planet";
+const BASE = "/ciudad/v1";
 const OVERPASS = "https://overpass-api.de/api/interpreter";
 
-/** Baja tiles z14 de OpenFreeMap. La URL con la versión del planeta sale del TileJSON. */
-export function crearProveedorTiles(urlTileJson: string = TILEJSON): ProveedorTiles {
-  let plantilla: Promise<string> | null = null;
-  const base = () => {
-    plantilla ??= fetch(urlTileJson).then(async (r) => {
-      if (!r.ok) throw new Error(`TileJSON ${r.status}`);
-      const j = (await r.json()) as { tiles?: string[] };
-      if (!j.tiles?.[0]) throw new Error("TileJSON sin tiles");
-      return j.tiles[0];
-    }).catch((e) => { plantilla = null; throw e; });
-    return plantilla;
+/** El punto pedido no está en la zona con datos: no es un error de red y no hay que reintentar. */
+export class FueraDeZona extends Error {}
+
+/** Baja tiles z16 de la ciudad. Se publican como archivos estáticos y el índice dice cuáles existen. */
+export function crearProveedorTiles(base: string = BASE): ProveedorTiles {
+  let indice: Promise<Set<string>> | null = null;
+  const existentes = () => {
+    indice ??= fetch(`${base}/indice.json`).then(async (r) => {
+      if (!r.ok) throw new Error(`indice ${r.status}`);
+      const j = (await r.json()) as { tiles?: number[][] };
+      if (!j.tiles?.length) throw new Error("indice sin tiles");
+      return new Set(j.tiles.map((t) => `${t[0]}_${t[1]}`));
+    }).catch((e) => { indice = null; throw e; });
+    return indice;
   };
-  return async (z, x, y, senal) => {
-    const url = (await base()).replace("{z}", String(z)).replace("{x}", String(x)).replace("{y}", String(y));
-    const r = await fetch(url, { signal: senal });
+  return async (_z, x, y, senal) => {
+    if (!(await existentes()).has(`${x}_${y}`)) throw new FueraDeZona(`tile ${x}_${y}`);
+    const r = await fetch(`${base}/${x}_${y}.json.gz`, { signal: senal });
     if (r.status === 404 || r.status === 204) return null;
-    if (!r.ok) throw new Error(`tile ${z}/${x}/${y}: ${r.status}`);
+    if (!r.ok) throw new Error(`tile ${x}_${y}: ${r.status}`);
     return r.arrayBuffer();
   };
 }

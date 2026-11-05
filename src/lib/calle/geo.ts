@@ -1,8 +1,8 @@
-/* Cuentas de mapa: del mundo real (lon/lat) a tiles z14 y a metros locales.
+/* Cuentas de mapa: del mundo real (lon/lat) a tiles z16 y a metros locales.
    El mundo son metros desde el punto de arranque: +x al este, +z al sur, y arriba. */
-export const ZOOM = 14;
-/** Cada tile z14 (unos 2 km) se parte en DIV×DIV celdas de unos 200 m. */
-export const DIV = 10;
+export const ZOOM = 16;
+/** Cada tile z16 (unos 500 m) se parte en DIV×DIV celdas de unos 170 m. */
+export const DIV = 3;
 const N = 2 ** ZOOM;
 
 export function aTile(lon: number, lat: number) {

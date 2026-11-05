@@ -1,4 +1,4 @@
-/* Qué rubro es cada POI de OpenMapTiles, y cómo se ve su frente. */
+/* Qué rubro es cada lugar según su categoría, y cómo se ve su frente. */
 import type { Rubro } from "./tipos";
 
 const R = (id: string, nombre: string, color: string, texto: string, toldo: boolean, interior: Rubro["interior"], extra?: Partial<Rubro>): Rubro =>
@@ -30,35 +30,40 @@ export const RUBROS = {
   otro: R("otro", "Comercio", "#4A5568", "#FFFFFF", true, "generico"),
 } satisfies Record<string, Rubro>;
 
-const MAPA: Record<string, keyof typeof RUBROS> = {
-  pharmacy: "farmacia", chemist: "farmacia",
-  supermarket: "super", grocery: "almacen", convenience: "almacen", deli: "almacen", alcohol_shop: "almacen", alcohol: "almacen", beverages: "almacen", kiosk: "almacen",
-  greengrocer: "verduleria", butcher: "carniceria", bakery: "panaderia", pastry: "panaderia", confectionery: "panaderia",
-  cafe: "cafe", coffee: "cafe", tea: "cafe",
-  restaurant: "restaurante", food_court: "restaurante", fast_food: "rapida", pizza: "rapida",
-  bar: "bar", pub: "bar", beer: "bar", nightclub: "bar", biergarten: "bar",
-  ice_cream: "helados",
-  bank: "banco", atm: "banco", bureau_de_change: "banco", money_transfer: "banco",
-  clothing_store: "ropa", clothes: "ropa", fashion: "ropa", boutique: "ropa", jewelry: "ropa", bag: "ropa",
-  shoes: "calzado", shoe: "calzado", books: "libreria", stationery: "libreria", copyshop: "libreria", newsagent: "libreria",
-  hairdresser: "belleza", beauty: "belleza", cosmetics: "belleza", perfumery: "belleza", massage: "belleza",
-  hospital: "salud", clinic: "salud", doctors: "salud", dentist: "salud", veterinary: "salud", optician: "salud",
-  lodging: "hotel", hotel: "hotel", hostel: "hotel", guest_house: "hotel", motel: "hotel",
-  school: "educacion", college: "educacion", university: "educacion", kindergarten: "educacion", library: "educacion", language_school: "educacion",
-  cinema: "cultura", theatre: "cultura", museum: "cultura", art_gallery: "cultura", arts_centre: "cultura", music: "cultura",
-  hardware: "ferreteria", doityourself: "ferreteria", paint: "ferreteria", garden: "ferreteria",
-  mobile_phone: "tecnologia", electronics: "tecnologia", computer: "tecnologia",
-};
+/** Palabras de la categoría → rubro. Se prueban en orden; la categoría viene de OSM ("shop:bakery") o de Overture ("coffee_shop"). */
+const REGLAS: [RegExp, keyof typeof RUBROS][] = [
+  [/pharmacy|chemist|drugstore|farmacia/, "farmacia"],
+  [/supermarket|hypermarket|department_store|mall/, "super"],
+  [/greengrocer|fruit|vegetable/, "verduleria"], [/butcher|meat/, "carniceria"],
+  [/bakery|pastry|confectionery|dessert|chocolate/, "panaderia"],
+  [/ice_cream|gelato|frozen/, "helados"],
+  [/coffee|cafe|tea_|:tea/, "cafe"],
+  [/fast_food|pizza|casual_eatery|sandwich|burger|empanada|food_court|food_truck/, "rapida"],
+  [/restaurant|steakhouse|parrilla|sushi|eatery|bistro|grill|diner/, "restaurante"],
+  [/bar$|:bar|pub|beer|brewery|nightclub|night_club|wine_bar|cocktail/, "bar"],
+  [/grocery|convenience|kiosk|deli|food_and_beverage|alcohol|wine|beverage|liquor|health_food|dairy|cheese/, "almacen"],
+  [/shoe/, "calzado"],
+  [/clothes|clothing|fashion|boutique|jewel|bag|accessor|lingerie|tailor|fabric/, "ropa"],
+  [/book|stationery|copyshop|newsagent|music_and_video/, "libreria"],
+  [/hairdresser|beauty|cosmetic|perfum|barber|nail|personal_or_beauty|massage|spa|wellness/, "belleza"],
+  [/optician|veterinary|pet/, "salud"],
+  [/hardware|doityourself|paint|garden|home|furniture|interior|appliance|lighting|tool/, "ferreteria"],
+  [/mobile_phone|electronics|computer|telecommunication/, "tecnologia"],
+  [/bank|credit_union|bureau_de_change|money_transfer|exchange/, "banco"],
+  [/hotel|hostel|guest_house|lodging|motel|apartment_hotel/, "hotel"],
+  [/cinema|theat|museum|gallery|arts_centre|cultural/, "cultura"],
+  [/shop:|store|shopping|retail|travel_agency|florist|gift|toy|sport|bicycle|craft|variety/, "otro"],
+];
 
-/** Lo que no es un frente de local: paradas, plazas, estacionamientos, etc. */
-const FUERA = new Set(["bus", "bus_stop", "railway", "subway", "ferry_terminal", "harbor", "aerialway", "airport", "parking", "bicycle_parking", "motorcycle_parking",
-  "bicycle_rental", "park", "playground", "dog_park", "pitch", "stadium", "golf", "swimming", "picnic_site", "toilets", "drinking_water", "cemetery", "campsite",
-  "fountain", "monument", "memorial", "attraction", "viewpoint", "tram_stop", "taxi", "charging_station"]);
+/** Lo que no tiene frente a la calle: oficinas en un piso alto, tumbas, parques, escuelas con su edificio propio. */
+const FUERA = /tomb|grave|park|garden_|playground|pitch|stadium|cemetery|attorney|law|dental|doctor|clinic|diagnostic|health_care|hospital|physician|psych|office|professional|real_estate|financial|insurance|corporate|government|consult|accounting|social_or_community|religious|church|place_of_worship|school|college|university|education|learning|embassy|consulate|parking|bus|railway|subway|taxi|memorial|monument|fountain|statue|attraction|viewpoint|toilets|community_centre|sports_centre|gym|fitness/;
 
-export function clasificar(clase: string, subclase: string): Rubro | null {
-  if (FUERA.has(clase) || FUERA.has(subclase)) return null;
-  const k = MAPA[subclase] || MAPA[clase];
-  return RUBROS[k ?? "otro"];
+export function clasificar(categoria: string): Rubro | null {
+  if (!categoria) return null;
+  const c = categoria.toLowerCase();
+  if (FUERA.test(c)) return null;
+  for (const [re, k] of REGLAS) if (re.test(c)) return RUBROS[k];
+  return null;
 }
 
 export function abreviarCalle(n: string): string {

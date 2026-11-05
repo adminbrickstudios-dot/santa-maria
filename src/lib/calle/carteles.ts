@@ -60,15 +60,25 @@ function letrero(ctx: CanvasRenderingContext2D, c: Cartel, x: number, y: number)
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   if (c.tipo === "calle") {
-    ctx.fillStyle = "#1F3A78";
+    ctx.fillStyle = "#17191D";
     ctx.fillRect(x, y, W, H);
-    ctx.strokeStyle = "#EAF0FF";
-    ctx.lineWidth = 5;
-    ctx.strokeRect(x + 7, y + 7, W - 14, H - 14);
+    ctx.strokeStyle = "#E8E4D8";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(x + 6, y + 6, W - 12, H - 12);
     ctx.fillStyle = "#FFFFFF";
     ctx.textAlign = "center";
     ajustar(ctx, c.texto, W - 44, 56, "800");
     ctx.fillText(c.texto, x + W / 2, y + H / 2 + 3);
+    ctx.restore();
+    return;
+  }
+  if (c.tipo === "numero") {
+    ctx.fillStyle = "#1B2A4A";
+    ctx.fillRect(x, y, W, H);
+    ctx.fillStyle = "#F2EFE6";
+    ctx.textAlign = "center";
+    ajustar(ctx, c.texto, W - 30, 78, "700");
+    ctx.fillText(c.texto, x + W / 2, y + H / 2 + 4);
     ctx.restore();
     return;
   }

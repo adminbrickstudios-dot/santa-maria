@@ -11,11 +11,14 @@ interface Canal {
 const ctx = self as unknown as Canal;
 const tiles = new Map<string, TileDatos>();
 
-ctx.onmessage = (e) => {
-  const p = e.data;
+/* Los mensajes se atienden de a uno: decodificar es asíncrono y el orden importa */
+let cola: Promise<void> = Promise.resolve();
+ctx.onmessage = (e) => { cola = cola.then(() => atender(e.data)); };
+
+async function atender(p: PedidoWorker) {
   try {
     if (p.t === "tile") {
-      tiles.set(`${p.tx}/${p.ty}`, decodificarTile(p.buf, p.tx, p.ty, p.m));
+      tiles.set(`${p.tx}/${p.ty}`, await decodificarTile(p.buf, p.tx, p.ty, p.m));
       ctx.postMessage({ t: "tile", tx: p.tx, ty: p.ty });
     } else if (p.t === "soltar") {
       tiles.delete(`${p.tx}/${p.ty}`);
@@ -28,4 +31,4 @@ ctx.onmessage = (e) => {
   } catch (err) {
     ctx.postMessage({ t: "error", mensaje: String(err), ...(p.t === "celda" ? { gx: p.gx, gy: p.gy } : p.t === "tile" ? { tx: p.tx, ty: p.ty } : {}) });
   }
-};
+}
