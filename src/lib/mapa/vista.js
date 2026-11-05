@@ -713,7 +713,7 @@ function vistaFicha(){
   ${!hayDatos()&&f.local?avisoDatos():''}
   ${e==='cargando'?'<div class="m-carga-fila"><i></i><span>Buscando en OpenStreetMap…</span></div>':''}
   ${e==='lejos'?'<p class="expl">Acercá un poco el mapa para buscar en esta zona.</p>':''}
-  ${e==='error'?'<div class="nota"><p>No pude buscar ahora.</p><button class="btn sec2 chico" data-a="ficha-otra">Probar de nuevo</button></div>':''}
+  ${e==='error'&&!f.local?'<div class="nota"><p>No pude buscar ahora.</p><button class="btn sec2 chico" data-a="ficha-otra">Probar de nuevo</button></div>':''}
   ${!l.length&&!e&&(hayDatos()||!f.local)?`<p class="vacio">${S.soloAbierto?'No encontré nada con horario cargado que esté abierto.':'No encontré nada en esta zona. Mové el mapa.'}</p>`:''}
   <div class="lista">${cerca.map((q,i)=>{const h=estadoHorario(q.h,a.wd,a.min);return `<button class="item" data-a="ver-f" data-i="${i}"><span class="ic" style="color:${f.col}">${svg(f.ic)}</span><span class="q"><b>${esc(q.n)}</b><small>${esc(q.d||'')}</small>${h?`<small class="${h.abierto?'m-abre':'m-cierra'}">${h.abierto?`Abierto${h.hasta?`, hasta ${h.hasta}`:''}`:'Cerrado'}</small>`:''}</span><span class="v">${km(q.dist*1.25)}</span></button>`;}).join('')}</div>
   ${f.nota?`<p class="expl">${esc(f.nota)}</p>`:''}${f.osm?'<p class="expl">Datos de OpenStreetMap, cargados por vecinos. Puede faltar algún lugar, y no todos tienen horario.</p>':''}`;
