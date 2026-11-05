@@ -2,7 +2,7 @@
 /* El mapa: plano, rutas, cerca, juntada, explorar y herramientas. Se monta sobre un div.
    El mapa aparece primero y los datos llegan después, desde un Worker: nada espera a nada. */
 import {G,T,L,wx,wy,alon,alat,sinTilde,perfil,dijkstra,semillas,franja,frecuencia,subteFrec,km,cuadras,planificar,geocodificar,barrioDe,esquinaDe,nomParada,centroCalle,VBUS,FRANJA} from './motor';
-import {cargarDatosMapa,enMotor,urlVerdes,urlPlano} from './datos';
+import {cargarDatosMapa,enMotor,urlVerdes,urlPlano,datosEnMemoria} from './datos';
 import {svg,dibujarImagen,RATIO_IMAGEN} from './iconos';
 import {fc,urlEstilo,estiloPlano,instalarCapas,CAPAS_TOQUE} from './estilo';
 import {armarIndice,buscar,indiceListo,nombreBarrio} from './buscador';
@@ -769,7 +769,7 @@ async function abrirBarrio(b){
   if(!f){S.exp=null;aviso('No pude armar el barrio ahora.');render();return;}
   const nom=nombreBarrio(b),t=[];
   const dato=(n,s)=>{if(n)t.push([n,s]);};
-  dato(f.lineas,f.lineas===1?'línea de colectivo':'líneas de colectivo');dato(f.est.length,f.est.length===1?'estación de subte':'estaciones de subte');dato(f.cuenta.f,'farmacias');dato(f.nPlazas,'plazas y parques');dato(f.verde,'hectáreas verdes');dato(f.cuenta.c,'bares notables');
+  dato(f.lineas,f.lineas===1?'línea de colectivo':'líneas de colectivo');dato(f.est.length,f.est.length===1?'estación de subte':'estaciones de subte');dato(f.cuenta.f,f.cuenta.f===1?'farmacia':'farmacias');dato(f.nPlazas,f.nPlazas===1?'plaza o parque':'plazas y parques');dato(f.verde,f.verde===1?'hectárea verde':'hectáreas verdes');dato(f.cuenta.c,f.cuenta.c===1?'bar notable':'bares notables');
   const cards=[{tipo:'portada',t:nom,datos:t.slice(0,6),x:ce?wx(ce[1]):null,y:ce?wy(ce[2]):null}];
   const lugar=(tipo,n,x,y,sub,ic)=>cards.push({tipo,t:n,sub,ic,x,y,place:{nombre:n,x,y,tipo:'poi',sub}});
   f.plazas.slice(0,3).forEach(p=>lugar('plaza',p.n,p.x,p.y,`Plaza o parque de ${(p.area/10000).toFixed(1).replace('.',',')} hectáreas`,'plaza'));
@@ -1100,7 +1100,10 @@ export function montarMapa(raiz,api){
   crearMapa($('mapa'));
   if(api.q){const i=$('buscar');if(i)i.value=api.q;S.buscar=api.q;S.buscando=true;pintarBorrar();abrirHoja(0);}
   if(api.vivo)leerVivo();else V.sin=true;
-  cargarDatos(0).then(()=>{if(yoS===sesion&&S.buscando)render();});
+  /* Primero que el mapa arranque: en equipos con pocos núcleos el Worker le compite. Con un tope por si el mapa tarda. */
+  let arranco=false;const arrancar=()=>{if(arranco||yoS!==sesion)return;arranco=true;cargarDatos(0).then(()=>{if(yoS===sesion&&S.buscando)render();});};
+  if(api.destino||api.q||datosEnMemoria())arrancar();
+  else{tDatos=setTimeout(arrancar,900);irTrasMapa(()=>mapa.once('load',arrancar));}
   if(api.destino){const d=api.destino,p={nombre:d.nombre,x:wx(d.lon),y:wy(d.lat),tipo:'punto'};reg(p);if(api.soloVer){S.marca=p;abrirGlobo(p);irTrasMapa(()=>irA(p.x,p.y,.5,0));}else irDestino(p.k);}
   else irTrasMapa(()=>{const me=yo();if(me&&me.x!=null)irA(me.x,me.y,.17,0);else if(L.places[0])irA(L.places[0].wx,L.places[0].wy,.1,0);});
 }
