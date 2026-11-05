@@ -1,7 +1,7 @@
 "use client";
 /* Modo calle: /calle?lat=..&lon=.. a pantalla completa. Three.js se baja solo si entrás acá. */
 import dynamic from "next/dynamic";
-import { Suspense, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { MandarA } from "@/components/MandarA";
 import { sb } from "@/lib/sb";
@@ -20,13 +20,34 @@ function num(v: string | null, min: number, max: number, def: number) {
 function Calle() {
   const q = useSearchParams(), s = useSesion();
   const hora = q.get("hora");
-  const [envio, setEnvio] = useState<{ texto: string; adjunto: { nombre: string; lat: number; lon: number } } | null>(null);
-  const prefs = s.perfil.preferencias ?? {};
+  const [envio, setEnvio] = useState<{ texto: string; adjunto: { nombre: string; lat: number; lon: number; rumbo?: number } } | null>(null);
+  /* Se escribe sobre preferencias, que solo puede leer su dueño (RLS de perfiles) */
+  function guardarMemoria(cambio: Record<string, unknown>) {
+    const p = s.perfil, preferencias = { ...p.preferencias, calle: { ...p.preferencias?.calle, ...cambio } };
+    p.preferencias = preferencias;
+    void sb.from("perfiles").update({ preferencias }).eq("id", p.id);
+  }
+  const casa = useMemo(() => (s.perfil.casa_lat != null ? { nombre: "Tu casa", lat: s.perfil.casa_lat, lon: s.perfil.casa_lon, direccion: s.perfil.casa_barrio ?? undefined } : null), [s.perfil]);
+  const facu = useMemo(() => { const u = s.lugares.find((x) => x.destacado); return u?.lat != null ? { nombre: u.nombre, lat: u.lat, lon: u.lon, direccion: u.direccion ?? undefined } : null; }, [s.lugares]);
+  /* personas_del_grupo solo devuelve lat y lon de quien eligió mostrar su casa exacta */
+  const amigos = useMemo(() => s.personas.filter((p) => p.id !== s.perfil.id && p.lat != null && p.lon != null).map((p) => ({ id: p.id, nombre: p.nombre, lat: p.lat, lon: p.lon })), [s.personas, s.perfil.id]);
+  const cargarTemas = useCallback(async () => {
+    const [{ data: se }, { data: it }] = await Promise.all([
+      sb.from("secciones_guia").select("slug,nombre"),
+      sb.from("guia_items").select("id,titulo,bajada,seccion,direccion,lat,lon").not("lat", "is", null).limit(400),
+    ]);
+    const lat0 = casa?.lat ?? LAT, lon0 = casa?.lon ?? LON, cerca = (i: { lat: number; lon: number }) => Math.hypot((i.lat - lat0) * 111320, (i.lon - lon0) * 91700) < 6000;
+    return ((se ?? []) as { slug: string; nombre: string }[]).map((x) => ({
+      id: x.slug, nombre: x.nombre,
+      paradas: ((it ?? []) as { titulo: string; bajada: string | null; seccion: string; direccion: string | null; lat: number; lon: number }[]).filter((i) => i.seccion === x.slug && cerca(i)).slice(0, 6).map((i) => ({ nombre: i.titulo, lat: i.lat, lon: i.lon, direccion: i.direccion ?? undefined, bajada: i.bajada ?? undefined })),
+    })).filter((t) => t.paradas.length >= 2);
+  }, [casa]);
+  const mem = s.perfil.preferencias?.calle;
   return <>
     <CalleVista lat={num(q.get("lat"), -90, 90, LAT)} lon={num(q.get("lon"), -180, 180, LON)} puntoPedido={q.has("lat") && q.has("lon")} hora={hora ? num(hora, 0, 24, 12) : null}
-      calidadFija={process.env.NEXT_PUBLIC_DEMO && q.has("cal") ? num(q.get("cal"), 0, 3, 1) : undefined}
-      lugares={prefs.calle?.lugares} mandar={setEnvio}
-      guardarLugares={(l) => { void sb.from("perfiles").update({ preferencias: { ...prefs, calle: { ...prefs.calle, lugares: l } } }).eq("id", s.perfil.id); }} />
+      calidadFija={process.env.NEXT_PUBLIC_DEMO && q.has("cal") ? num(q.get("cal"), 0, 3, 1) : undefined} rumboInicial={q.has("rumbo") ? num(q.get("rumbo"), 0, 360, 0) : null}
+      lugares={mem?.lugares} guardarLugares={(l) => guardarMemoria({ lugares: l })} visitados={mem?.visitados} guardarVisitados={(l) => guardarMemoria({ visitados: l })}
+      mandar={setEnvio} casa={casa} facu={facu} amigos={amigos} cargarTemas={cargarTemas} />
     {envio && <MandarA texto={envio.texto} adjunto={envio.adjunto} cerrar={() => setEnvio(null)} />}
   </>;
 }

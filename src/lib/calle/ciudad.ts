@@ -42,4 +42,8 @@ export type TileCiudad = {
   e: (string | number | number[])[][];
   l: (string | number)[][];
   v: [number, string, string, number[], Record<string, string>][];
+  /** Puertas y números: X, Z, número, tipo. */
+  p?: (string | number)[][];
+  /** Objetos: tipo, X, Z, detalle. */
+  o?: (string | number)[][];
 };

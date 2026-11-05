@@ -1,10 +1,12 @@
 /* El trabajo pesado de la ciudad: buscar, rutear y consultar edificios. Corre en un worker.
    Si no hay tiles z16 para una zona, rutea con la red de calles del mapa 2D. */
-import { alat, alon, cargarCalles, G, geocodificar } from "@/lib/mapa/motor";
-import { buscarEn, crearIndice, type FilaBuscar, type Indice, type Resultado } from "./buscador";
+import { alat, alon, barrioDe, cargarCalles, enganchar, G, geocodificar, wx, wy } from "@/lib/mapa/motor";
+import { buscarEn, crearIndice, normalizar, type FilaBuscar, type Indice, type Resultado } from "./buscador";
+import { describirCategoria } from "./categoria-lugar";
 import { BASE_CIUDAD, EXT, bajarGz, distanciaM, lonLatDeZ16, metrosTile, urlTile, z16DeLonLat, type Punto, type TileCiudad } from "./ciudad";
+import { FILTROS, type IdFiltro } from "./filtros";
 import { Red, dentroPoligono, type Camino, type Perfil, type ViaEntrada } from "./ruta";
-import type { DatosLugar } from "./recepcion";
+import { abiertoAhora, type DatosLugar } from "./recepcion";
 
 const LAT_REF = -34.6, M = metrosTile(LAT_REF), BASE_X = 22000, BASE_Y = 39000;
 const aPlano = (lon: number, lat: number) => { const t = z16DeLonLat(lon, lat); return { x: (t.x - BASE_X) * M, y: (t.y - BASE_Y) * M }; };
@@ -12,7 +14,7 @@ const dePlano = (x: number, y: number) => lonLatDeZ16(x / M + BASE_X, y / M + BA
 const MAX_TILES = 150, MAX_CORREDOR = 200;
 
 interface Poli { xy: Float32Array; x0: number; x1: number; y0: number; y1: number; meta: (string | number | number[])[] }
-interface TileRed { x: number; y: number; vias: ViaEntrada[]; polis: Poli[]; lugares: (string | number)[][]; uso: number }
+interface TileRed { x: number; y: number; vias: ViaEntrada[]; polis: Poli[]; lugares: (string | number)[][]; numeros: (string | number)[][]; cajeros: (string | number)[][]; uso: number }
 
 export interface RutaHecha { pts: Float64Array; largo: number; maniobras: Camino["maniobras"]; fuente: "tiles" | "calles" }
 export interface DatosEdificio {
@@ -21,6 +23,8 @@ export interface DatosEdificio {
 }
 export interface Parada { nombre: string; categoria: string; lat: number; lon: number; direccion: string }
 export interface LineasMapa { calles: Float32Array; avenidas: Float32Array }
+export interface Cercano { nombre: string; categoria: string; categoriaCruda?: string; direccion: string; lat: number; lon: number; dist: number; abierto?: boolean | null }
+export interface Cuadra { calle: string | null; altura: string | null; barrio: string | null; lugares: Cercano[] }
 
 const RUTAS_AUTO = new Set(["motorway", "trunk", "primary", "secondary", "tertiary", "residential", "unclassified", "living_street", "service", "primary_link", "secondary_link", "tertiary_link", "road", "pedestrian"]);
 
@@ -79,7 +83,7 @@ export class Nucleo {
       }
       polis.push({ xy, x0, x1, y0, y1, meta: e });
     }
-    return { x: j.x, y: j.y, vias, polis, lugares: j.l, uso: ++this.reloj };
+    return { x: j.x, y: j.y, vias, polis, lugares: j.l, numeros: j.p ?? [], cajeros: (j.o ?? []).filter((o) => o[0] === "cajero"), uso: ++this.reloj };
   }
 
   /** Edificio que contiene un punto del plano, mirando solo los tiles ya bajados. */
@@ -274,6 +278,85 @@ export class Nucleo {
     if (!mejor) return null;
     const f = mejor.f, u = lonLatDeZ16(mejor.t.x + Number(f[0]) / EXT, mejor.t.y + Number(f[1]) / EXT), s = (i: number) => (String(f[i] ?? "").trim() || null);
     return { nombre: String(f[2]), lat: u.lat, lon: u.lon, categoria: s(3), telefono: s(4), web: s(5), red: s(6), whatsapp: s(7), horario: s(8), direccion: s(9) };
+  }
+
+  private async tilesCerca(a: Punto, radio: number) {
+    const t = z16DeLonLat(a.lon, a.lat), r = radio / M, l: [number, number][] = [];
+    for (let x = Math.floor(t.x - r); x <= Math.floor(t.x + r); x++) for (let y = Math.floor(t.y - r); y <= Math.floor(t.y + r); y++) l.push([x, y]);
+    return this.bajarTodos(l);
+  }
+
+  private cercanoDe(q: TileRed, f: (string | number)[], a: Punto): Cercano {
+    const u = lonLatDeZ16(q.x + Number(f[0]) / EXT, q.y + Number(f[1]) / EXT), cat = String(f[3] ?? "");
+    return { nombre: String(f[2]), categoria: describirCategoria(cat).nombre, categoriaCruda: cat || undefined, direccion: String(f[9] ?? ""), ...u, dist: distanciaM(a, u), abierto: f[8] ? abiertoAhora(String(f[8])) : null };
+  }
+
+  /** Lo más cercano de un filtro. Sin dato no aparece: nunca se completa con suposiciones. */
+  async filtro(id: IdFiltro, a: Punto, radio = 1000, tope = 14): Promise<Cercano[]> {
+    const def = FILTROS.find((f) => f.id === id), out: Cercano[] = [];
+    if (id === "abierto") {
+      for (const q of await this.tilesCerca(a, 700)) for (const f of q.lugares) {
+        if (!f[8] || !f[2]) continue;
+        const c = this.cercanoDe(q, f, a);
+        if (c.abierto === true && c.dist < 800) out.push(c);
+      }
+    } else {
+      const ix = await this.indiceBuscar();
+      if (ix && def?.r) for (const f of ix.filas) {
+        if (!f[2] || !def.r.test(f[3])) continue;
+        const u = lonLatDeZ16(f[0], f[1]), dist = distanciaM(a, u);
+        if (dist < radio) out.push({ nombre: f[2], categoria: describirCategoria(f[3]).nombre, categoriaCruda: f[3], direccion: f[4], ...u, dist });
+      }
+      if (id === "cajero") for (const q of await this.tilesCerca(a, 500)) for (const o of q.cajeros) {
+        const u = lonLatDeZ16(q.x + Number(o[1]) / EXT, q.y + Number(o[2]) / EXT), dist = distanciaM(a, u);
+        if (dist < radio) out.push({ nombre: String(o[3] || "Cajero"), categoria: "Cajero", direccion: "", ...u, dist });
+      }
+    }
+    out.sort((p, q) => p.dist - q.dist);
+    const limpio: Cercano[] = [];
+    for (const c of out) {
+      if (limpio.some((v) => distanciaM(v, c) < 60 && normalizar(v.nombre) === normalizar(c.nombre))) continue;
+      limpio.push(c);
+      if (limpio.length >= tope) break;
+    }
+    return limpio;
+  }
+
+  /** Dónde estás parado: calle, altura, barrio y qué hay en la cuadra. Solo lo que está en los datos. */
+  async cuadra(a: Punto): Promise<Cuadra> {
+    const ts = await this.tilesCerca(a, 110), P = aPlano(a.lon, a.lat);
+    let calle: string | null = null, mejor = 34, altura: string | null = null, dNum = 32;
+    for (const q of ts) {
+      for (const v of q.vias) {
+        if (!v.nombre || !RUTAS_AUTO.has(v.clase)) continue;
+        for (let i = 2; i + 1 < v.pts.length; i += 2) {
+          const ax = v.pts[i - 2], ay = v.pts[i - 1], dx = v.pts[i] - ax, dy = v.pts[i + 1] - ay, l = dx * dx + dy * dy || 1;
+          const t = Math.max(0, Math.min(1, ((P.x - ax) * dx + (P.y - ay) * dy) / l)), d = Math.hypot(ax + dx * t - P.x, ay + dy * t - P.y);
+          if (d < mejor) { mejor = d; calle = v.nombre; }
+        }
+      }
+      for (const n of q.numeros) {
+        const d = distanciaM(a, lonLatDeZ16(q.x + Number(n[0]) / EXT, q.y + Number(n[1]) / EXT));
+        if (d < dNum && n[2]) { dNum = d; altura = String(n[2]); }
+      }
+    }
+    let barrio: string | null = null;
+    if (await this.asegurarCalles()) {
+      const x = wx(a.lon), y = wy(a.lat);
+      barrio = barrioDe(x, y) || null;
+      if (!calle) {
+        const m = enganchar(x, y) as { e: number } | null, g = G as unknown as { names: string[]; en: Int32Array };
+        if (m) calle = g.names[g.en[m.e]] || null;
+      }
+    }
+    const lugares: Cercano[] = [];
+    for (const q of ts) for (const f of q.lugares) {
+      if (!f[2]) continue;
+      const c = this.cercanoDe(q, f, a);
+      if (c.dist < 95 && !lugares.some((v) => normalizar(v.nombre) === normalizar(c.nombre))) lugares.push(c);
+    }
+    lugares.sort((p, q) => p.dist - q.dist);
+    return { calle, altura, barrio, lugares: lugares.slice(0, 12) };
   }
 
   /* ───────── Mini mapa ───────── */

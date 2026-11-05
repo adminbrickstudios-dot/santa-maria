@@ -2,7 +2,8 @@
 import type { Resultado } from "./buscador";
 import type { Punto } from "./ciudad";
 import type { PedidoCiudad, RespuestaCiudad } from "./cliente-protocolo";
-import type { DatosEdificio, LineasMapa, Parada, RutaHecha } from "./nucleo";
+import type { IdFiltro } from "./filtros";
+import type { Cercano, Cuadra, DatosEdificio, LineasMapa, Parada, RutaHecha } from "./nucleo";
 import type { Perfil } from "./ruta";
 import type { DatosLugar } from "./recepcion";
 
@@ -14,6 +15,8 @@ export interface ClienteCiudad {
   lugar(a: Punto, nombre: string): Promise<DatosLugar | null>;
   vias(a: Punto, radio: number): Promise<LineasMapa>;
   paseo(a: Punto, cuantas?: number): Promise<Parada[]>;
+  filtro(id: IdFiltro, a: Punto, radio?: number): Promise<Cercano[]>;
+  cuadra(a: Punto): Promise<Cuadra>;
   destruir(): void;
 }
 
@@ -70,6 +73,8 @@ export function crearCliente(crear?: () => Worker): ClienteCiudad {
     lugar: (a, nombre) => pedir({ t: "lugar", a, nombre }),
     vias: (a, radio) => pedir({ t: "vias", a, radio }),
     paseo: (a, cuantas) => pedir({ t: "paseo", a, cuantas }),
+    filtro: (id2, a, radio) => pedir({ t: "filtro", id2, a, radio }),
+    cuadra: (a) => pedir({ t: "cuadra", a }),
     destruir() { w?.terminate(); esperas.clear(); },
   };
 }

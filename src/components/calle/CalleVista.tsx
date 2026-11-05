@@ -10,14 +10,16 @@ import { crearCliente, type ClienteCiudad } from "@/lib/calle/cliente";
 import { RUBROS } from "@/lib/calle/categorias";
 import type { Lugar } from "@/components/ElegirLugar";
 import { crearProveedorLugar, crearProveedorTiles } from "@/lib/calle/proveedor";
-import type { DatosEdificio, Parada } from "@/lib/calle/nucleo";
+import { FILTROS, type IdFiltro } from "@/lib/calle/filtros";
+import type { Cercano, Cuadra, DatosEdificio, Parada } from "@/lib/calle/nucleo";
 import type { DatosLugar } from "@/lib/calle/recepcion";
 import type { Local, ProveedorLugar, ProveedorTiles } from "@/lib/calle/tipos";
 import type { EstadoViaje, ModoMarcha, Motor } from "@/lib/calle/motor";
 import { Buscador, TarjetaDestino, type Destino } from "./Buscador";
-import { ASCENSOR, Credito, HojaCalle, MODOS, PAUSA, PLAY, Protector, Svg, distancia, tiempo } from "./comunes";
+import { ASCENSOR, CAMARA, Credito, HojaCalle, MODOS, PAUSA, PLAY, Protector, Svg, distancia, tiempo } from "./comunes";
 import { HojaEdificio } from "./Edificio";
-import { HORAS, MenuCalle } from "./MenuCalle";
+import { HojaClima, HojaCuadra, HojaEncuentro, HojaFiltros, HojaLugares, HojaPracticar, HojaRecorridos, type Amigo, type Tema, type Visita } from "./Hojas";
+import { MenuCalle, type HojaMenu } from "./MenuCalle";
 import { MiniMapa } from "./MiniMapa";
 import { Recepcion } from "./Recepcion";
 import { TarjetaLocal } from "./TarjetaLocal";
@@ -27,7 +29,7 @@ const ElegirLugar = dynamic(() => import("@/components/ElegirLugar").then((m) =>
 const CARD = ["N", "NE", "E", "SE", "S", "SO", "O", "NO"];
 const leer = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 const guardar = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* sin almacenamiento */ } };
-const SESION = "sm-calle-pos", FAVS = "sm-calle-lugares";
+const SESION = "sm-calle-pos", FAVS = "sm-calle-lugares", VIS = "sm-calle-visitados";
 
 export interface PropsCalle {
   lat: number;
@@ -41,11 +43,21 @@ export interface PropsCalle {
   crearWorkerCiudad?: () => Worker;
   calidadFija?: number;
   alMotor?: (m: Motor) => void;
-  /** Lugares guardados en el perfil. */
+  /** Rumbo inicial en grados, para abrir una vista compartida. */
+  rumboInicial?: number | null;
+  /** Lugares guardados y visitados: viven en el perfil, que solo lee su dueño. */
   lugares?: Destino[];
   guardarLugares?: (l: Destino[]) => void;
+  visitados?: Visita[];
+  guardarVisitados?: (l: Visita[]) => void;
   /** Mandarle el lugar a alguien del grupo. */
-  mandar?: (d: { texto: string; adjunto: { nombre: string; lat: number; lon: number } }) => void;
+  mandar?: (d: { texto: string; adjunto: { nombre: string; lat: number; lon: number; rumbo?: number } }) => void;
+  casa?: Destino | null;
+  facu?: Destino | null;
+  /** Quienes eligieron compartir su casa exacta. */
+  amigos?: Amigo[];
+  /** Temas de la guía con paradas reales. */
+  cargarTemas?: () => Promise<Tema[]>;
 }
 
 function Maqueta({ progreso, titulo, detalle, children }: { progreso: number; titulo: string; detalle?: string; children?: React.ReactNode }) {
@@ -66,7 +78,7 @@ function Maqueta({ progreso, titulo, detalle, children }: { progreso: number; ti
   );
 }
 
-function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, crearWorker, crearWorkerCiudad, calidadFija, alMotor, lugares, guardarLugares, mandar }: PropsCalle) {
+function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, crearWorker, crearWorkerCiudad, calidadFija, alMotor, rumboInicial, lugares, guardarLugares, visitados, guardarVisitados, mandar, casa, facu, amigos, cargarTemas }: PropsCalle) {
   const router = useRouter();
   const lienzo = useRef<HTMLDivElement>(null);
   const motor = useRef<Motor | null>(null);
@@ -102,13 +114,22 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
   const [edificio, setEdificio] = useState<{ d: DatosEdificio | null; local: Local | null; ascensor: boolean } | null>(null);
   const [piso, setPiso] = useState(0);
   const [terraza, setTerraza] = useState<{ altura: number; estimada: boolean } | null>(null);
-  const [horaId, setHoraId] = useState("ahora");
+  const [horaSim, setHoraSim] = useState<number | null>(hora ?? null);
   const [foto, setFoto] = useState<{ url: string; blob: Blob } | null>(null);
-  const [paseo, setPaseo] = useState<{ paradas: Parada[]; i: number } | null>(null);
+  const [paseo, setPaseo] = useState<{ paradas: (Parada & { bajada?: string })[]; i: number } | null>(null);
+  const [cuenta, setCuenta] = useState(0);
   const [favs, setFavs] = useState<Destino[]>(() => lugares ?? []);
+  const [vistos, setVistos] = useState<Visita[]>(() => visitados ?? []);
+  const [hoja, setHoja] = useState<HojaMenu | "cuadra" | null>(null);
+  const [filtro, setFiltro] = useState<{ id: IdFiltro; lista: Cercano[] } | null>(null);
+  const [cuadra, setCuadra] = useState<Cuadra | null>(null);
+  const [modoFoto, setModoFoto] = useState(false);
+  const [temas, setTemas] = useState<Tema[] | null>(null);
   const [cliente, setCliente] = useState<ClienteCiudad | null>(null);
   const hayHoja = useRef(false), saliendo = useRef(false), habiaAntes = useRef(false), inicio = useRef({ lat, lon }), edifActual = useRef<DatosEdificio | null>(null);
   const llegadaAcc = useRef<((nombre: string) => void) | null>(null);
+  const filtroRef = useRef(filtro);
+  filtroRef.current = filtro;
 
   const tiles = useMemo(() => proveedorTiles ?? crearProveedorTiles(), [proveedorTiles]);
   const lugar = useMemo(() => proveedorLugar ?? crearProveedorLugar(), [proveedorLugar]);
@@ -119,6 +140,7 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
     setMontado(true);
     if (lugares?.length) return;
     try { const v = JSON.parse(leer(FAVS) ?? "[]"); if (Array.isArray(v)) setFavs(v); } catch { /* lista dañada */ }
+    if (!guardarVisitados) try { const v = JSON.parse(leer(VIS) ?? "[]"); if (Array.isArray(v)) setVistos(v); } catch { /* lista dañada */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -153,7 +175,7 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
           lat: inicio.current.lat, lon: inicio.current.lon, hora, proveedorTiles: tiles, crearWorker, calidadFija, reducirMovimiento: reducir,
           eventos: {
             progreso: (f) => setProgreso((p) => Math.max(p, f)),
-            listo: () => setListo(true),
+            listo: () => { if (rumboInicial != null) motor.current?.setRumbo(rumboInicial); setListo(true); },
             fallo: setError,
             aviso: setAviso,
             calle: setCalle,
@@ -166,7 +188,7 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
             interior: (l) => {
               setInterior(l);
               setPiso(0);
-              if (l) { setRecepcion(false); setDestino(null); setModo((q) => { if (q === "auto" || q === "volar") { motor.current?.cambiarModo("caminar"); return "caminar"; } return q; }); }
+              if (l) { anotarVisita({ nombre: l.nombre, lat: l.lat, lon: l.lon, direccion: l.direccion ?? undefined }); setRecepcion(false); setDestino(null); setModo((q) => { if (q === "auto" || q === "volar") { motor.current?.cambiarModo("caminar"); return "caminar"; } return q; }); }
             },
             fundido: setFundido,
             joystick: (a, x, y, dx, dy) => {
@@ -177,6 +199,7 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
               p.style.transform = `translate(${dx}px,${dy}px)`;
             },
             viaje: (e) => setViaje(e),
+            cartel: (i) => { const c = filtroRef.current?.lista[i]; if (c) elegirDestinoRef.current?.(destinoDe(c)); },
             llegada: (n) => llegadaAcc.current?.(n),
             nube: setNube,
             azotea: (h) => { setTerraza(h == null ? null : { altura: h, estimada: edifActual.current?.calidad !== 0 }); setEdificio(null); },
@@ -225,10 +248,10 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
   }, [aviso]);
 
   /* Una hoja abierta: el botón de volver la cierra en vez de salir, y los toques no abren otra */
-  hayHoja.current = menu || recepcion || !!edificio || buscando || enMapa || salirHoja || !!foto || !!destino || !!llegada;
+  hayHoja.current = menu || !!hoja || modoFoto || recepcion || !!edificio || buscando || enMapa || salirHoja || !!foto || !!destino || !!llegada;
 
   const cerrarHojas = useCallback(() => {
-    setMenu(false); setRecepcion(false); setEdificio(null); setBuscando(false); setEnMapa(false); setFoto(null); setDestino(null); setLlegada(null);
+    setMenu(false); setHoja(null); setModoFoto(false); setRecepcion(false); setEdificio(null); setBuscando(false); setEnMapa(false); setFoto(null); setDestino(null); setLlegada(null);
   }, []);
 
   /* Volver del celular: el gesto del borde o la flecha del navegador nunca sacan de golpe */
@@ -266,12 +289,58 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
     const dist = p ? Math.hypot((d.lat - p.lat) * 111320, (d.lon - p.lon) * 91700) : d.dist;
     setDestino({ ...d, dist });
   }, []);
+  const elegirDestinoRef = useRef(elegirDestino);
+  const destinoDe = (c: Cercano): Destino => ({ nombre: c.nombre, lat: c.lat, lon: c.lon, categoria: c.categoria, categoriaCruda: c.categoriaCruda, direccion: c.direccion, dist: c.dist });
+
+  /* Historial: una visita por lugar, la última arriba */
+  function anotarVisita(d: { nombre: string; lat?: number; lon?: number; direccion?: string }) {
+    if (d.lat == null || d.lon == null) return;
+    const v: Visita = { nombre: d.nombre, lat: d.lat, lon: d.lon, direccion: d.direccion, t: Date.now() };
+    setVistos((l) => {
+      const n = [v, ...l.filter((q) => q.nombre !== v.nombre)].slice(0, 60);
+      guardar(VIS, JSON.stringify(n));
+      guardarVisitados?.(n);
+      return n;
+    });
+  }
+  function borrarVisitas() { setVistos([]); guardar(VIS, "[]"); guardarVisitados?.([]); }
+
+  /* ───────── Filtros: carteles flotantes ───────── */
+  async function ponerFiltro(id: IdFiltro) {
+    const m = motor.current;
+    setHoja(null);
+    if (!m || !cliente) return;
+    setAviso("Buscando cerca tuyo…");
+    const lista = await cliente.filtro(id, m.posicionReal()).catch(() => [] as Cercano[]);
+    const f = FILTROS.find((q) => q.id === id)!;
+    if (!lista.length) { setAviso(`Sin resultados de ${f.nombre.toLowerCase()} acá cerca.`); setFiltro(null); m.ponerCarteles(null); return; }
+    setAviso(null);
+    setFiltro({ id, lista });
+    m.ponerCarteles(lista.map((c) => ({ lat: c.lat, lon: c.lon, texto: c.nombre, sub: `${c.categoria} · ${distancia(c.dist)}` })));
+  }
+  function quitarFiltro() { setFiltro(null); setHoja(null); motor.current?.ponerCarteles(null); }
+
+  /* ───────── La cuadra: qué tenés alrededor ───────── */
+  useEffect(() => {
+    if (!listo || !cliente) return;
+    let ult: { lat: number; lon: number } | null = null;
+    const mirar = () => {
+      const p = motor.current?.posicionReal();
+      if (!p || (ult && Math.hypot((p.lat - ult.lat) * 111320, (p.lon - ult.lon) * 91700) < 22)) return;
+      ult = p;
+      cliente.cuadra(p).then(setCuadra).catch(() => {});
+    };
+    mirar();
+    const t = setInterval(mirar, 2500);
+    return () => clearInterval(t);
+  }, [listo, cliente]);
 
   function alLlegarA(d: Destino) {
     const m = motor.current;
     if (!m) return;
     const r = m.recorrido(), real = m.localEn(d.lat, d.lon, d.nombre);
     setViaje(m.estadoViaje());
+    anotarVisita(d);
     /* En un paseo manda el cartel de la parada: la tarjeta lo taparía */
     if (paseoRef.current) return;
     if (real) m.abrir(real);
@@ -302,9 +371,36 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
       destinoActual.current = d;
       m.iniciarRuta(r, d.nombre);
       if (modo === "volar") setModo("caminar");
+      return r;
     } catch { setAviso("No pude armar la ruta. Revisá tu conexión."); } finally { setCalculando(false); }
   }
   const destinoActual = useRef<Destino | null>(null);
+
+  /* Practicar: te lleva al inicio y lo hacés caminando */
+  async function practicar(desde: Destino | null, hasta: Destino) {
+    const m = motor.current, c = cliente;
+    if (!m || !c) return;
+    setHoja(null);
+    if (!desde) { void irCaminando(hasta); return; }
+    setAviso("Armando el recorrido…");
+    const r = await c.ruta(desde, hasta, "pie").catch(() => null);
+    if (!r) { setAviso("No encontré un camino hasta ahí."); return; }
+    setAviso(`Son ${distancia(r.largo)}: unos ${tiempo(r.largo / 1.35)} a pie.`);
+    llegadaAcc.current = () => alLlegarA(hasta);
+    destinoActual.current = hasta;
+    m.volarA(desde.lat, desde.lon, () => m.iniciarRuta(r, hasta.nombre));
+  }
+
+  /* Punto de encuentro: el medio entre vos y quienes elegiste, y algo real ahí */
+  async function puntoMedio(ids: string[]) {
+    const m = motor.current;
+    if (!m || !cliente) return null;
+    const yo = casa ?? m.posicionReal(), g = (amigos ?? []).filter((a) => ids.includes(a.id)), n = g.length + 1;
+    const c = { lat: (yo.lat + g.reduce((a, q) => a + q.lat, 0)) / n, lon: (yo.lon + g.reduce((a, q) => a + q.lon, 0)) / n };
+    const l = await cliente.filtro("estudiar", c, 900).catch(() => [] as Cercano[]);
+    const q = l[0];
+    return q ? { nombre: q.nombre, lat: q.lat, lon: q.lon, detalle: [q.categoria, q.direccion].filter(Boolean).join(" · ") } : null;
+  }
 
   function irYa(d: Destino) {
     const m = motor.current;
@@ -326,9 +422,40 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
     const paradas = await cliente.paseo(m.posicionReal()).catch(() => [] as Parada[]);
     if (paradas.length < 2) { setAviso("No encontré paradas para un paseo por acá."); return; }
     setAviso(null);
+    setHoja(null);
     setPaseo({ paradas, i: 0 });
     void irCaminando(destinoDeParada(paradas[0]));
   }
+  function empezarTema(t: Tema) {
+    const p = motor.current?.posicionReal();
+    if (!p) return;
+    /* Ordena por cercanía: no va y vuelve */
+    const resto = [...t.paradas], paradas: (Parada & { bajada?: string })[] = [];
+    let u: { lat: number; lon: number } = p;
+    const dist = (a: { lat: number; lon: number }, b: { lat: number; lon: number }) => Math.hypot((a.lat - b.lat) * 111320, (a.lon - b.lon) * 91700);
+    while (resto.length) {
+      resto.sort((a, b) => dist(u, a) - dist(u, b));
+      const q = resto.shift()!;
+      paradas.push({ nombre: q.nombre, categoria: "", lat: q.lat, lon: q.lon, direccion: q.direccion ?? "", bajada: q.bajada });
+      u = q;
+    }
+    setHoja(null);
+    setPaseo({ paradas, i: 0 });
+    void irCaminando(destinoDeParada(paradas[0]));
+  }
+  function abrirRecorridos() {
+    setHoja("recorridos");
+    if (temas === null) { if (cargarTemas) cargarTemas().then(setTemas).catch(() => setTemas([])); else setTemas([]); }
+  }
+  /* Al llegar a una parada queda unos segundos y sigue sola */
+  const enParada = !!paseo && !viaje?.activo && !viaje?.volando && !calculando;
+  useEffect(() => {
+    if (!enParada) { setCuenta(0); return; }
+    setCuenta(9);
+    const t = setInterval(() => setCuenta((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(t);
+  }, [enParada, paseo?.i]);
+  useEffect(() => { if (enParada && cuenta === 1) { const t = setTimeout(siguienteParada, 900); return () => clearTimeout(t); } });
   const destinoDeParada = (p: Parada): Destino => ({ nombre: p.nombre, lat: p.lat, lon: p.lon, direccion: p.direccion, categoria: describirCategoria(p.categoria).nombre, categoriaCruda: p.categoria });
   function siguienteParada() {
     if (!paseo) return;
@@ -435,9 +562,20 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
     } catch { /* canceló */ }
   }
 
-  function cambiarHora(id: string) {
-    setHoraId(id);
-    motor.current?.setHora(HORAS.find((h) => h.id === id)?.h ?? null);
+  function cambiarHora(h: number | null) { setHoraSim(h); motor.current?.setHora(h); }
+
+  /* Compartir este punto: quien lo abre cae acá mismo, mirando para el mismo lado */
+  async function compartirPunto() {
+    const m = motor.current;
+    if (!m) return;
+    const e = m.estadoMapa(), nombre = (cuadra?.calle ?? calle) ? `${cuadra?.calle ?? calle}${cuadra?.altura ? ` ${cuadra.altura}` : ""}` : "Este punto", rumboG = Math.round(e.rumbo);
+    const texto = `Mirá este punto: ${nombre}`;
+    if (mandar) { mandar({ texto, adjunto: { nombre, lat: e.lat, lon: e.lon, rumbo: rumboG } }); return; }
+    const url = `${location.origin}/calle?lat=${e.lat.toFixed(6)}&lon=${e.lon.toFixed(6)}&rumbo=${rumboG}`;
+    try {
+      if (navigator.share) await navigator.share({ title: nombre, text: texto, url });
+      else { await navigator.clipboard.writeText(`${texto} ${url}`); setAviso("Copié el enlace."); }
+    } catch { /* canceló */ }
   }
 
   function abrirMapa() { motor.current?.pausar(true); setEnMapa(true); }
@@ -448,12 +586,20 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
 
   const enViaje = !!viaje?.activo, volando = !!viaje?.volando, modoAct = MODOS.find((q) => q.id === modo) ?? MODOS[0];
   const pos = motor.current?.posicionReal() ?? null;
+  const nombreCalle = cuadra?.calle ?? calle, etiquetaFiltro = filtro ? FILTROS.find((f) => f.id === filtro.id)?.nombre : null;
+  const seVa = modo === "bici" ? "en bici" : modo === "auto" ? "en auto" : modo === "correr" ? "corriendo" : "a pie";
 
   return createPortal(
     <div className="calle" onTouchStart={parar} onTouchMove={parar} onTouchEnd={parar} onTouchCancel={parar}>
       <div ref={lienzo} className="calle-lienzo" />
 
-      {listo && !interior && !terraza && (
+      {modoFoto && (
+        <div className="calle-modofoto">
+          <button className="calle-redondo" onClick={() => setModoFoto(false)} aria-label="Salir del modo foto"><Icono n="x" /></button>
+          <button className="calle-disparo" onClick={() => { void sacarFoto(); }} aria-label="Sacar la foto"><Svg d={CAMARA} t={30} /></button>
+        </div>
+      )}
+      {listo && !interior && !terraza && !modoFoto && (
         <>
           <div ref={joyBase} className="calle-joy" aria-hidden="true"><i ref={joyPunta} /></div>
           <div className="calle-arriba">
@@ -461,7 +607,7 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
               <section className="calle-viaje" aria-label={`Yendo a ${viaje?.nombre ?? "tu destino"}`}>
                 <div className="calle-viaje-txt">
                   <strong aria-live="polite">{viaje?.pausada ? "En pausa" : viaje?.maniobra ? (viaje.enM < 12 ? viaje.maniobra : `En ${distancia(viaje.enM)}: ${viaje.maniobra[0].toLowerCase()}${viaje.maniobra.slice(1)}`) : `Seguí hasta ${viaje?.nombre}`}</strong>
-                  <small>{distancia(viaje?.restante ?? 0)} · {tiempo(viaje?.segundos ?? 0)}{paseo ? ` · Parada ${paseo.i + 1} de ${paseo.paradas.length}` : ""}</small>
+                  <small>{distancia(viaje?.restante ?? 0)} · unos {tiempo(viaje?.segundos ?? 0)} {seVa}{paseo ? ` · Parada ${paseo.i + 1} de ${paseo.paradas.length}` : ""}</small>
                 </div>
                 <button className="calle-redondo" onClick={() => (viaje?.pausada ? retomar() : motor.current?.pausarRuta(true))} aria-label={viaje?.pausada ? "Seguir" : "Pausar"}><Svg d={viaje?.pausada ? PLAY : PAUSA} /></button>
                 <button className="calle-redondo" onClick={() => { motor.current?.cancelarRuta(); setPaseo(null); }} aria-label="Cancelar el viaje"><Icono n="x" /></button>
@@ -473,14 +619,15 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
           </div>
           {!buscando && (
             <div className={`calle-segunda ${enViaje ? "viaje" : ""}`}>
-              <div className="calle-brujula">
+              <button className="calle-brujula" onClick={() => setHoja("cuadra")} aria-label={`Estás en ${nombreCalle ?? "una calle sin nombre"}${cuadra?.altura ? ` ${cuadra.altura}` : ""}. Ver qué hay en la cuadra`}>
                 <span ref={dial} className="calle-dial" aria-hidden="true"><b>N</b></span>
-                <strong aria-live="polite">{calle ?? "Calle sin nombre"}</strong>
+                <strong>{nombreCalle ?? "Calle sin nombre"}{cuadra?.altura ? ` ${cuadra.altura}` : ""}</strong>
                 <small ref={rumbo}>N</small>
-              </div>
+              </button>
               <MiniMapa motor={motorDe} cliente={cliente} abrir={abrirMapa} />
             </div>
           )}
+          {filtro && !buscando && <button className="calle-filtro" onClick={quitarFiltro} aria-label={`Sacar los carteles de ${etiquetaFiltro}`}><span>{etiquetaFiltro}: {filtro.lista.length}</span><Icono n="x" t={18} /></button>}
 
           <div className={`calle-marcha ${modosAbiertos ? "abierta" : ""}`}>
             {modo === "volar" && !modosAbiertos && (
@@ -518,9 +665,10 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
           {paseo && !enViaje && !volando && (
             <div className="calle-paseo" role="status">
               <strong>Parada {paseo.i + 1} de {paseo.paradas.length}: {paseo.paradas[paseo.i].nombre}</strong>
+              {paseo.paradas[paseo.i].bajada && <small>{paseo.paradas[paseo.i].bajada}</small>}
               <div className="calle-acciones">
                 <button className="calle-btn" onClick={() => setPaseo(null)}>Terminar</button>
-                <button className="calle-btn pri" onClick={siguienteParada}>{paseo.i + 1 < paseo.paradas.length ? "Siguiente" : "Fin del paseo"}</button>
+                <button className="calle-btn pri" onClick={siguienteParada}>{paseo.i + 1 < paseo.paradas.length ? `Sigue en ${cuenta}` : `Termina en ${cuenta}`}</button>
               </div>
             </div>
           )}
@@ -552,7 +700,14 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
       <div className={`calle-nube ${nube ? "on" : ""}`} aria-hidden="true" />
       <div className={`calle-fundido ${fundido ? "on" : ""}`} aria-hidden="true" />
 
-      {menu && <MenuCalle cerrar={() => setMenu(false)} enMapa={abrirMapa} paseo={empezarPaseo} hora={horaId} setHora={cambiarHora} foto={sacarFoto} guardados={favs} irA={elegirDestino} salir={() => setSalirHoja(true)} posicion={pos} recorrido={motor.current?.recorrido() ?? { metros: 0, pasos: 0, kcal: 0 }} tactil={tactil} />}
+      {menu && <MenuCalle cerrar={() => setMenu(false)} abrir={(h) => (h === "recorridos" ? abrirRecorridos() : setHoja(h))} enMapa={abrirMapa} modoFoto={() => setModoFoto(true)} compartir={compartirPunto} salir={() => setSalirHoja(true)} posicion={pos} recorrido={motor.current?.recorrido() ?? { metros: 0, pasos: 0, kcal: 0 }} tactil={tactil} />}
+      {hoja === "filtros" && <HojaFiltros activo={filtro?.id ?? null} elegir={ponerFiltro} quitar={quitarFiltro} cerrar={() => setHoja(null)} />}
+      {hoja === "cuadra" && <HojaCuadra c={cuadra} calleMotor={calle} tocar={(l) => { setHoja(null); elegirDestino(destinoDe(l)); }} cerrar={() => setHoja(null)} />}
+      {hoja === "recorridos" && <HojaRecorridos temas={temas} cerca={empezarPaseo} elegir={empezarTema} cerrar={() => setHoja(null)} />}
+      {hoja === "practicar" && <HojaPracticar casa={casa ?? null} facu={facu ?? null} guardados={favs} practicar={practicar} cerrar={() => setHoja(null)} />}
+      {hoja === "encuentro" && <HojaEncuentro amigos={amigos ?? []} buscar={puntoMedio} cerrar={() => setHoja(null)} />}
+      {hoja === "clima" && <HojaClima hora={horaSim} setHora={cambiarHora} cerrar={() => setHoja(null)} />}
+      {hoja === "lugares" && <HojaLugares favoritos={favs} visitados={vistos} ir={(d) => { setHoja(null); elegirDestino(d); }} borrar={borrarVisitas} cerrar={() => setHoja(null)} />}
       {recepcion && datosLugar && <Recepcion datos={datosLugar} cargando={cargandoLugar} guardado={guardado} alternarGuardado={alternarFav} compartir={compartirLugar} cerrar={() => setRecepcion(false)} />}
       {edificio && <HojaEdificio d={edificio.d} titulo={edificio.ascensor ? "Pisos y terraza" : undefined} pisosLocal={edificio.local?.pisos} alturaLocal={edificio.local?.altura} piso={piso} irAPiso={edificio.ascensor ? (n) => { setEdificio(null); motor.current?.irAPiso(n); } : undefined} terraza={(edificio.d?.altura ?? edificio.local?.altura) ? subirTerraza : null} cerrar={() => setEdificio(null)} />}
       {foto && (

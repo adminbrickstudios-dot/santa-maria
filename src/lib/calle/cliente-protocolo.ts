@@ -1,6 +1,7 @@
 /* Mensajes entre la pantalla y el núcleo de la ciudad. */
 import type { Punto } from "./ciudad";
 import type { Nucleo } from "./nucleo";
+import type { IdFiltro } from "./filtros";
 import type { Perfil } from "./ruta";
 
 export type PedidoCiudad = { id: number } & (
@@ -11,6 +12,8 @@ export type PedidoCiudad = { id: number } & (
   | { t: "lugar"; a: Punto; nombre: string }
   | { t: "vias"; a: Punto; radio: number }
   | { t: "paseo"; a: Punto; cuantas?: number }
+  | { t: "filtro"; id2: IdFiltro; a: Punto; radio?: number }
+  | { t: "cuadra"; a: Punto }
 );
 
 export type RespuestaCiudad =
@@ -35,6 +38,8 @@ export async function atender(n: Nucleo, p: PedidoCiudad, enviar: (m: RespuestaC
       r = h;
       tr = [h.calles.buffer as ArrayBuffer, h.avenidas.buffer as ArrayBuffer];
     } else if (p.t === "paseo") r = await n.paseo(p.a, p.cuantas);
+    else if (p.t === "filtro") r = await n.filtro(p.id2, p.a, p.radio);
+    else if (p.t === "cuadra") r = await n.cuadra(p.a);
     enviar({ id: p.id, t: "ok", r }, tr);
   } catch (e) {
     enviar({ id: p.id, t: "error", mensaje: String(e) });

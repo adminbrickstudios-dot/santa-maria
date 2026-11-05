@@ -96,3 +96,63 @@ export function crearAzotea(anillo: number[] | null, cx: number, cz: number, rad
   g.add(pret);
   return { grupo: g, destruir() { g.removeFromParent(); piso.dispose(); pg.dispose(); mp.dispose(); mr.dispose(); } };
 }
+
+/** Carteles flotantes de un filtro: se ven por encima de todo y guían hasta el lugar. */
+export class CartelesFlotantes {
+  private items: { s: THREE.Sprite; tx: THREE.CanvasTexture; m: THREE.SpriteMaterial; x: number; z: number }[] = [];
+  private v = new THREE.Vector3();
+
+  constructor(private escena: THREE.Scene, lista: { x: number; z: number; texto: string; sub: string }[]) {
+    for (const l of lista) {
+      const c = document.createElement("canvas"), g = c.getContext("2d")!;
+      c.width = 512; c.height = 176;
+      g.fillStyle = "#1F8BFF";
+      g.beginPath(); g.roundRect(6, 6, 500, 128, 34); g.fill();
+      g.beginPath(); g.moveTo(232, 130); g.lineTo(256, 172); g.lineTo(280, 130); g.fill();
+      g.fillStyle = "#fff"; g.textAlign = "center"; g.textBaseline = "middle";
+      let t = 46;
+      g.font = `800 ${t}px sans-serif`;
+      while (g.measureText(l.texto).width > 464 && t > 24) { t -= 2; g.font = `800 ${t}px sans-serif`; }
+      let tx = l.texto;
+      while (g.measureText(tx).width > 464 && tx.length > 4) tx = tx.slice(0, -2);
+      g.fillText(tx === l.texto ? tx : `${tx}…`, 256, 54);
+      g.font = "700 30px sans-serif";
+      g.fillText(l.sub, 256, 104);
+      const textura = new THREE.CanvasTexture(c);
+      textura.colorSpace = THREE.NoColorSpace;
+      const m = new THREE.SpriteMaterial({ map: textura, depthTest: false, depthWrite: false, transparent: true, sizeAttenuation: true });
+      const s = new THREE.Sprite(m);
+      s.center.set(0.5, 0);
+      s.position.set(l.x, 5, l.z);
+      s.renderOrder = 70;
+      escena.add(s);
+      this.items.push({ s, tx: textura, m, x: l.x, z: l.z });
+    }
+  }
+
+  /** Cuanto más lejos, más grande en el mundo: siempre se puede leer. */
+  actualizar(cam: THREE.Camera) {
+    for (const i of this.items) {
+      const d = Math.hypot(i.x - cam.position.x, i.z - cam.position.z), e = Math.max(2.4, Math.min(30, d * 0.085));
+      i.s.scale.set(e * 2.9, e, 1);
+      i.s.position.y = 3 + Math.min(10, d * 0.03);
+    }
+  }
+
+  /** Índice del cartel en un punto de la pantalla, el más cercano primero. */
+  tocado(px: number, py: number, w: number, h: number, cam: THREE.Camera) {
+    let mejor = -1, md = 1e9;
+    this.items.forEach((i, n) => {
+      const q = this.v.set(i.s.position.x, i.s.position.y + i.s.scale.y / 2, i.s.position.z).project(cam);
+      if (q.z > 1) return;
+      const sx = ((q.x + 1) / 2) * w, sy = ((1 - q.y) / 2) * h, d = Math.hypot(sx - px, sy - py), radio = 46;
+      if (d < radio && d < md) { md = d; mejor = n; }
+    });
+    return mejor;
+  }
+
+  destruir() {
+    for (const i of this.items) { this.escena.remove(i.s); i.tx.dispose(); i.m.dispose(); }
+    this.items = [];
+  }
+}

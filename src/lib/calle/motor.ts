@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { cieloEn, fechaEnHora } from "./cielo";
 import { Entrada } from "./entrada";
 import { DIV, celdaDeMundo, crearOrigen, lonLatDeMundo, mundoDeLonLat } from "./geo";
-import { crearAzotea, GuiaRuta } from "./guia";
+import { CartelesFlotantes, crearAzotea, GuiaRuta } from "./guia";
 import { crearInterior, crearPasillo, type Interior } from "./interior";
 import { aplicarCielo, crearComunes, matCielo, matDisco, matEdificio, matObjeto, matSombra, matSuelo, texturaDetalle } from "./materiales";
 import { Mundo, type Calidad } from "./mundo";
@@ -59,6 +59,7 @@ export interface EventosMotor {
   azotea?(altura: number | null): void;
   piso?(n: number): void;
   edificio?(desde: { lat: number; lon: number }, hasta: { lat: number; lon: number }): void;
+  cartel?(indice: number): void;
 }
 interface Seguidor { pts: Float32Array; acum: Float32Array; total: number; s: number; v: number; pausada: boolean; nombre: string; maniobras: { s: number; texto: string }[]; yawAuto: number; tLibre: number }
 interface Vuelo { fase: "subir" | "cruzar" | "esperar" | "bajar" | "fundir"; t: number; x0: number; z0: number; y0: number; x1: number; z1: number; alto: number; cruce: number; yaw0: number; pitch0: number; yaw1: number; xL: number; zL: number; yawL: number; alLlegar?: () => void }
@@ -251,6 +252,7 @@ export class Motor {
   private toque(px: number, py: number) {
     const d = this.rayo(px, py), o = this.camara.position;
     if (this.inter) return;
+    if (this.tocarCartel(px, py)) return;
     let mejor: Local | null = null, mt = 40;
     for (const l of this.mundo.localesCerca(this.x, this.z, 42)) {
       const den = d.x * l.nx + d.z * l.nz;
@@ -513,6 +515,24 @@ export class Motor {
   private tInterior = -1;
   private pisoAct = 0;
   private nieblaAlta = false;
+  private carteles: CartelesFlotantes | null = null;
+
+  /** Carteles flotantes de un filtro. Con null los saca. */
+  ponerCarteles(lista: { lat: number; lon: number; texto: string; sub: string }[] | null) {
+    this.carteles?.destruir();
+    this.carteles = lista?.length ? new CartelesFlotantes(this.escena, lista.map((l) => ({ ...mundoDeLonLat(this.o, l.lon, l.lat), texto: l.texto, sub: l.sub }))) : null;
+  }
+
+  private tocarCartel(px: number, py: number) {
+    if (!this.carteles) return false;
+    const r = this.renderer.domElement.getBoundingClientRect(), i = this.carteles.tocado(px, py, r.width, r.height, this.camara);
+    if (i < 0) return false;
+    this.op.eventos.cartel?.(i);
+    return true;
+  }
+
+  /** Mira hacia un rumbo en grados: para abrir una vista compartida. */
+  setRumbo(g: number) { this.yaw = (-g * Math.PI) / 180; }
 
   /** Cambia la forma de moverse. Al dejar de volar baja solo y aterriza en la vereda. */
   cambiarModo(m: ModoMarcha) {
@@ -876,6 +896,7 @@ export class Motor {
       }
     }
     this.pasoAnt = { x: this.x, z: this.z };
+    this.carteles?.actualizar(this.camara);
     if (t - this.tViaje > 0.25) { this.tViaje = t; if (this.seg || this.modo === "volar") this.op.eventos.viaje?.(this.estadoViaje()); }
 
     if (this.vuelo) this.pasoVuelo(dt);
@@ -889,7 +910,8 @@ export class Motor {
   }
 
   estadoViaje(): EstadoViaje {
-    const r = this.seg, m = r?.maniobras.find((q) => q.s > r.s - 2), vel = r ? this.velRuta() : 1;
+    /* El tiempo es el de la vida real, no el del juego: a pie son 4,9 km/h */
+    const r = this.seg, m = r?.maniobras.find((q) => q.s > r.s - 2), vel = { caminar: 1.35, correr: 2.8, bici: 4.6, auto: 7, volar: 1.35 }[this.modo];
     return {
       activo: !!r, pausada: !!r?.pausada, nombre: r?.nombre ?? null, restante: r ? r.total - r.s : 0, segundos: r ? (r.total - r.s) / vel : 0,
       maniobra: m?.texto ?? null, enM: m && r ? Math.max(0, m.s - r.s) : 0, volando: !!this.vuelo, altura: this.altDron, enAire: this.altActual > 6,
@@ -941,6 +963,7 @@ export class Motor {
   private destruirViaje() {
     this.guia?.destruir();
     this.azotea?.obra.destruir();
+    this.carteles?.destruir();
   }
   /* ═════════════════ FIN SECCIÓN VIAJE ═════════════════ */
 
