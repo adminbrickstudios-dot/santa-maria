@@ -129,14 +129,16 @@ function paredes(t: TileDatos, e: Edif): Uint8Array {
     let tapa = 0, alto = true;
     for (const f of [0.2, 0.5, 0.8]) {
       const v = enEdif(t, ax + dx * f + nx * 1, az + dz * f + nz * 1, e);
-      if (v) { tapa++; if (v.h < e.h - 0.5) alto = false; } else alto = false;
+      if (v && v.minH < 2.5) { tapa++; if (v.h < e.h - 0.5) alto = false; } else alto = false;
     }
     if (tapa === 3 && alto) { o[i] = 2; continue; }
-    if (tapa > 0) { o[i] = 1; continue; }
-    /* Da a la calle si desde el medio de la pared, mirando afuera, hay calle o vereda enseguida */
+    /* Da a la calle si mirando afuera hay calle enseguida y va más o menos paralela a la pared */
     const mx = ax + dx * 0.5, mz = az + dz * 0.5;
-    const calle = viaCerca(t, mx + nx * 7, mz + nz * 7, 10) ?? viaCerca(t, mx + nx * 2, mz + nz * 2, 8);
-    o[i] = calle && Math.abs(calle.dx * dx + calle.dz * dz) / L > 0.4 ? 0 : L > 3 ? 3 : 0;
+    const calle = viaCerca(t, mx + nx * 7, mz + nz * 7, 11) ?? viaCerca(t, mx + nx * 2, mz + nz * 2, 8);
+    const frente = !!calle && Math.abs(calle.dx * dx + calle.dz * dz) / L > 0.35;
+    if (frente && tapa <= 1) { o[i] = 0; continue; }
+    if (tapa > 0) { o[i] = 1; continue; }
+    o[i] = frente || L <= 3 ? 0 : 3;
   }
   e.oculta = o;
   return o;
@@ -206,10 +208,12 @@ function preparar(t: TileDatos): Preparado {
   return prep;
 }
 
+const PINTURAS = [[0.85, 0.86, 0.84], [0.17, 0.18, 0.21], [0.62, 0.65, 0.67], [0.6, 0.2, 0.18], [0.18, 0.34, 0.6], [0.91, 0.89, 0.85], [0.4, 0.44, 0.48], [0.1, 0.12, 0.14], [0.75, 0.77, 0.78], [0.3, 0.17, 0.15]];
+
 const ESPECIES: [RegExp, number][] = [[/tipu/i, P.A_TIPA], [/jacaranda/i, P.A_JACARANDA], [/ficus/i, P.A_GOMERO], [/phoenix|palm|syagrus|washingtonia/i, P.A_PALMERA], [/ceiba|chorisia/i, P.A_PALO_BORRACHO], [/fraxinus|fresno/i, P.A_FRESNO], [/platanus|plátano|platano/i, P.A_PLATANO]];
 const especieDe = (d: string, sem: number) => {
   for (const [r, e] of ESPECIES) if (r.test(d)) return e;
-  return sem < 0.34 ? P.A_PLATANO : sem < 0.56 ? P.A_FRESNO : sem < 0.8 ? P.A_TIPA : sem < 0.95 ? P.A_JACARANDA : P.A_PALO_BORRACHO;
+  return sem < 0.34 ? P.A_PLATANO : sem < 0.6 ? P.A_FRESNO : sem < 0.84 ? P.A_TIPA : P.A_JACARANDA;
 };
 
 const PROP_OBJ: Record<string, number> = {
@@ -494,7 +498,7 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
         const u = (iu + 0.5) * bw, r = hash(e.id * 31 + iu * 7, ip + 3);
         if (!vidriada) {
           if (ip < 3) { const [mx, my, mz] = P3(u, yp + es.v0, 0); kit.poner(P.K_MARCO, mx, my, mz, rx, rz, nx, nz, es.vA * 2, es.v1 - es.v0, 0.05, es.moldura ? es.acento : [214, 210, 202]); }
-          if (es.v0 > 0.5) { const [sx, sy, sz] = P3(u, yp + es.v0 - 0.08, 0); kit.poner(P.K_CAJA, sx, sy, sz, rx, rz, nx, nz, es.vA * 2 + 0.24, 0.08, 0.14, es.acento); }
+          if (es.v0 > 0.5 && ip < 7) { const [sx, sy, sz] = P3(u, yp + es.v0 - 0.08, 0); kit.poner(P.K_CAJA, sx, sy, sz, rx, rz, nx, nz, es.vA * 2 + 0.24, 0.08, 0.14, es.acento); }
         }
         if (es.moldura === 3 && !vidriada) {
           const [sx, sy, sz] = P3(u, yp + es.v1 + 0.02, 0);
@@ -687,7 +691,11 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
     const PP = (r: number, y: number, o: number) => [lx + rx * r + nx * o, y, lz + rz * r + nz * o];
     const N = [nx, 0, nz];
     const sl = pedirSlot({ tipo: "local", texto: p.nombre, rubro });
-    det.q(PP(-h, 0, 0.16), PP(h, 0, 0.16), PP(h, 2.72, 0.16), PP(-h, 2.72, 0.16), N, [0, 0, w, 2.72], col, 1);
+    if (rubro.id === "hotel" || rubro.id === "banco") {
+      det.q(PP(-h, 0, 0.05), PP(h, 0, 0.05), PP(h, 2.72, 0.05), PP(-h, 2.72, 0.05), N, [0, 0, w, 2.72], [40, 42, 46], 6);
+      const [g2x, , g2z] = PP(0, 0, 0.8);
+      mancha(g2x + ox, ALTO_VEREDA, g2z + oz, 4, [255, 225, 175, 130], S_LUZ);
+    } else det.q(PP(-h, 0, 0.16), PP(h, 0, 0.16), PP(h, 2.72, 0.16), PP(-h, 2.72, 0.16), N, [0, 0, w, 2.72], col, 1);
     /* Marco del local, un poco salido */
     kit.poner(P.K_MARCO_PB, lx, 0, lz, rx, rz, nx, nz, w, 2.74, 0.24, [Math.round(col[0] * 0.5 + 20), Math.round(col[1] * 0.5 + 20), Math.round(col[2] * 0.5 + 22)]);
     if (sl >= 0) conUvAtlas(() => det.q(PP(-h, 2.76, 0.24), PP(h, 2.76, 0.24), PP(h, 3.46, 0.24), PP(-h, 3.46, 0.24), N, uvSlot(sl), col, 3));
@@ -749,6 +757,13 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
     }
     if (enEdif(t, x, z) && tipo !== P.P_CAJERO) continue;
     prop(tipo === P.P_PARADA && (c?.v.hw ?? 0) < 4.5 ? P.P_PARADA : tipo === P.P_PARADA ? P.P_GARITA : tipo, x, altoEn(x, z), z, g);
+  }
+
+  /* Bóvedas reales del cementerio: los lugares con categoría de tumba */
+  for (const p of ind.pois) {
+    if (!/tomb|mausoleum|grave/.test(p.categoria) || enEdif(t, p.x, p.z)) continue;
+    const s = hash(Math.round(p.x * 5), Math.round(p.z * 5));
+    prop(P.P_BOVEDA, p.x, ALTO_VEREDA, p.z, 0.92 + (s < 0.5 ? 0 : Math.PI / 2), 0.85 + s * 0.5);
   }
 
   /* Kioscos de diarios y revistas donde el lugar dice que hay uno y no cayó en un edificio */
@@ -814,6 +829,25 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
       s += L;
     }
   }
+  /* Autos estacionados junto al cordón: en cada cuadra hay un lado permitido */
+  for (const v of ind.vias) {
+    if (!v.auto || v.tunel || v.puente || v.hw < 3.8 || v.hw > 7.5 || v.bus || !/residential|tertiary|unclassified|secondary/.test(v.clase)) continue;
+    const lado = hash(v.id, 2) < 0.7 ? -1 : 1;
+    let s = 0;
+    for (let i = 0; i + 3 < v.pts.length; i += 2) {
+      const ax = v.pts[i], az = v.pts[i + 1], bx = v.pts[i + 2], bz = v.pts[i + 3], L = Math.hypot(bx - ax, bz - az);
+      if (L < 1) continue;
+      const dx = (bx - ax) / L, dz = (bz - az) / L, nx = -dz, nz = dx;
+      for (let q = Math.ceil(s / 5.6) * 5.6 - s; q < L; q += 5.6) {
+        const k = Math.round((s + q) / 5.6), r = hash(v.id + k * 3, 19), x = ax + dx * q + nx * lado * (v.hw - 1.12), z = az + dz * q + nz * lado * (v.hw - 1.12);
+        if (r < 0.34 || !adentro(x, z) || cercaEsquina(x, z, v.hw + 11) || distCalzada(mapa, x, z) > -0.7) continue;
+        const c = PINTURAS[Math.floor(r * 811) % PINTURAS.length];
+        prop(r > 0.93 ? P.P_TAXI : r > 0.8 ? P.P_CAMIONETA : P.P_AUTO, x, 0, z, Math.atan2(dx, dz) + (hash(k, 3) < 0.5 ? 0 : Math.PI) + (r - 0.6) * 0.03, 1, c[0], c[1], c[2]);
+      }
+      s += L;
+    }
+  }
+
   /* Árboles de plaza en una grilla con ruido, donde el dato no alcanza */
   for (const p of polis) {
     if (p.tipo !== "parque" && p.tipo !== "bosque" && p.tipo !== "pasto") continue;

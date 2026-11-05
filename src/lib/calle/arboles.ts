@@ -14,7 +14,7 @@ const FORMAS: Forma[] = [
   /* tipa     */ { alto: 6.2, ancho: 7.2, copa: [7.2, 4.6], tronco: 0.34, talla: 3.2, cerca: 74, lejos: 15, achata: 0.8, hoja: 0.72, aire: 0.08 },
   /* jacarandá*/ { alto: 4.4, ancho: 4.4, copa: [4.4, 4], tronco: 0.2, talla: 2.6, cerca: 56, lejos: 12, achata: 0.9, hoja: 0.7, aire: 0.2 },
   /* fresno   */ { alto: 3.8, ancho: 3.8, copa: [3.8, 4.4], tronco: 0.18, talla: 2.5, cerca: 56, lejos: 12, achata: 1, hoja: 0.8, aire: 0.05 },
-  /* palo bor.*/ { alto: 5.4, ancho: 4.6, copa: [4.6, 3.8], tronco: 0.5, talla: 2.7, cerca: 44, lejos: 11, achata: 0.9, hoja: 0.8, aire: 0.3 },
+  /* palo bor.*/ { alto: 5.4, ancho: 4.6, copa: [4.6, 3.8], tronco: 0.34, talla: 2.7, cerca: 44, lejos: 11, achata: 0.9, hoja: 0.8, aire: 0.3 },
   /* gomero   */ { alto: 3.4, ancho: 8.6, copa: [8.6, 6.4], tronco: 0.62, talla: 3.8, cerca: 84, lejos: 16, achata: 0.9, hoja: 1, aire: 0.02 },
   /* palmera  */ { alto: 8.6, ancho: 3.4, copa: [3.4, 1.7], tronco: 0.3, talla: 2.7, cerca: 22, lejos: 9, achata: 1, hoja: 1, aire: 0 },
 ];
@@ -28,17 +28,29 @@ function hojaOval(c: CanvasRenderingContext2D, x: number, y: number, l: number, 
 }
 const tonos = (r: number, g: number, b: number, v: number, R: () => number) => { const k = 1 + (R() - 0.5) * v; return `rgb(${Math.min(255, r * k)},${Math.min(255, g * k)},${Math.min(255, b * k)})`; };
 
-/** Ramillete denso de hojas que llena el cuadro y se desvanece en los bordes. */
+/** Ramillete de hojas con forma despareja: varios lóbulos, nunca un disco. */
 function ramillete(c: CanvasRenderingContext2D, s: number, R: () => number, n: number, dib: (x: number, y: number, g: number) => void) {
-  for (let i = 0; i < n; i++) {
-    const a = R() * 6.283, r = Math.sqrt(R()) * 0.48 * s, x = s / 2 + Math.cos(a) * r, y = s / 2 + Math.sin(a) * r;
-    dib(x, y, R() * 6.283);
+  const lobs: [number, number, number][] = [];
+  const nl = 5 + Math.floor(R() * 3);
+  for (let i = 0; i < nl; i++) {
+    const a = (i / nl) * 6.283 + R() * 0.7, r = 0.2 + R() * 0.12;
+    lobs.push([s / 2 + Math.cos(a) * r * s, s / 2 + Math.sin(a) * r * s, s * (0.14 + R() * 0.09)]);
+  }
+  lobs.push([s / 2, s / 2, s * 0.2]);
+  /* Primero una masa oscura: es la sombra entre las hojas */
+  const d = c.fillStyle;
+  c.fillStyle = "rgb(52,70,38)";
+  for (const [x, y, r] of lobs) { c.beginPath(); c.arc(x, y, r * 0.8, 0, 6.3); c.fill(); }
+  c.fillStyle = d;
+  for (let i = 0; i < n * 1.7; i++) {
+    const L = lobs[Math.floor(R() * lobs.length)], a = R() * 6.283, r = Math.sqrt(R()) * L[2];
+    dib(L[0] + Math.cos(a) * r, L[1] + Math.sin(a) * r, R() * 6.283);
   }
 }
 const DIBUJOS: Dib[] = [
   /* plátano: hoja grande y palmeada */
   (c, s, R) => ramillete(c, s, R, 170, (x, y, g) => {
-    const l = s * 0.085, col = tonos(112, 142, 62, 0.5, R);
+    const l = s * 0.06, col = tonos(112, 142, 62, 0.5, R);
     for (const d of [-0.7, 0, 0.7]) hojaOval(c, x, y, l, l * 0.42, g + d, col);
   }),
   /* tipa: folíolos chicos y claros */
@@ -46,7 +58,7 @@ const DIBUJOS: Dib[] = [
   /* jacarandá en flor (noviembre): manchas lilas con algo de verde plumoso */
   (c, s, R) => {
     ramillete(c, s, R, 180, (x, y, g) => hojaOval(c, x, y, s * 0.05, s * 0.01, g, tonos(100, 128, 76, 0.4, R)));
-    ramillete(c, s, R, 300, (x, y) => { c.beginPath(); c.arc(x, y, s * (0.012 + R() * 0.012), 0, 6.3); c.fillStyle = tonos(150, 124, 214, 0.32, R); c.fill(); });
+    ramillete(c, s, R, 300, (x, y) => { c.beginPath(); c.arc(x, y, s * (0.012 + R() * 0.012), 0, 6.3); c.fillStyle = tonos(176, 150, 232, 0.28, R); c.fill(); });
   },
   /* fresno: hoja mediana, verde pareja */
   (c, s, R) => ramillete(c, s, R, 300, (x, y, g) => hojaOval(c, x, y, s * 0.06, s * 0.018, g, tonos(84, 124, 58, 0.45, R))),
@@ -56,7 +68,7 @@ const DIBUJOS: Dib[] = [
     ramillete(c, s, R, 60, (x, y) => { c.beginPath(); c.arc(x, y, s * 0.02, 0, 6.3); c.fillStyle = tonos(226, 134, 170, 0.25, R); c.fill(); });
   },
   /* gomero: hoja grande, oscura y brillante */
-  (c, s, R) => ramillete(c, s, R, 200, (x, y, g) => hojaOval(c, x, y, s * 0.1, s * 0.03, g, tonos(46, 86, 50, 0.6, R))),
+  (c, s, R) => ramillete(c, s, R, 200, (x, y, g) => hojaOval(c, x, y, s * 0.07, s * 0.022, g, tonos(46, 86, 50, 0.6, R))),
   /* palmera: fronda */
   (c, s, R) => {
     c.strokeStyle = "rgb(96,118,64)"; c.lineWidth = s * 0.012;
@@ -101,28 +113,24 @@ function azar(sem: number) {
   return () => { s = Math.imul(s ^ (s >>> 13), 1103515245) + 12345; s ^= s >>> 11; return ((s >>> 0) % 100000) / 100000; };
 }
 
-/** Copa: tarjetas sobre un elipsoide. La normal sale del centro para que se ilumine como un volumen. */
+/** Copa: tarjetas sobre un elipsoide que siempre miran a la cámara (ver matFollaje). La normal sale del
+    centro para que se ilumine como un volumen, y `aEsq` guarda la esquina y el giro de cada tarjeta. */
 function geoCopa(esp: number, n: number, k: number): THREE.BufferGeometry {
   const f = FORMAS[esp], R = azar(esp * 977 + n), cu = (esp % COLS) / COLS, cv = 1 - Math.floor(esp / COLS) / FILAS, du = 1 / COLS, dv = 1 / FILAS;
-  const pos: number[] = [], nor: number[] = [], uv: number[] = [], som: number[] = [], idx: number[] = [];
-  const cen = new THREE.Vector3(0, f.alto + f.copa[1] * 0.92, 0), v = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), N = new THREE.Vector3(), Q = new THREE.Vector3();
+  const pos: number[] = [], nor: number[] = [], uv: number[] = [], som: number[] = [], esq: number[] = [], idx: number[] = [];
+  const cy = f.alto + f.copa[1] * 0.92, N = new THREE.Vector3();
   for (let i = 0; i < n; i++) {
     /* Más cáscara que relleno, con lóbulos para que el contorno no sea una bola */
-    const th = R() * Math.PI * 2, u = R() * 2 - 1, r = Math.pow(R(), 0.42) * (0.82 + 0.3 * Math.sin(th * 3 + esp) * Math.sqrt(1 - u * u));
-    const s = Math.sqrt(1 - u * u);
-    v.set(Math.cos(th) * s * r, u * r * (u < 0 ? 0.74 : 1), Math.sin(th) * s * r);
-    const px = v.x * f.copa[0], py = v.y * f.copa[1], pz = v.z * f.copa[0];
-    N.set(v.x, v.y + 0.25, v.z).normalize();
-    /* Tarjeta orientada al azar pero tirando a mirar hacia afuera */
-    a.set(R() - 0.5, (R() - 0.5) * 0.6, R() - 0.5).normalize();
-    b.copy(N).add(Q.set(R() - 0.5, R() - 0.5, R() - 0.5).multiplyScalar(1.3)).normalize().cross(a).normalize();
-    a.crossVectors(b, N).normalize();
-    const t = f.talla * k * (0.72 + R() * 0.56), base = pos.length / 3;
+    const th = R() * Math.PI * 2, u = R() * 2 - 1, s = Math.sqrt(1 - u * u), r = Math.pow(R(), 0.42) * (0.82 + 0.3 * Math.sin(th * 3 + esp) * s);
+    const vx = Math.cos(th) * s * r, vy = u * r * (u < 0 ? 0.74 : 1), vz = Math.sin(th) * s * r;
+    N.set(vx, vy + 0.25, vz).normalize();
+    const t = f.talla * k * (0.72 + R() * 0.56) * 0.5, base = pos.length / 3, g = R() * 6.283, sombra = Math.min(1, 0.25 + 0.75 * r * (0.72 + 0.28 * (u + 1) * 0.5));
     for (const [sx, sy, tu, tv] of [[-1, -1, 0, 0], [1, -1, 1, 0], [1, 1, 1, 1], [-1, 1, 0, 1]]) {
-      pos.push(cen.x + px + (a.x * sx + b.x * sy) * t * 0.5, cen.y + py + (a.y * sx + b.y * sy) * t * 0.5, cen.z + pz + (a.z * sx + b.z * sy) * t * 0.5);
+      pos.push(vx * f.copa[0], cy + vy * f.copa[1], vz * f.copa[0]);
       nor.push(N.x, N.y, N.z);
       uv.push(cu + (0.02 + tu * 0.96) * du, cv - dv + (0.02 + tv * 0.96) * dv);
-      som.push(Math.min(1, 0.25 + 0.75 * r * (0.72 + 0.28 * (u + 1) * 0.5)));
+      som.push(sombra);
+      esq.push(sx * t, sy * t, g);
     }
     idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
   }
@@ -131,12 +139,13 @@ function geoCopa(esp: number, n: number, k: number): THREE.BufferGeometry {
   g.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
   g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
   g.setAttribute("aSom", new THREE.Float32BufferAttribute(som, 1));
+  g.setAttribute("aEsq", new THREE.Float32BufferAttribute(esq, 3));
   g.setIndex(idx);
   return g;
 }
 
 function geoTronco(esp: number): THREE.BufferGeometry {
-  const f = FORMAS[esp], col = hex(esp === P.A_PLATANO ? "#8C7F68" : esp === P.A_PALO_BORRACHO ? "#5F7A58" : esp === P.A_PALMERA ? "#8A7558" : "#5E4C3C"), R = azar(esp + 31), p: Parte[] = [];
+  const f = FORMAS[esp], col = hex(esp === P.A_PLATANO ? "#A89A80" : esp === P.A_PALO_BORRACHO ? "#7A7F62" : esp === P.A_PALMERA ? "#8A7558" : "#7A6650"), R = azar(esp + 31), p: Parte[] = [];
   const cil = (r0: number, r1: number, a: number[], b: number[], lados = 6) => {
     const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A), L = d.length();
     const g = new THREE.CylinderGeometry(r1, r0, L, lados, 1, true);
@@ -145,7 +154,7 @@ function geoTronco(esp: number): THREE.BufferGeometry {
     p.push({ geo: g, color: col });
   };
   if (esp === P.A_PALO_BORRACHO) {
-    const h = f.alto + 1, pts = [0.5, 0.78, 0.8, 0.6, 0.34, 0.2].map((r, i) => new THREE.Vector2(r * f.tronco * 2, (h * i) / 5));
+    const h = f.alto + 1.5, pts = [0.62, 0.92, 0.86, 0.52, 0.3, 0.22, 0.16].map((r, i) => new THREE.Vector2(r * f.tronco * 2, (h * i) / 6));
     p.push({ geo: new THREE.LatheGeometry(pts, 8), color: col });
   } else if (esp === P.A_PALMERA) {
     cil(f.tronco * 1.1, f.tronco * 0.75, [0, 0, 0], [0, f.alto + 1, 0], 7);
@@ -155,8 +164,8 @@ function geoTronco(esp: number): THREE.BufferGeometry {
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * 6.28 + R() * 0.8, y = f.alto * (0.72 + 0.14 * (i % 3)), L = f.copa[0] * (0.55 + 0.25 * R());
       const b = [Math.cos(a) * L, y + f.copa[1] * (0.55 + 0.5 * R()), Math.sin(a) * L], m = [b[0] * 0.5, y + (b[1] - y) * 0.42, b[2] * 0.5];
-      cil(f.tronco * 0.42, f.tronco * 0.24, [0, y, 0], m, 5);
-      cil(f.tronco * 0.24, f.tronco * 0.08, m, b, 4);
+      cil(f.tronco * 0.34, f.tronco * 0.18, [0, y, 0], m, 5);
+      cil(f.tronco * 0.18, f.tronco * 0.05, m, b, 4);
     }
   }
   /* Cantero: borde bajo */
@@ -187,7 +196,7 @@ export class Arboleda {
   constructor(private grupo: THREE.Object3D, mat: THREE.ShaderMaterial, matTronco: THREE.ShaderMaterial, topeCerca: number, topeLejos: number) {
     for (let e = 0; e < P.N_ESPECIES; e++) {
       const f = FORMAS[e];
-      const gc = geoCopa(e, f.cerca, 1), gl = geoCopa(e, f.lejos, 2.1), gt = geoTronco(e);
+      const gc = geoCopa(e, Math.round(f.cerca * 2.2), 0.66), gl = geoCopa(e, Math.round(f.lejos * 2), 1.5), gt = geoTronco(e);
       this.geos.push(gc, gl, gt);
       const hazte = (g: THREE.BufferGeometry, tope: number, m: THREE.ShaderMaterial, capa: number) => {
         const im = new THREE.InstancedMesh(g, m, tope);

@@ -97,7 +97,7 @@ class Mobiliario {
   }
   destruir() { for (const m of this.mallas) { m.removeFromParent(); m.geometry.dispose(); m.dispose(); } }
 }
-const TOPES: Record<number, number> = { 0: 260, 2: 160, 4: 200, 24: 400, 5: 120, 25: 40 };
+const TOPES: Record<number, number> = { 29: 500, 0: 260, 2: 160, 4: 200, 24: 400, 5: 120, 25: 40, 26: 420, 27: 40, 28: 80 };
 
 export class Mundo {
   celdas = new Map<string, Celda>();
@@ -475,7 +475,11 @@ export class Mundo {
   }
 
   /** Cuánto falta por integrar o llegar: para esperar en pruebas. */
-  pendiente() { return this.listas.length + this.enCurso + (this.armando ? 1 : 0); }
+  pendiente() {
+    let n = this.listas.length + this.enCurso + (this.armando ? 1 : 0);
+    for (const t of this.tiles.values()) if (t.estado === "pidiendo" || t.estado === "decodificando") n++;
+    return n;
+  }
 
   /** La vereda está 15 cm arriba de la calzada: lo lee del mapa del suelo. */
   altoSuelo(x: number, z: number) {

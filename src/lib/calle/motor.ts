@@ -44,8 +44,8 @@ export interface OpcionesMotor {
 const NIVELES: Omit<Calidad, "nivel">[] = [
   { dpr: 0.9, radio: 190, rDet: 80, rKit: 0, rAtlas: 55, rProps: 90, rArbolCerca: 0, rTronco: 60, rArbol: 190, autos: 5, gente: 0, atlas: 0.5, ventanas: 0, sombras: [], memoria: 90e6 },
   { dpr: 1.15, radio: 230, rDet: 110, rKit: 42, rAtlas: 75, rProps: 130, rArbolCerca: 32, rTronco: 90, rArbol: 230, autos: 9, gente: 10, atlas: 0.5, ventanas: 1, sombras: [[190, 1024]], memoria: 130e6 },
-  { dpr: 1.45, radio: 290, rDet: 150, rKit: 64, rAtlas: 95, rProps: 170, rArbolCerca: 48, rTronco: 120, rArbol: 290, autos: 14, gente: 18, atlas: 0.75, ventanas: 1, sombras: [[62, 1024], [300, 1024]], memoria: 190e6 },
-  { dpr: 1.8, radio: 360, rDet: 190, rKit: 86, rAtlas: 120, rProps: 220, rArbolCerca: 70, rTronco: 170, rArbol: 360, autos: 22, gente: 30, atlas: 1, ventanas: 1, sombras: [[78, 2048], [380, 2048]], memoria: 300e6 },
+  { dpr: 1.45, radio: 290, rDet: 150, rKit: 54, rAtlas: 95, rProps: 170, rArbolCerca: 48, rTronco: 120, rArbol: 290, autos: 14, gente: 18, atlas: 0.75, ventanas: 1, sombras: [[62, 1536], [300, 1024]], memoria: 190e6 },
+  { dpr: 1.8, radio: 360, rDet: 190, rKit: 76, rAtlas: 120, rProps: 220, rArbolCerca: 70, rTronco: 170, rArbol: 360, autos: 22, gente: 30, atlas: 1, ventanas: 1, sombras: [[78, 2048], [380, 2048]], memoria: 300e6 },
 ];
 const VEL: Record<ModoMarcha, number> = { caminar: 2.3, correr: 5.2, bici: 8.5 };
 const OJO = 1.62, RADIO = 0.36;

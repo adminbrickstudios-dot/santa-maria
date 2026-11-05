@@ -24,7 +24,7 @@ export function posicionSol(fecha: Date, lat: number, lon: number) {
 
 interface Clave { e: number; cen: number[]; hor: number[]; sol: number[]; cie: number[]; sue: number[]; n: number; x: number }
 const CLAVES: Clave[] = [
-  { e: -16, cen: [0.012, 0.018, 0.05], hor: [0.04, 0.05, 0.1], sol: [0, 0, 0], cie: [0.1, 0.12, 0.2], sue: [0.09, 0.08, 0.09], n: 1, x: 0.82 },
+  { e: -16, cen: [0.012, 0.018, 0.05], hor: [0.04, 0.05, 0.1], sol: [0, 0, 0], cie: [0.13, 0.14, 0.22], sue: [0.12, 0.1, 0.1], n: 1, x: 0.9 },
   { e: -5, cen: [0.05, 0.09, 0.26], hor: [0.42, 0.3, 0.42], sol: [0.02, 0.012, 0.02], cie: [0.16, 0.17, 0.3], sue: [0.1, 0.09, 0.11], n: 0.85, x: 0.8 },
   { e: 0, cen: [0.18, 0.3, 0.7], hor: [1.5, 0.82, 0.55], sol: [1.5, 0.66, 0.3], cie: [0.36, 0.34, 0.46], sue: [0.2, 0.15, 0.13], n: 0.4, x: 0.74 },
   { e: 8, cen: [0.24, 0.45, 0.98], hor: [1.5, 1.2, 0.92], sol: [2.7, 1.95, 1.2], cie: [0.48, 0.52, 0.66], sue: [0.3, 0.25, 0.21], n: 0, x: 0.66 },

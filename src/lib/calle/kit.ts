@@ -1,7 +1,7 @@
 /* Geometrías del kit de fachada y de los objetos de la calle. Se arman una sola vez y se instancian.
    Partes: ver matProp. Las piezas del kit miden 1×1×1 (x de −.5 a .5, y de 0 a 1, z de 0 a 1 hacia afuera). */
 import * as THREE from "three";
-import { P_EMISIVO, P_FIJO, P_PINTABLE, caja, fundir, hex, type Parte } from "./objetos";
+import { P_EMISIVO, P_FIJO, P_PINTABLE, caja, fundir, geoCamioneta, geoSedan, geoTaxi, hex, type Parte } from "./objetos";
 import * as P from "./piezas";
 
 const BL = [1, 1, 1];
@@ -178,6 +178,18 @@ export function geoProp(t: number): THREE.BufferGeometry {
       ...Array.from({ length: 12 }, (_, i) => caja(0.21, 0.3, 0.03, -1.2 + (i % 6) * 0.48, 0.75 + Math.floor(i / 6) * 0.42, 0.9, hex(["#D65A4A", "#3C7EBF", "#E0A42E", "#F2EFE6", "#4EA579", "#8A62B8"][i % 6]))),
     ]);
     case P.P_SEPARADOR: return fundir([caja(0.2, 0.12, 0.9, 0, 0.06, 0, hex("#E0B020")), caja(0.21, 0.125, 0.26, 0, 0.06, 0, hex("#1E1E20"))]);
+    case P.P_BOVEDA: {
+      const m = hex("#C9C2B0"), o = hex("#A9A392");
+      const s = new THREE.Shape();
+      s.moveTo(-1.5, 0); s.lineTo(1.5, 0); s.lineTo(0, 0.9); s.closePath();
+      const f = new THREE.ExtrudeGeometry(s, { depth: 0.3, bevelEnabled: false });
+      f.translate(0, 4.4, 1.8);
+      const cruz = caja(0.08, 0.7, 0.08, 0, 5.6, 2, o);
+      return fundir([caja(3, 4.4, 4, 0, 2.2, 0, m), caja(3.3, 0.3, 4.3, 0, 4.4, 0, o), caja(3.3, 0.5, 4.3, 0, 0.25, 0, o), caja(1.2, 2.6, 0.08, 0, 1.6, 2.02, hex("#26302A")), cola(f, m), cruz, caja(0.4, 0.08, 0.08, 0, 5.72, 2, o)]);
+    }
+    case P.P_AUTO: return geoSedan();
+    case P.P_TAXI: return geoTaxi();
+    case P.P_CAMIONETA: return geoCamioneta();
     case P.P_ANTENA: return fundir([barra([0, 0, 0], [0, 3.6, 0], 0.02, GRIS), barra([-0.5, 2.9, 0], [0.5, 2.9, 0], 0.012, GRIS), barra([-0.4, 3.2, 0], [0.4, 3.2, 0], 0.012, GRIS), barra([-0.3, 3.45, 0], [0.3, 3.45, 0], 0.012, GRIS)]);
   }
   return fundir([caja(0.3, 0.3, 0.3, 0, 0.15, 0, GRIS)]);

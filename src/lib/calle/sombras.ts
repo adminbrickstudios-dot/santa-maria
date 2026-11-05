@@ -32,6 +32,7 @@ export class Sombras {
       const rt = new THREE.WebGLRenderTarget(s, s, { depthTexture: prof, depthBuffer: true, generateMipmaps: false, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
       const cam = new THREE.OrthographicCamera(-radio, radio, radio, -radio, 1, 1400);
       const [mat, tex] = slots[i] as [{ value: THREE.Matrix4 }, { value: THREE.Texture | null }];
+      this.r.initRenderTarget(rt);
       tex.value = prof;
       this.cas.push({ rt, cam, radio, cx: Infinity, cz: Infinity, sucia: true, mat, tex });
     });

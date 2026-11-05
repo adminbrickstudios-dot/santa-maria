@@ -114,7 +114,7 @@ export function matSuelo(c: Comunes, tex: { baldosa: THREE.Texture }, mapa: THRE
       vec4 mapa(vec2 l){ return (texture2D(uMapa,clamp(l/uC,0.,1.)*uE.x+uE.y)*255.-128.)*R; }
       vec3 luzSuelo(vec3 n,float ao,vec3 w){
         float s=sombra(w+vec3(0.,.04,0.));
-        return uLuzCielo*ao*(.55+.45*n.y)+uLuzSol*max(dot(n,uSol),0.)*s+uLuzSuelo*.12*ao;
+        return uLuzCielo*ao*(.55+.45*n.y)+uLuzSol*max(dot(n,uSol),0.)*s*.82+uLuzSuelo*.12*ao;
       }
       void main(){
         float tipo=floor(vMat.x);
@@ -144,9 +144,9 @@ export function matSuelo(c: Comunes, tex: { baldosa: THREE.Texture }, mapa: THRE
             /* Calzada: asfalto con grano, gastado por el tránsito y sucio junto al cordón */
             float borde=smoothstep(-.9,-.05,m.x);
             float g=rf.b*.55+rf.g*.45;
-            alb=mix(vec3(.052,.052,.056),vec3(.085,.083,.082),g)*(.8+.5*ru.r);
+            alb=mix(vec3(.08,.08,.085),vec3(.135,.132,.13),g)*(.8+.5*ru.r);
             alb+=vec3(.012,.011,.01)*smoothstep(.56,.72,texture2D(uRui,vW.xz*2.1).b);
-            alb=mix(alb,vec3(.034,.032,.03),borde*.8);
+            alb=mix(alb,vec3(.05,.047,.045),borde*.8);
             alb=mix(alb,alb*1.28,smoothstep(.52,.3,ru.a)*.5);
             if(dist<26.){ N=normalize(vec3((texture2D(uRui,vW.xz*3.1).b-.5)*.12,1.,(texture2D(uRui,vW.zx*3.1).b-.5)*.12)); }
             ao=.86-.26*borde;
@@ -154,8 +154,8 @@ export function matSuelo(c: Comunes, tex: { baldosa: THREE.Texture }, mapa: THRE
             vec4 b=texture2D(uBal,W.xz/1.6);
             float pared=m.z, acera=m.w, senda=m.y;
             float vereda=max(1.-smoothstep(-.05,.05,acera), max(1.-smoothstep(1.8,2.4,pared), 1.-smoothstep(-.03,.03,senda)));
-            vec3 bal=mix(vec3(.47,.43,.36),vec3(.62,.58,.5),b.b);
-            bal*=.82+.34*ru.g;
+            vec3 bal=mix(vec3(.17,.155,.13),vec3(.36,.335,.29),b.b);
+            bal*=.8+.4*ru.g;
             bal=mix(bal,bal*vec3(.72,.72,.74),smoothstep(.55,.72,rf.r)*.45);
             /* Remiendos de cemento y baldosas rotas */
             vec2 ce=floor(W.xz/5.);
@@ -163,15 +163,15 @@ export function matSuelo(c: Comunes, tex: { baldosa: THREE.Texture }, mapa: THRE
             if(rot>.8){
               vec2 p=fract(W.xz/5.)-.5, e=vec2(.18+.2*fract(rot*7.),.14+.3*fract(rot*13.));
               float pa=smoothstep(.0,.03,min(e.x-abs(p.x),e.y-abs(p.y))+(ru.b-.5)*.1);
-              bal=mix(bal,vec3(.34,.33,.31)*(.8+.4*rf.g),pa);
+              bal=mix(bal,vec3(.2,.195,.185)*(.8+.4*rf.g),pa);
               b.rg=mix(b.rg,vec2(.5),pa);
             }
             vec3 ter=mix(vec3(.2,.17,.13),vec3(.26,.27,.17),ru.g)*(.8+.4*rf.b);
             alb=mix(ter,bal,vereda);
-            if(dist<30.) N=normalize(vec3((b.r-.5)*.5*vereda,1.,(b.g-.5)*.5*vereda));
+            if(dist<34.) N=normalize(vec3((b.r-.5)*.9*vereda,1.,(b.g-.5)*.9*vereda));
             /* Cordón de granito */
             float co=smoothstep(.21+aa,.19-aa*.5,m.x);
-            alb=mix(alb,vec3(.46,.45,.42)*(.8+.4*rf.g),co);
+            alb=mix(alb,vec3(.3,.295,.27)*(.8+.4*rf.g),co);
             alb*=mix(.74,1.,smoothstep(.0,.9,pared));
             ao=mix(.42,1.,smoothstep(0.,4.5,pared));
             ao*=mix(.8,1.,smoothstep(0.,1.6,m.x));
@@ -196,7 +196,7 @@ export function matSuelo(c: Comunes, tex: { baldosa: THREE.Texture }, mapa: THRE
             return;
           }else{
             float p=texture2D(uRui,vW.xz*1.37).b;
-            alb=mix(vec3(.07,.13,.035),vec3(.14,.2,.05),ru.g)*(.72+.56*p);
+            alb=mix(vec3(.06,.1,.035),vec3(.11,.15,.05),ru.g)*(.72+.56*p);
             alb=mix(alb,vec3(.2,.17,.1),smoothstep(.62,.75,ru.r)*.5);
             if(tipo>2.5) alb=mix(alb,vec3(.12,.09,.05),.35);
           }
@@ -212,10 +212,10 @@ export function matSuelo(c: Comunes, tex: { baldosa: THREE.Texture }, mapa: THRE
           gl_FragColor=vec4(vCol.rgb,vCol.a*vMat.y); return;
         }else if(tipo<12.5){
           float f=vMat.y; f*=f;
-          vec3 c=vCol.rgb*vCol.rgb*2.2;
-          gl_FragColor=vec4(tono(c),vCol.a*f*uNoche*1.6); return;
+          vec3 c=vec3(1.,.7,.42)*.62;
+          gl_FragColor=vec4(tono(c),vCol.a*f*uNoche*1.15); return;
         }else if(tipo<13.5){
-          alb=vec3(.04,.04,.043)*(.8+.5*rf.b); a=.95;
+          alb=vec3(.062,.062,.066)*(.8+.5*rf.b); a=.95;
         }else if(tipo<14.5){
           vec2 q=vec2(vW.x+vW.z,vW.z-vW.x)*2.4;
           vec2 f=abs(fract(q)-.5);
@@ -393,9 +393,9 @@ export function matEdificio(c: Comunes, calidad: { value: number }) {
               if(per>.5&&per<1.5) marco=lin(vec3(.2,.26,.2));
               if(per>2.5) marco=lin(vec3(.17,.17,.18));
               hueco=g;
-              vec3 cin=lin(vec3(.74,.72,.67))*(.82+.18*sin(q.y*62.));
+              vec3 cin=lin(vec3(.74,.72,.67))*(.86+.14*sin(q.y*62.)*(1.-smoothstep(.04,.14,dY*8.)));
               if(per<.5) hueco=mix(hueco,cin*(uLuzCielo+uLuzSol*dif*S*.5)*.8,pers);
-              if(per>.5&&per<1.5&&cierre>.5){ vec3 cel=lin(vec3(.3,.36,.27))*(.8+.2*sin(q.y*80.)); hueco=cel*(uLuzCielo+uLuzSol*dif*S*.5)*.8; luzC*=.12; }
+              if(per>.5&&per<1.5&&cierre>.5){ vec3 cel=lin(vec3(.3,.36,.27))*(.86+.14*sin(q.y*80.)*(1.-smoothstep(.04,.14,dY*8.))); hueco=cel*(uLuzCielo+uLuzSol*dif*S*.5)*.8; luzC*=.12; }
               if(per<.5) luzC*=1.-pers;
               vec3 mc=marco*(uLuzCielo*.8+uLuzSol*dif*S*.5);
               hueco=mix(hueco,mc,clamp(mar+medio,0.,1.));
@@ -442,7 +442,7 @@ export function matEdificio(c: Comunes, calidad: { value: number }) {
           vec3 v2=mix(vec3(.03,.035,.04),ambiente(reflect(-V,N)),.22);
           if(r<.6) col=mix(col*.7,col,0.);
           col=mix(col,v2*.0+col*.8,step(.6,r)*0.);
-          float lej=1.-cerca*.0;
+          float lej=1.-cerca;
           emi+=v*lej*(v2+uNoche*vec3(.9,.72,.5)*step(.4,r));
           col*=1.-v*lej;
           col*=smoothstep(.0,.5,y)*.25+.75;
@@ -518,7 +518,7 @@ export function matDetalle(c: Comunes, atlas: THREE.Texture | null) {
           float ilum=mix(.32,1.25,uNoche);
           vec3 Rg=reflect(-V,N);
           float fr=.08+.92*pow(1.-vn,5.);
-          vec3 refl=ambiente(Rg)*.8;
+          vec3 refl=ambiente(Rg)*.55;
           float vano=step(.42,y)*step(y,2.6);
           float ccol=fract(u/1.75), mont=smoothstep(.0,.03,ccol)*smoothstep(1.,.97,ccol);
           vec3 marco=mix(col*.5,vec3(.03),.5);
@@ -574,8 +574,9 @@ export function matDetalle(c: Comunes, atlas: THREE.Texture | null) {
         }else if(k<9.5){
           /* Ventana de planta baja con reja */
           float w=vUv.x, h=vUv.y;
-          float bar=step(.9,fract(w*7.))+step(.92,fract(h*3.));
-          vec3 g=mix(vec3(.02,.025,.03),ambiente(reflect(-V,N)),.24);
+          float bar=step(.86,fract(w*6.))+step(.9,fract(h*2.6));
+          vec3 g=mix(vec3(.012,.015,.018),ambiente(reflect(-V,N)),.1);
+          g+=uNoche*vec3(.4,.3,.16)*step(.5,h21(floor(vW.xz/3.)));
           emi=mix(g,col*luz,clamp(bar,0.,1.));
           col=vec3(0.);
         }else{
@@ -671,7 +672,7 @@ export function matProp(c: Comunes) {
         /* Carrocerías y metales con un toque de brillo */
         vec3 c0=col*(luz+noc);
         if(p>.5&&p<1.5){ float fr=pow(1.-max(dot(V,N),0.),4.); c0+=ambiente(reflect(-V,N))*fr*.3; }
-        if(p>12.5&&p<13.5){ float fr=.08+.92*pow(1.-max(dot(V,N),0.),5.); c0=mix(col*.3,ambiente(reflect(-V,N)),clamp(fr+.2,0.,.9)); }
+        if(p>12.5&&p<13.5){ float fr=.08+.92*pow(1.-max(dot(V,N),0.),5.); c0=mix(col*.3,ambiente(reflect(-V,N))*.7,clamp(fr+.12,0.,.85)); }
         if(p>13.5&&p<14.5){
           /* Muro de un edificio singular: ventanas pintadas en coordenadas de mundo */
           float h=dot(vW.xz,vec2(-N.z,N.x)), fy=fract(vW.y/4.2), fx=fract(h/3.1), a=fwidth(h)*.4+.02;
@@ -690,15 +691,19 @@ export function matFollaje(c: Comunes, atlas: THREE.Texture, alphaToCoverage: bo
     uniforms: { ...c, uAtlas: { value: atlas } },
     side: THREE.DoubleSide, alphaToCoverage,
     vertexShader: /* glsl */ `
-      attribute float aSom; attribute vec3 aCen;
+      attribute float aSom; attribute vec3 aEsq;
       uniform float uTiempo;
       varying vec2 vUv; varying vec3 vN; varying vec3 vW; varying float vS; varying vec3 vTint;
       void main(){
         vUv=uv; vS=aSom; vTint=instanceColor;
-        vec4 w0=instanceMatrix*vec4(position,1.);
-        float fa=w0.x*.31+w0.z*.27;
-        w0.xyz+=vec3(sin(uTiempo*1.2+fa),.4*sin(uTiempo*1.7+fa*1.3),cos(uTiempo*1.05+fa))*.05*aSom*(position.y*.1);
-        vec4 w=modelMatrix*w0;
+        vec4 w=modelMatrix*instanceMatrix*vec4(position,1.);
+        float fa=w.x*.31+w.z*.27;
+        w.xyz+=vec3(sin(uTiempo*1.2+fa),.4*sin(uTiempo*1.7+fa*1.3),cos(uTiempo*1.05+fa))*.04*aSom*(position.y*.1);
+        /* Tarjeta de frente a la cámara, girada en su plano */
+        float e=length(instanceMatrix[0].xyz), c=cos(aEsq.z), s=sin(aEsq.z);
+        vec2 q=vec2(aEsq.x*c-aEsq.y*s,aEsq.x*s+aEsq.y*c)*e;
+        vec3 der=vec3(viewMatrix[0][0],viewMatrix[1][0],viewMatrix[2][0]), arr=vec3(viewMatrix[0][1],viewMatrix[1][1],viewMatrix[2][1]);
+        w.xyz+=der*q.x+arr*q.y;
         vN=normalize(mat3(instanceMatrix)*normal); vW=w.xyz;
         gl_Position=projectionMatrix*viewMatrix*w;
       }`,
@@ -707,7 +712,7 @@ export function matFollaje(c: Comunes, atlas: THREE.Texture, alphaToCoverage: bo
       varying vec2 vUv; varying vec3 vN; varying vec3 vW; varying float vS; varying vec3 vTint;
       void main(){
         vec4 t=texture2D(uAtlas,vUv);
-        if(t.a<.42) discard;
+        if(t.a<.36) discard;
         vec3 alb=lin(t.rgb/t.a)*vTint;
         vec3 N=normalize(vN);
         float s=sombra(vW+uSol*.5);
@@ -715,7 +720,7 @@ export function matFollaje(c: Comunes, atlas: THREE.Texture, alphaToCoverage: bo
         vec3 V=normalize(cameraPosition-vW);
         /* El sol atraviesa las hojas */
         float tr=pow(max(dot(-V,uSol),0.),3.)*.8;
-        vec3 l=(uLuzCielo*(.45+.55*N.y)*.9+uLuzSuelo*.3*(1.-N.y)*.5)*(.34+.66*vS)+uLuzSol*(max(nl*.75+.25,0.)+tr)*s*(.4+.6*vS);
+        vec3 l=(uLuzCielo*(.55+.45*N.y)+uLuzSuelo*.3*(1.-N.y)*.5)*(.5+.5*vS)+uLuzSol*(max(nl*.75+.25,0.)+tr)*s*(.5+.5*vS);
         vec3 noc=vec3(1.,.74,.42)*uNoche*.2*exp(-vW.y*.14);
         gl_FragColor=vec4(tono(conNiebla(alb*(l+noc),vW)),1.);
       }`,
@@ -743,14 +748,15 @@ export function matProfundidadHojas(atlas: THREE.Texture) {
     side: THREE.DoubleSide, colorWrite: false,
     uniforms: { uAtlas: { value: atlas } },
     vertexShader: /* glsl */ `
+      attribute vec3 aEsq;
       varying vec2 vUv;
       void main(){
         vUv=uv;
-        #ifdef USE_INSTANCING
-          gl_Position=projectionMatrix*viewMatrix*modelMatrix*instanceMatrix*vec4(position,1.);
-        #else
-          gl_Position=projectionMatrix*viewMatrix*modelMatrix*vec4(position,1.);
-        #endif
+        vec4 w=modelMatrix*instanceMatrix*vec4(position,1.);
+        float e=length(instanceMatrix[0].xyz), c=cos(aEsq.z), s=sin(aEsq.z);
+        vec2 q=vec2(aEsq.x*c-aEsq.y*s,aEsq.x*s+aEsq.y*c)*e;
+        w.xyz+=vec3(viewMatrix[0][0],viewMatrix[1][0],viewMatrix[2][0])*q.x+vec3(viewMatrix[0][1],viewMatrix[1][1],viewMatrix[2][1])*q.y;
+        gl_Position=projectionMatrix*viewMatrix*w;
       }`,
     fragmentShader: `uniform sampler2D uAtlas; varying vec2 vUv; void main(){ if(texture2D(uAtlas,vUv).a<.4) discard; gl_FragColor=vec4(1.); }`,
   });
@@ -832,7 +838,7 @@ export function matCielo(c: Comunes) {
         float nube=smoothstep(.5,.68,n)*smoothstep(.01,.17,d.y);
         float bajo=smoothstep(.5,.72,texture2D(uRui,q*.06+vec2(uTiempo*.0009+.012,.01)).g);
         vec3 cn=mix(vec3(1.,.98,.95)*1.6,uNiebla*.7,bajo*.6)+uLuzSol*.1*pow(s,4.);
-        c=mix(c,cn*(1.-uNoche*.92),nube*.86);
+        c=mix(c,cn*(1.-uNoche*.965),nube*.86);
         if(uNoche>.1){
           vec2 g=d.xz/(abs(d.y)+.3)*260., e=floor(g), f=fract(g)-.5;
           c+=step(.992,h21(e))*h21(e+3.)*smoothstep(.34,.1,length(f))*uNoche*uNoche*smoothstep(.04,.3,d.y)*(1.-nube)*.7;
