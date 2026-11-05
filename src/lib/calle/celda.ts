@@ -524,7 +524,7 @@ export function armarCelda(t: TileDatos, gx: number, gy: number): CeldaDatos {
       for (let iu = 0; iu < n; iu++) {
         const u = (iu + 0.5) * bw, r = hash(e.id * 31 + iu * 7, ip + 3);
         if (!vidriada) {
-          if (ip < 2) { const [mx, my, mz] = P3(u, yp + es.v0, 0); kit.poner(P.K_MARCO, mx, my, mz, rx, rz, nx, nz, es.vA * 2, es.v1 - es.v0, 0.05, es.moldura ? es.acento : [214, 210, 202]); }
+          if (ip < 1) { const [mx, my, mz] = P3(u, yp + es.v0, 0); kit.poner(P.K_MARCO, mx, my, mz, rx, rz, nx, nz, es.vA * 2, es.v1 - es.v0, 0.05, es.moldura ? es.acento : [214, 210, 202]); }
           if (es.v0 > 0.5 && ip < 7) { const [sx, sy, sz] = P3(u, yp + es.v0 - 0.08, 0); kit.poner(P.K_CAJA, sx, sy, sz, rx, rz, nx, nz, es.vA * 2 + 0.24, 0.08, 0.14, es.acento); }
         }
         if (es.moldura === 3 && !vidriada) {

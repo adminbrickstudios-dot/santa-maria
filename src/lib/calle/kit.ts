@@ -30,6 +30,14 @@ function placa(w: number, h: number, x: number, y: number, z: number, color: num
   return { geo: g, color, parte };
 }
 
+/** Pasamanos: solo el plano de arriba, en vez de una caja entera. */
+function pasamanos(): Parte {
+  const g = new THREE.PlaneGeometry(1.01, 1.4);
+  g.rotateX(-Math.PI / 2);
+  g.translate(0, 1, 0.5);
+  return { geo: g, color: BL, parte: P_PINTABLE };
+}
+
 /* ───────── Kit ───────── */
 export function geoKit(p: number): THREE.BufferGeometry {
   switch (p) {
@@ -45,8 +53,8 @@ export function geoKit(p: number): THREE.BufferGeometry {
       g.translate(0.5, 0, 0);
       return fundir([cola(g, BL, P_PINTABLE)]);
     }
-    case P.K_REJA: return fundir([placa(1, 1, 0, 0.5, 0.5, BL, P_REJA), placa(1, 1, 0, 0.5, 0.5, BL, P_REJA, Math.PI), caja(1.01, 0.05, 1, 0, 0.975, 0.5, BL, P_PINTABLE)]);
-    case P.K_CANO: return fundir([placa(1, 1, 0, 0.5, 0.5, BL, P_CANO), placa(1, 1, 0, 0.5, 0.5, BL, P_CANO, Math.PI), caja(1, 0.05, 1, 0, 0.98, 0.5, BL, P_PINTABLE)]);
+    case P.K_REJA: return fundir([placa(1, 1, 0, 0.5, 0.5, BL, P_REJA), placa(1, 1, 0, 0.5, 0.5, BL, P_REJA, Math.PI), pasamanos()]);
+    case P.K_CANO: return fundir([placa(1, 1, 0, 0.5, 0.5, BL, P_CANO), placa(1, 1, 0, 0.5, 0.5, BL, P_CANO, Math.PI), pasamanos()]);
     case P.K_MARCO: {
       /* Solo el frente y el canto interior: cuatro cuadriláteros cada lado */
       const lado = (w: number, h: number, x: number, y: number) => caja(w, h, 1, x, y, 0.5, BL, P_PINTABLE);
