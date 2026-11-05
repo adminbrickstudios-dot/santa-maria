@@ -167,7 +167,7 @@ export function Marco({ children }: { children: React.ReactNode }) {
       <header className="barra-top">
         {enInicio ? <button className="ico-btn" onClick={() => setMenu(true)} aria-label="Abrir menú"><Icono n="menu" /></button> : <button className="ico-btn atras" onClick={atras} aria-label="Volver"><Icono n="volver" /></button>}
         <h1><i />{titulo ? <span key={titulo}>{titulo}</span> : enInicio ? grupo?.nombre || MARCA.nombre : ""}</h1>
-        <Link className="ico-btn" href="/buscar" aria-label="Buscar"><Icono n="lupa" /></Link>
+        {!enMapa && <Link className="ico-btn" href="/buscar" aria-label="Buscar"><Icono n="lupa" /></Link>}
         <Link className="ico-btn" href="/notificaciones" aria-label={`Avisos, ${avisos} sin leer`}><Icono n="campana" />{avisos > 0 && <span className="punto">{avisos > 9 ? "9+" : avisos}</span>}</Link>
         <Link className="ico-btn" href="/perfil" aria-label="Mi perfil"><Avatar p={perfil} t={34} /></Link>
       </header>
