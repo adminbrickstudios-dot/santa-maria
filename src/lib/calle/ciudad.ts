@@ -46,4 +46,6 @@ export type TileCiudad = {
   p?: (string | number)[][];
   /** Objetos: tipo, X, Z, detalle. */
   o?: (string | number)[][];
+  /** Cruces peatonales: X, Z, tipo. */
+  k?: (string | number)[][];
 };

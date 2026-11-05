@@ -14,6 +14,7 @@ export type PedidoCiudad = { id: number } & (
   | { t: "paseo"; a: Punto; cuantas?: number }
   | { t: "filtro"; id2: IdFiltro; a: Punto; radio?: number }
   | { t: "cuadra"; a: Punto }
+  | { t: "cruces"; a: Punto }
 );
 
 export type RespuestaCiudad =
@@ -40,6 +41,7 @@ export async function atender(n: Nucleo, p: PedidoCiudad, enviar: (m: RespuestaC
     } else if (p.t === "paseo") r = await n.paseo(p.a, p.cuantas);
     else if (p.t === "filtro") r = await n.filtro(p.id2, p.a, p.radio);
     else if (p.t === "cuadra") r = await n.cuadra(p.a);
+    else if (p.t === "cruces") r = await n.cruces(p.a);
     enviar({ id: p.id, t: "ok", r }, tr);
   } catch (e) {
     enviar({ id: p.id, t: "error", mensaje: String(e) });

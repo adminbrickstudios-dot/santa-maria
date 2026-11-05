@@ -18,10 +18,12 @@ import type { EstadoViaje, ModoMarcha, Motor } from "@/lib/calle/motor";
 import { Buscador, TarjetaDestino, type Destino } from "./Buscador";
 import { ASCENSOR, CAMARA, Credito, HojaCalle, MODOS, PAUSA, PLAY, Protector, Svg, distancia, tiempo } from "./comunes";
 import { HojaEdificio } from "./Edificio";
-import { HojaClima, HojaCuadra, HojaEncuentro, HojaFiltros, HojaLugares, HojaPracticar, HojaRecorridos, type Amigo, type Tema, type Visita } from "./Hojas";
+import { HojaClima, HojaCuadra, HojaEncuentro, HojaFiltros, HojaLugares, HojaPracticar, HojaRecorridos, type Activo, type Amigo, type Tema, type Visita } from "./Hojas";
 import { MenuCalle, type HojaMenu } from "./MenuCalle";
 import { MiniMapa } from "./MiniMapa";
 import { Recepcion } from "./Recepcion";
+import { BarraRecorrido, HojaLejos, HojaPermisos } from "./Recorrido";
+import { useCaminata } from "./useCaminata";
 import { TarjetaLocal } from "./TarjetaLocal";
 
 const ElegirLugar = dynamic(() => import("@/components/ElegirLugar").then((m) => m.ElegirLugar), { ssr: false });
@@ -58,6 +60,8 @@ export interface PropsCalle {
   amigos?: Amigo[];
   /** Temas de la guía con paradas reales. */
   cargarTemas?: () => Promise<Tema[]>;
+  /** Ubicación compartida a propósito y por un rato. Sin esto, esa parte no aparece. */
+  ubicacion?: { activos(): Promise<Activo[] | null>; enviar(p: { lat: number; lon: number }, minutos: number): Promise<boolean>; apagar(): Promise<void> };
 }
 
 function Maqueta({ progreso, titulo, detalle, children }: { progreso: number; titulo: string; detalle?: string; children?: React.ReactNode }) {
@@ -78,7 +82,7 @@ function Maqueta({ progreso, titulo, detalle, children }: { progreso: number; ti
   );
 }
 
-function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, crearWorker, crearWorkerCiudad, calidadFija, alMotor, rumboInicial, lugares, guardarLugares, visitados, guardarVisitados, mandar, casa, facu, amigos, cargarTemas }: PropsCalle) {
+function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, crearWorker, crearWorkerCiudad, calidadFija, alMotor, rumboInicial, lugares, guardarLugares, visitados, guardarVisitados, mandar, casa, facu, amigos, cargarTemas, ubicacion }: PropsCalle) {
   const router = useRouter();
   const lienzo = useRef<HTMLDivElement>(null);
   const motor = useRef<Motor | null>(null);
@@ -104,7 +108,7 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
   const [destino, setDestino] = useState<Destino | null>(null);
   const [calculando, setCalculando] = useState(false);
   const [viaje, setViaje] = useState<EstadoViaje | null>(null);
-  const [llegada, setLlegada] = useState<{ nombre: string; recorrido: { metros: number; pasos: number; kcal: number } } | null>(null);
+  const [llegada, setLlegada] = useState<{ nombre: string; recorrido: { metros: number; pasos: number; kcal: number }; segundos?: number } | null>(null);
   const [menu, setMenu] = useState(false);
   const [enMapa, setEnMapa] = useState(false);
   const [salirHoja, setSalirHoja] = useState(false);
@@ -125,9 +129,13 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
   const [cuadra, setCuadra] = useState<Cuadra | null>(null);
   const [modoFoto, setModoFoto] = useState(false);
   const [temas, setTemas] = useState<Tema[] | null>(null);
+  const [activos, setActivos] = useState<Activo[] | null>(null);
+  const [compartiendo, setCompartiendo] = useState(false);
+  const [permisos, setPermisos] = useState<{ destino: Destino | null } | null>(null);
   const [cliente, setCliente] = useState<ClienteCiudad | null>(null);
   const hayHoja = useRef(false), saliendo = useRef(false), habiaAntes = useRef(false), inicio = useRef({ lat, lon }), edifActual = useRef<DatosEdificio | null>(null);
   const llegadaAcc = useRef<((nombre: string) => void) | null>(null);
+  const caminaRef = useRef<(() => void) | null>(null);
   const filtroRef = useRef(filtro);
   filtroRef.current = filtro;
 
@@ -200,7 +208,7 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
             },
             viaje: (e) => setViaje(e),
             cartel: (i) => { const c = filtroRef.current?.lista[i]; if (c) elegirDestinoRef.current?.(destinoDe(c)); },
-            llegada: (n) => llegadaAcc.current?.(n),
+            llegada: (n) => { if (caminaRef.current) caminaRef.current(); else llegadaAcc.current?.(n); },
             nube: setNube,
             azotea: (h) => { setTerraza(h == null ? null : { altura: h, estimada: edifActual.current?.calidad !== 0 }); setEdificio(null); },
             piso: setPiso,
@@ -229,6 +237,7 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
       const p = motor.current?.posicionReal();
       if (!p) return;
       inicio.current = p;
+      if (caminaRef.current) return;
       try { sessionStorage.setItem(SESION, JSON.stringify({ lat: p.lat, lon: p.lon, t: Date.now(), pedido: location.search })); } catch { /* sin almacenamiento */ }
     }, 4000);
     return () => clearInterval(t);
@@ -581,6 +590,39 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
   function abrirMapa() { motor.current?.pausar(true); setEnMapa(true); }
   function cerrarMapa() { motor.current?.pausar(false); setEnMapa(false); }
 
+  /* ───────── Iniciar recorrido ───────── */
+  const avisarCb = useCallback((t: string | null) => setAviso(t), []);
+  const alLlegarReal = useCallback((d: Destino, r: { metros: number; segundos: number }) => {
+    /* En el modo real no se anota nada: la ubicación no se guarda */
+    setLlegada({ nombre: d.nombre, recorrido: { metros: r.metros, pasos: Math.round(r.metros / 0.72), kcal: Math.round((r.metros * 52) / 1000) }, segundos: r.segundos });
+    setTimeout(() => setLlegada(null), 7000);
+  }, []);
+  const camina = useCaminata({ motor: motorDe, cliente, avisar: avisarCb, alLlegar: alLlegarReal });
+  const enReal = !!camina.estado;
+  caminaRef.current = enReal ? camina.llego : null;
+
+  /* Un toque: la primera vez explica; después arranca directo */
+  function iniciarRecorrido(destino: Destino | null) {
+    setDestino(null);
+    setBuscando(false);
+    motor.current?.cerrarTarjeta();
+    if (leer("sm-calle-real-ok")) camina.iniciar(destino);
+    else setPermisos({ destino });
+  }
+  const destinoDeLocal = (l: Local): Destino => ({ nombre: l.nombre, lat: l.lat ?? 0, lon: l.lon ?? 0, direccion: l.direccion ?? undefined, categoria: l.rubro.nombre, categoriaCruda: l.categoria });
+
+  /* Compartir ubicación: decisión propia, temporal, y se ve mientras está prendida */
+  useEffect(() => {
+    if (!compartiendo || !ubicacion) return;
+    const fin = Date.now() + 30 * 60000;
+    const enviar = () => navigator.geolocation.getCurrentPosition((p) => {
+      void ubicacion.enviar({ lat: p.coords.latitude, lon: p.coords.longitude }, 30).then((ok) => { if (!ok) { setCompartiendo(false); setAviso("No se pudo compartir tu ubicación."); } });
+    }, () => { setCompartiendo(false); setAviso("Sin permiso de ubicación no se puede compartir."); }, { enableHighAccuracy: true, timeout: 15000 });
+    enviar();
+    const t = setInterval(() => { if (Date.now() > fin) { setCompartiendo(false); return; } enviar(); }, 30000);
+    return () => { clearInterval(t); void ubicacion.apagar(); };
+  }, [compartiendo, ubicacion]);
+
   const parar = (e: React.SyntheticEvent) => e.stopPropagation();
   if (!montado) return null;
 
@@ -601,7 +643,7 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
       )}
       {listo && !interior && !terraza && !modoFoto && (
         <>
-          <div ref={joyBase} className="calle-joy" aria-hidden="true"><i ref={joyPunta} /></div>
+          {(!enReal || camina.estado?.corrigiendo) && <div ref={joyBase} className="calle-joy" aria-hidden="true"><i ref={joyPunta} /></div>}
           <div className="calle-arriba">
             {enViaje ? (
               <section className="calle-viaje" aria-label={`Yendo a ${viaje?.nombre ?? "tu destino"}`}>
@@ -609,10 +651,10 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
                   <strong aria-live="polite">{viaje?.pausada ? "En pausa" : viaje?.maniobra ? (viaje.enM < 12 ? viaje.maniobra : `En ${distancia(viaje.enM)}: ${viaje.maniobra[0].toLowerCase()}${viaje.maniobra.slice(1)}`) : `Seguí hasta ${viaje?.nombre}`}</strong>
                   <small>{distancia(viaje?.restante ?? 0)} · unos {tiempo(viaje?.segundos ?? 0)} {seVa}{paseo ? ` · Parada ${paseo.i + 1} de ${paseo.paradas.length}` : ""}</small>
                 </div>
-                <button className="calle-redondo" onClick={() => (viaje?.pausada ? retomar() : motor.current?.pausarRuta(true))} aria-label={viaje?.pausada ? "Seguir" : "Pausar"}><Svg d={viaje?.pausada ? PLAY : PAUSA} /></button>
-                <button className="calle-redondo" onClick={() => { motor.current?.cancelarRuta(); setPaseo(null); }} aria-label="Cancelar el viaje"><Icono n="x" /></button>
+                {!enReal && <button className="calle-redondo" onClick={() => (viaje?.pausada ? retomar() : motor.current?.pausarRuta(true))} aria-label={viaje?.pausada ? "Seguir" : "Pausar"}><Svg d={viaje?.pausada ? PLAY : PAUSA} /></button>}
+                {!enReal && <button className="calle-redondo" onClick={() => { motor.current?.cancelarRuta(); setPaseo(null); }} aria-label="Cancelar el viaje"><Icono n="x" /></button>}
               </section>
-            ) : (
+            ) : enReal ? null : (
               <Buscador cliente={cliente} posicion={posicion} abierto={buscando} abrir={() => setBuscando(true)} cerrar={() => setBuscando(false)} elegir={elegirDestino} enMapa={abrirMapa} guardados={favs} />
             )}
             {!buscando && <button className="calle-redondo calle-menu-btn" onClick={() => setMenu(true)} aria-label="Más opciones" aria-expanded={menu}><Icono n="menu" /></button>}
@@ -629,7 +671,8 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
           )}
           {filtro && !buscando && <button className="calle-filtro" onClick={quitarFiltro} aria-label={`Sacar los carteles de ${etiquetaFiltro}`}><span>{etiquetaFiltro}: {filtro.lista.length}</span><Icono n="x" t={18} /></button>}
 
-          <div className={`calle-marcha ${modosAbiertos ? "abierta" : ""}`}>
+          {!enReal && tactil && !buscando && !local && !destino && !enViaje && <button className="calle-iniciar flotante" onClick={() => iniciarRecorrido(null)}>Iniciar recorrido</button>}
+          {!enReal && <div className={`calle-marcha ${modosAbiertos ? "abierta" : ""}`}>
             {modo === "volar" && !modosAbiertos && (
               <div className="calle-altura" role="group" aria-label={`Altura del dron: ${Math.round(viaje?.altura ?? 70)} metros`}>
                 <button onClick={() => motor.current?.setAlturaDron((viaje?.altura ?? 70) + 20)} aria-label="Subir"><Icono n="subir" t={22} /></button>
@@ -646,7 +689,10 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
             ) : (
               <button className="calle-modo-act" onClick={() => setModosAbiertos(true)} aria-label={`Forma de moverte: ${modoAct.nombre}. Cambiar`} aria-haspopup="true"><Svg d={modoAct.d} t={26} /><span>{modoAct.nombre}</span></button>
             )}
-          </div>
+          </div>}
+          {camina.estado && <BarraRecorrido e={camina.estado} voz={camina.voz} setVoz={camina.setVoz} corregir={camina.corregir} terminar={camina.terminar} />}
+          {camina.recordatorio && <p className="calle-recordatorio" role="status">{camina.recordatorio}</p>}
+          {compartiendo && <button className="calle-filtro compartiendo" onClick={() => setCompartiendo(false)}><span>Compartiendo tu ubicación</span><Icono n="x" t={18} /></button>}
 
           {ayuda && !buscando && <p className="calle-ayuda" role="status">{tactil ? "Mové con el dedo izquierdo, arrastrá para mirar y tocá un local o un edificio." : "Caminá con WASD o las flechas, arrastrá para mirar y tocá un local o un edificio."}</p>}
           {cerca && !local && !enViaje && !destino && modo !== "volar" && !volando && !buscando && (
@@ -654,12 +700,12 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
               <i style={{ background: cerca.rubro.color }} /><span><b>{cerca.nombre}</b><small>{cerca.rubro.nombre}</small></span><Icono n="flecha" t={20} />
             </button>
           )}
-          {local && !destino && <TarjetaLocal key={local.id} local={local} proveedor={lugar} cerrar={cerrar} entrar={() => motor.current?.entrar(local)} edificio={() => abrirEdificio(local, false)} />}
-          {destino && <TarjetaDestino d={destino} cerrar={() => setDestino(null)} caminando={() => irCaminando(destino)} ya={() => irYa(destino)} ocupado={calculando} />}
+          {local && !destino && <TarjetaLocal key={local.id} local={local} proveedor={lugar} cerrar={cerrar} entrar={() => motor.current?.entrar(local)} edificio={() => abrirEdificio(local, false)} caminando={() => elegirDestino(destinoDeLocal(local))} />}
+          {destino && <TarjetaDestino d={destino} cerrar={() => setDestino(null)} caminando={() => irCaminando(destino)} ya={() => irYa(destino)} iniciar={() => iniciarRecorrido(destino)} ocupado={calculando} />}
           {llegada && !local && (
             <div className="calle-llegada" role="status">
               <strong>Llegaste a {llegada.nombre}</strong>
-              {llegada.recorrido.pasos > 0 && <small>{distancia(llegada.recorrido.metros)} · {llegada.recorrido.pasos.toLocaleString("es-AR")} pasos · {llegada.recorrido.kcal} kcal estimadas</small>}
+              {llegada.recorrido.pasos > 0 && <small>{distancia(llegada.recorrido.metros)}{llegada.segundos ? ` en ${tiempo(llegada.segundos)}` : ""} · {llegada.recorrido.pasos.toLocaleString("es-AR")} pasos · {llegada.recorrido.kcal} kcal estimadas</small>}
             </div>
           )}
           {paseo && !enViaje && !volando && (
@@ -700,16 +746,18 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
       <div className={`calle-nube ${nube ? "on" : ""}`} aria-hidden="true" />
       <div className={`calle-fundido ${fundido ? "on" : ""}`} aria-hidden="true" />
 
-      {menu && <MenuCalle cerrar={() => setMenu(false)} abrir={(h) => (h === "recorridos" ? abrirRecorridos() : setHoja(h))} enMapa={abrirMapa} modoFoto={() => setModoFoto(true)} compartir={compartirPunto} salir={() => setSalirHoja(true)} posicion={pos} recorrido={motor.current?.recorrido() ?? { metros: 0, pasos: 0, kcal: 0 }} tactil={tactil} />}
+      {menu && <MenuCalle cerrar={() => setMenu(false)} abrir={(h) => { if (h === "recorridos") abrirRecorridos(); else setHoja(h); if (h === "encuentro") void ubicacion?.activos().then(setActivos); }} enMapa={abrirMapa} modoFoto={() => setModoFoto(true)} compartir={compartirPunto} iniciar={() => iniciarRecorrido(null)} salir={() => setSalirHoja(true)} posicion={pos} recorrido={motor.current?.recorrido() ?? { metros: 0, pasos: 0, kcal: 0 }} tactil={tactil} />}
       {hoja === "filtros" && <HojaFiltros activo={filtro?.id ?? null} elegir={ponerFiltro} quitar={quitarFiltro} cerrar={() => setHoja(null)} />}
       {hoja === "cuadra" && <HojaCuadra c={cuadra} calleMotor={calle} tocar={(l) => { setHoja(null); elegirDestino(destinoDe(l)); }} cerrar={() => setHoja(null)} />}
       {hoja === "recorridos" && <HojaRecorridos temas={temas} cerca={empezarPaseo} elegir={empezarTema} cerrar={() => setHoja(null)} />}
       {hoja === "practicar" && <HojaPracticar casa={casa ?? null} facu={facu ?? null} guardados={favs} practicar={practicar} cerrar={() => setHoja(null)} />}
-      {hoja === "encuentro" && <HojaEncuentro amigos={amigos ?? []} buscar={puntoMedio} cerrar={() => setHoja(null)} />}
+      {hoja === "encuentro" && <HojaEncuentro amigos={amigos ?? []} buscar={puntoMedio} cerrar={() => setHoja(null)} activos={ubicacion ? activos : null} compartiendo={compartiendo} compartir={() => setCompartiendo(true)} dejar={() => setCompartiendo(false)} irA={(a) => { setHoja(null); iniciarRecorrido({ nombre: a.nombre, lat: a.lat, lon: a.lon }); }} />}
+      {permisos && <HojaPermisos cerrar={() => setPermisos(null)} seguir={() => { guardar("sm-calle-real-ok", "1"); const d = permisos.destino; setPermisos(null); camina.iniciar(d); }} />}
+      {camina.lejos && <HojaLejos destino={camina.lejos.destino} metros={camina.lejos.metros} aPie={camina.irDesdeLejos} cerrar={() => camina.setLejos(null)} />}
       {hoja === "clima" && <HojaClima hora={horaSim} setHora={cambiarHora} cerrar={() => setHoja(null)} />}
       {hoja === "lugares" && <HojaLugares favoritos={favs} visitados={vistos} ir={(d) => { setHoja(null); elegirDestino(d); }} borrar={borrarVisitas} cerrar={() => setHoja(null)} />}
       {recepcion && datosLugar && <Recepcion datos={datosLugar} cargando={cargandoLugar} guardado={guardado} alternarGuardado={alternarFav} compartir={compartirLugar} cerrar={() => setRecepcion(false)} />}
-      {edificio && <HojaEdificio d={edificio.d} titulo={edificio.ascensor ? "Pisos y terraza" : undefined} pisosLocal={edificio.local?.pisos} alturaLocal={edificio.local?.altura} piso={piso} irAPiso={edificio.ascensor ? (n) => { setEdificio(null); motor.current?.irAPiso(n); } : undefined} terraza={(edificio.d?.altura ?? edificio.local?.altura) ? subirTerraza : null} cerrar={() => setEdificio(null)} />}
+      {edificio && <HojaEdificio d={edificio.d} caminando={edificio.ascensor || !edificio.d ? undefined : () => { const d = edificio.d!; setEdificio(null); elegirDestino({ nombre: d.nombre ?? "Este edificio", lat: d.lat, lon: d.lon }); }} titulo={edificio.ascensor ? "Pisos y terraza" : undefined} pisosLocal={edificio.local?.pisos} alturaLocal={edificio.local?.altura} piso={piso} irAPiso={edificio.ascensor ? (n) => { setEdificio(null); motor.current?.irAPiso(n); } : undefined} terraza={(edificio.d?.altura ?? edificio.local?.altura) ? subirTerraza : null} cerrar={() => setEdificio(null)} />}
       {foto && (
         <HojaCalle titulo="Tu foto" cerrar={() => { URL.revokeObjectURL(foto.url); setFoto(null); }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}

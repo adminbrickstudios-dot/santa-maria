@@ -17,6 +17,7 @@ export interface ClienteCiudad {
   paseo(a: Punto, cuantas?: number): Promise<Parada[]>;
   filtro(id: IdFiltro, a: Punto, radio?: number): Promise<Cercano[]>;
   cuadra(a: Punto): Promise<Cuadra>;
+  cruces(a: Punto): Promise<Punto[]>;
   destruir(): void;
 }
 
@@ -75,6 +76,7 @@ export function crearCliente(crear?: () => Worker): ClienteCiudad {
     paseo: (a, cuantas) => pedir({ t: "paseo", a, cuantas }),
     filtro: (id2, a, radio) => pedir({ t: "filtro", id2, a, radio }),
     cuadra: (a) => pedir({ t: "cuadra", a }),
+    cruces: (a) => pedir({ t: "cruces", a }),
     destruir() { w?.terminate(); esperas.clear(); },
   };
 }

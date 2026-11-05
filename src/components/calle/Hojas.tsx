@@ -81,7 +81,13 @@ export function HojaPracticar({ casa, facu, guardados, practicar, cerrar }: { ca
   );
 }
 
-export function HojaEncuentro({ amigos, buscar, cerrar }: { amigos: Amigo[]; buscar: (ids: string[]) => Promise<{ nombre: string; lat: number; lon: number; detalle: string } | null>; cerrar: () => void }) {
+export interface Activo { id: string; nombre: string; lat: number; lon: number; hasta: string }
+
+export function HojaEncuentro({ amigos, buscar, cerrar, activos, compartiendo, compartir, dejar, irA }: {
+  amigos: Amigo[]; buscar: (ids: string[]) => Promise<{ nombre: string; lat: number; lon: number; detalle: string } | null>; cerrar: () => void;
+  /** null: esta función todavía no está disponible. */
+  activos: Activo[] | null; compartiendo: boolean; compartir: () => void; dejar: () => void; irA: (a: Activo) => void;
+}) {
   const [sel, setSel] = useState<string[]>([]);
   const [r, setR] = useState<{ nombre: string; lat: number; lon: number; detalle: string } | null>(null);
   const [nada, setNada] = useState(false);
@@ -94,6 +100,13 @@ export function HojaEncuentro({ amigos, buscar, cerrar }: { amigos: Amigo[]; bus
       <p className="calle-nota izq">Solo aparecen quienes eligieron compartir su casa exacta en el perfil. Se usa únicamente para calcular el medio.</p>
       {amigos.length > 0 && !r && <button className="calle-btn pri calle-ancho" disabled={!sel.length} onClick={async () => { const q = await buscar(sel); setR(q); setNada(!q); }}>Buscar a mitad de camino</button>}
       {nada && <p className="calle-vacio">No encontré un lugar por ahí.</p>}
+      {activos && <>
+        <h3 className="calle-sec">Ir hasta una persona</h3>
+        {activos.map((a) => <button key={a.id} className="calle-fila" onClick={() => irA(a)}><span className="calle-fila-ic"><Icono n="usuario" t={22} /></span><span><b>{a.nombre}</b><small>Comparte su ubicación por ahora</small></span></button>)}
+        {!activos.length && <p className="calle-vacio">Nadie está compartiendo su ubicación ahora.</p>}
+        <button className="calle-btn calle-ancho" onClick={compartiendo ? dejar : compartir}>{compartiendo ? "Dejar de compartir mi ubicación" : "Compartir mi ubicación 30 minutos"}</button>
+        <p className="calle-nota izq">Solo la ve tu grupo, se apaga sola a los 30 minutos y la podés apagar cuando quieras.</p>
+      </>}
       {r && <>
         <h3 className="calle-sec">Te proponemos</h3>
         <p className="calle-sub"><b>{r.nombre}</b><br />{r.detalle}</p>

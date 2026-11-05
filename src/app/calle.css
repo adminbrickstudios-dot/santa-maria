@@ -61,6 +61,23 @@ body:has(.calle) .toast{z-index:122}
 .calle-modofoto .calle-redondo{position:absolute;left:var(--sl);top:calc(var(--st) + 10px)}
 .calle-disparo{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--sb) + 26px);width:84px;height:84px;border-radius:50%;background:#fff;color:#14171A;display:grid;place-items:center;box-shadow:0 0 0 5px rgba(255,255,255,.45),var(--sombra-suave)}
 .calle-disparo:active{transform:translateX(-50%) scale(.92)}
+.calle-iniciar{width:100%;min-height:62px;font-size:20px;margin:8px 0}
+.calle-iniciar.flotante{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--sb) + 40px);width:auto;max-width:150px;min-height:72px;margin:0;padding:6px 14px;border-radius:24px;background:var(--azul);color:#fff;font-size:16px;line-height:1.1;font-weight:800;box-shadow:var(--sombra-suave);z-index:3}
+.calle-acciones.tres{grid-template-columns:1fr 1fr 1fr}
+.calle-acciones.tres .calle-btn{font-size:16px;padding:0 6px}
+.calle-doble{grid-column:1/-1}
+.calle-recorrido{position:absolute;left:var(--sl);right:var(--sr);bottom:calc(var(--sb) + 22px);max-width:480px;margin:0 auto;padding:10px;border-radius:22px;background:var(--hoja);display:grid;gap:8px;box-shadow:var(--sombra-suave);z-index:3;font-size:15.5px;font-weight:700}
+.calle-recorrido p{margin:0;text-align:center}
+.calle-recorrido-acc{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:6px}
+.calle-recorrido-acc .calle-btn{min-height:52px;font-size:15.5px;padding:0 6px}
+.calle-recorrido-nota{font-size:13px;font-weight:600;color:var(--tinta2);text-align:center}
+.calle-senal{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;font-size:15px}
+.calle-senal i{width:12px;height:12px;border-radius:50%;background:#0E8F5E;flex:none}
+.calle-senal.regular i{background:#D98E04}
+.calle-senal.mala i{background:#C8352B}
+.calle-senal small{font-size:13.5px;font-weight:600;color:var(--tinta2)}
+.calle-recordatorio{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--sb) + 180px);width:max-content;max-width:calc(100% - 32px);padding:9px 14px;border-radius:14px;background:rgba(10,16,24,.78);color:#fff;font-size:15px;font-weight:700;text-align:center;pointer-events:none;z-index:3}
+.calle-filtro.compartiendo{top:calc(var(--st) + 182px);background:#C8352B}
 .calle-regla{display:grid;gap:6px;padding:6px 8px;font-size:20px;font-weight:800}
 .calle .calle-regla input{width:100%;min-height:44px;background:none!important;padding:0;touch-action:pan-x}
 .calle-numeros.dos{grid-template-columns:1fr 1fr}
@@ -219,6 +236,10 @@ body:has(.calle) .toast{z-index:122}
   .calle-tarjeta{left:auto;right:var(--sr);width:min(420px,calc(100% - 240px));max-height:calc(100% - var(--st) - var(--sb) - 16px);bottom:calc(var(--sb) + 8px)}
   .calle-ayuda,.calle-aviso,.calle-llegada{top:calc(var(--st) + 76px)}
   .calle-filtro{top:calc(var(--st) + 74px)}
+  .calle-filtro.compartiendo{top:calc(var(--st) + 124px)}
+  .calle-iniciar.flotante{bottom:calc(var(--sb) + 22px);max-width:170px;min-height:60px}
+  .calle-recorrido{left:auto;right:var(--sr);bottom:calc(var(--sb) + 8px);width:min(420px,56%);margin:0}
+  .calle-recordatorio{bottom:calc(var(--sb) + 150px);left:30%}
   .calle-paseo{left:auto;right:var(--sr);width:min(340px,50%);bottom:calc(var(--sb) + 104px);margin:0}
   .calle-panel{max-height:calc(100dvh - var(--st) - var(--sb) - 80px);max-width:440px}
   .calle-interior-tit{left:var(--sl);right:auto;margin:0;width:min(400px,52%);top:calc(var(--st) + 8px)}

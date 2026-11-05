@@ -14,7 +14,7 @@ const dePlano = (x: number, y: number) => lonLatDeZ16(x / M + BASE_X, y / M + BA
 const MAX_TILES = 150, MAX_CORREDOR = 200;
 
 interface Poli { xy: Float32Array; x0: number; x1: number; y0: number; y1: number; meta: (string | number | number[])[] }
-interface TileRed { x: number; y: number; vias: ViaEntrada[]; polis: Poli[]; lugares: (string | number)[][]; numeros: (string | number)[][]; cajeros: (string | number)[][]; uso: number }
+interface TileRed { x: number; y: number; vias: ViaEntrada[]; polis: Poli[]; lugares: (string | number)[][]; numeros: (string | number)[][]; cajeros: (string | number)[][]; cruces: number[][]; uso: number }
 
 export interface RutaHecha { pts: Float64Array; largo: number; maniobras: Camino["maniobras"]; fuente: "tiles" | "calles" }
 export interface DatosEdificio {
@@ -83,7 +83,8 @@ export class Nucleo {
       }
       polis.push({ xy, x0, x1, y0, y1, meta: e });
     }
-    return { x: j.x, y: j.y, vias, polis, lugares: j.l, numeros: j.p ?? [], cajeros: (j.o ?? []).filter((o) => o[0] === "cajero"), uso: ++this.reloj };
+    return { x: j.x, y: j.y, vias, polis, lugares: j.l, numeros: j.p ?? [], cajeros: (j.o ?? []).filter((o) => o[0] === "cajero"),
+      cruces: [...(j.k ?? []).map((c) => [Number(c[0]), Number(c[1])]), ...(j.o ?? []).filter((o) => o[0] === "semaforo").map((o) => [Number(o[1]), Number(o[2])])], uso: ++this.reloj };
   }
 
   /** Edificio que contiene un punto del plano, mirando solo los tiles ya bajados. */
@@ -320,6 +321,16 @@ export class Nucleo {
       if (limpio.length >= tope) break;
     }
     return limpio;
+  }
+
+  /** Cruces y semáforos cerca, para el recordatorio de mirar el camino. */
+  async cruces(a: Punto): Promise<Punto[]> {
+    const out: Punto[] = [];
+    for (const q of await this.tilesCerca(a, 120)) for (const c of q.cruces) {
+      const u = lonLatDeZ16(q.x + c[0] / EXT, q.y + c[1] / EXT);
+      if (distanciaM(a, u) < 170) out.push(u);
+    }
+    return out;
   }
 
   /** Dónde estás parado: calle, altura, barrio y qué hay en la cuadra. Solo lo que está en los datos. */

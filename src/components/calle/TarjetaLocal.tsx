@@ -6,7 +6,7 @@ import { Icono } from "@/components/Icono";
 import { abiertoAhora, comoLlegoHref, dominio, horarioTexto, telHref, urlSegura } from "@/lib/calle/recepcion";
 import type { DatosExtraLugar, Local, ProveedorLugar } from "@/lib/calle/tipos";
 
-export function TarjetaLocal({ local, proveedor, cerrar, entrar, edificio }: { local: Local; proveedor: ProveedorLugar; cerrar: () => void; entrar: () => void; edificio: () => void }) {
+export function TarjetaLocal({ local, proveedor, cerrar, entrar, edificio, caminando }: { local: Local; proveedor: ProveedorLugar; cerrar: () => void; entrar: () => void; edificio: () => void; caminando: () => void }) {
   const [extra, setExtra] = useState<DatosExtraLugar | null>(null);
   const [buscando, setBuscando] = useState(true);
   const caja = useRef<HTMLDivElement>(null);
@@ -69,7 +69,8 @@ export function TarjetaLocal({ local, proveedor, cerrar, entrar, edificio }: { l
       </ul>
       <div className="calle-acciones">
         <button className="calle-btn pri" onClick={entrar}>Entrar</button>
-        {local.lat != null && local.lon != null && <Link className="calle-btn" href={comoLlegoHref({ lat: local.lat, lon: local.lon }, local.nombre)}>Cómo llego</Link>}
+        <button className="calle-btn" onClick={caminando}>Ir caminando</button>
+        {local.lat != null && local.lon != null && <Link className="calle-btn calle-doble" href={comoLlegoHref({ lat: local.lat, lon: local.lon }, local.nombre)}>Cómo ir</Link>}
       </div>
       <p className="calle-nota">El interior es una recreación ilustrativa, no el local real.</p>
     </div>

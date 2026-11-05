@@ -63,6 +63,7 @@ export interface EventosMotor {
 }
 interface Seguidor { pts: Float32Array; acum: Float32Array; total: number; s: number; v: number; pausada: boolean; nombre: string; maniobras: { s: number; texto: string }[]; yawAuto: number; tLibre: number }
 interface Vuelo { fase: "subir" | "cruzar" | "esperar" | "bajar" | "fundir"; t: number; x0: number; z0: number; y0: number; x1: number; z1: number; alto: number; cruce: number; yaw0: number; pitch0: number; yaw1: number; xL: number; zL: number; yawL: number; alLlegar?: () => void }
+interface Real { x: number; z: number; ox: number; oz: number; yaw: number; pitch: number; brujula: boolean; corrigiendo: boolean; desvio: number; precision: number; tieneFix: boolean }
 interface Azotea { y: number; anillo: number[] | null; cx: number; cz: number; radio: number; obra: ReturnType<typeof crearAzotea>; volver: Local | null }
 
 export class Motor {
@@ -434,6 +435,7 @@ export class Motor {
   private cuadro = (ahora: number) => {
     if (!this.vivo || this.pausa) return;
     this.raf = requestAnimationFrame(this.cuadro);
+    if (this.saltarCuadro(ahora)) return;
     const dt = Math.min(0.2, (ahora - this.tAnt) / 1000);
     this.tAnt = ahora;
     const t = (ahora - this.t0) / 1000;
@@ -582,7 +584,7 @@ export class Motor {
 
   /** El joystick retoma el control: la ruta queda en pausa. */
   private tomarControl() {
-    if (this.seg && !this.seg.pausada) this.pausarRuta(true);
+    if (!this.real && this.seg && !this.seg.pausada) this.pausarRuta(true);
   }
 
   /** "Ir ya": sube, cruza y baja. Con movimiento reducido es un fundido. */
@@ -901,6 +903,7 @@ export class Motor {
 
     if (this.vuelo) this.pasoVuelo(dt);
     else if (this.azotea) this.pasoAzotea(dt);
+    else if (this.real) this.pasoReal(dt, t);
     else if (this.seg && !this.seg.pausada) this.pasoRuta(dt, t);
     else if (this.modo === "volar") this.pasoDron(dt);
     else if (this.modo === "auto") this.pasoAuto(dt);
@@ -958,6 +961,125 @@ export class Motor {
     const p = l.lat != null && l.lon != null ? mundoDeLonLat(this.o, l.lon, l.lat) : { x: this.x, z: this.z };
     l.x = p.x; l.z = p.z;
     this.abrir(l);
+  }
+
+  /* ───────── Caminar de verdad: el 3D sigue al GPS y mira adonde mira el celular ───────── */
+  private real: Real | null = null;
+  private ahorroAntes: { nivel: number; fijo: boolean } | null = null;
+  private tUltimoCuadro = 0;
+
+  iniciarReal() {
+    this.cancelarRutaSiPausada();
+    this.real = { x: this.x, z: this.z, ox: 0, oz: 0, yaw: this.yaw, pitch: 0, brujula: false, corrigiendo: false, desvio: 0, precision: 999, tieneFix: false };
+    this.modo = "caminar";
+    this.ahorro(true);
+  }
+
+  private cancelarRutaSiPausada() { if (this.seg?.pausada) this.cancelarRuta(true); }
+
+  terminarReal() {
+    this.real = null;
+    this.ahorro(false);
+    this.pasoAnt = { x: NaN, z: NaN };
+  }
+
+  /** Mientras caminás con el celular: la calidad más baja que se ve bien, y 30 cuadros. */
+  private ahorro(si: boolean) {
+    if (si && !this.ahorroAntes) {
+      this.ahorroAntes = { nivel: this.nivel, fijo: this.fijo };
+      this.nivel = 0; this.fijo = true;
+      this.aplicarNivel();
+    } else if (!si && this.ahorroAntes) {
+      this.nivel = this.ahorroAntes.nivel; this.fijo = this.ahorroAntes.fijo;
+      this.ahorroAntes = null;
+      this.aplicarNivel();
+    }
+  }
+
+  /** Corta cuadros en modo ahorro. */
+  private saltarCuadro(ahora: number) {
+    if (!this.ahorroAntes || ahora - this.tUltimoCuadro >= 30) { this.tUltimoCuadro = ahora; return false; }
+    return true;
+  }
+
+  lecturaReal(lat: number, lon: number, precision: number) {
+    const R = this.real;
+    if (!R) return;
+    const p = mundoDeLonLat(this.o, lon, lat);
+    R.x = p.x; R.z = p.z; R.precision = precision;
+    if (!R.tieneFix) { R.tieneFix = true; this.x = p.x + R.ox; this.z = p.z + R.oz; this.pasoAnt = { x: NaN, z: NaN }; }
+  }
+
+  rumboReal(grados: number, inclinacion: number) {
+    const R = this.real;
+    if (!R) return;
+    R.brujula = true;
+    R.yaw = (-grados * Math.PI) / 180;
+    R.pitch = (inclinacion * Math.PI) / 180;
+  }
+
+  /** Corregir tu punto: con el joystick te corrés hasta donde estás de verdad. */
+  corregirReal(si: boolean) {
+    const R = this.real;
+    if (!R) return;
+    R.corrigiendo = si;
+    if (!si) { R.ox = this.x - R.x; R.oz = this.z - R.z; }
+  }
+
+  get desvioReal() { return this.real?.desvio ?? 0; }
+
+  private pasoReal(dt: number, t: number) {
+    const R = this.real!, en = this.entrada, r = this.seg;
+    let v = 0;
+    if (R.corrigiendo) {
+      const sy = Math.sin(this.yaw), cy = Math.cos(this.yaw), rap = 7;
+      this.x += (en.x * cy + en.y * sy) * rap * dt;
+      this.z += (en.y * cy - en.x * sy) * rap * dt;
+    } else {
+      let tx = R.x + R.ox, tz = R.z + R.oz;
+      if (r) {
+        /* Pegado a la ruta si estás cerca: no puede saltar para atrás ni adelantarse tramos */
+        let mejor = r.s, md = 1e9;
+        for (let s = Math.max(0, r.s - 25); s <= Math.min(r.total, r.s + 90); s += 2) {
+          const q = this.puntoRuta(r, s), d = Math.hypot(q.x - tx, q.z - tz);
+          if (d < md) { md = d; mejor = s; }
+        }
+        R.desvio = md;
+        if (md < Math.max(22, R.precision + 6)) {
+          if (mejor > r.s - 6) r.s = Math.max(r.s - 1, mejor);
+          const q = this.puntoRuta(r, r.s);
+          tx = q.x; tz = q.z;
+        }
+      } else R.desvio = 0;
+      /* Interpola entre lecturas, que llegan una por segundo */
+      const k = 1 - Math.exp(-dt * 2.2), [cx, cz] = this.mundo.chocar(tx, tz, RADIO), x0 = this.x, z0 = this.z;
+      this.x += (cx - this.x) * k;
+      this.z += (cz - this.z) * k;
+      v = Math.hypot(this.x - x0, this.z - z0) / Math.max(0.001, dt);
+    }
+    if (R.brujula) {
+      const k = 1 - Math.exp(-dt * 6);
+      this.yaw += Math.atan2(Math.sin(R.yaw - this.yaw), Math.cos(R.yaw - this.yaw)) * k;
+      this.pitch += (R.pitch - this.pitch) * k;
+    } else if (r && r.total - r.s > 3) {
+      /* Sin brújula mira para donde sigue la ruta */
+      const a = this.puntoRuta(r, r.s), b = this.puntoRuta(r, Math.min(r.total, r.s + 8)), des = Math.atan2(-(b.x - a.x), -(b.z - a.z));
+      this.yaw += Math.atan2(Math.sin(des - this.yaw), Math.cos(des - this.yaw)) * (1 - Math.exp(-dt * 2));
+    }
+    this.camaraPaso(v, dt, OJO, 0.35);
+    if (r) {
+      this.guia?.actualizar(r.s, t);
+      if (r.total - r.s < Math.max(8, Math.min(20, R.precision))) {
+        const nombre = r.nombre;
+        this.cancelarRuta();
+        this.op.eventos.llegada?.(nombre);
+      }
+    }
+  }
+
+  /** Ruta del modo real: la dibuja y la mide, pero te mueve el GPS. */
+  rutaReal(r: { pts: ArrayLike<number>; largo: number; maniobras: { s: number; texto: string }[] }, nombre: string) {
+    this.iniciarRuta(r, nombre);
   }
 
   private destruirViaje() {

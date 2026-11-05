@@ -1,7 +1,9 @@
 "use client";
 /* Caja grande de arriba: lugares, direcciones y esquinas. La búsqueda corre en el worker. */
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Icono } from "@/components/Icono";
+import { comoLlegoHref } from "@/lib/calle/recepcion";
 import type { Resultado } from "@/lib/calle/buscador";
 import type { Punto } from "@/lib/calle/ciudad";
 import type { ClienteCiudad } from "@/lib/calle/cliente";
@@ -80,16 +82,18 @@ export function Buscador({ cliente, posicion, abierto, abrir, cerrar, elegir, en
 }
 
 /** El lugar elegido, con las dos formas de ir. */
-export function TarjetaDestino({ d, cerrar, caminando, ya, ocupado }: { d: Destino; cerrar: () => void; caminando: () => void; ya: () => void; ocupado: boolean }) {
+export function TarjetaDestino({ d, cerrar, caminando, ya, iniciar, ocupado }: { d: Destino; cerrar: () => void; caminando: () => void; ya: () => void; iniciar: () => void; ocupado: boolean }) {
   return (
     <div className="calle-tarjeta calle-destino" role="dialog" aria-label={d.nombre}>
       <button className="calle-cerrar" onClick={cerrar} aria-label="Cerrar"><Icono n="x" /></button>
       {d.categoria && <span className="calle-rubro calle-rubro-neutro">{d.categoria}</span>}
       <h2>{d.nombre}</h2>
       {(d.direccion || d.dist != null) && <p className="calle-sub">{[d.direccion, d.dist != null ? `a ${distancia(d.dist)}` : ""].filter(Boolean).join(" · ")}</p>}
-      <div className="calle-acciones">
-        <button className="calle-btn" onClick={caminando} disabled={ocupado}>{ocupado ? "Armando la ruta…" : "Ir caminando"}</button>
-        <button className="calle-btn pri" onClick={ya}>Ir ya</button>
+      <button className="calle-btn pri calle-iniciar" onClick={iniciar}>Iniciar recorrido</button>
+      <div className="calle-acciones tres">
+        <button className="calle-btn" onClick={caminando} disabled={ocupado}>{ocupado ? "Armando…" : "Ir caminando"}</button>
+        <button className="calle-btn" onClick={ya}>Ir ya</button>
+        <Link className="calle-btn" href={comoLlegoHref(d, d.nombre)}>Cómo ir</Link>
       </div>
     </div>
   );

@@ -12,8 +12,8 @@ function Fila({ icono, titulo, detalle, onClick }: { icono: ReactNode; titulo: s
   return <button className="calle-fila" onClick={onClick}><span className="calle-fila-ic">{icono}</span><span><b>{titulo}</b>{detalle && <small>{detalle}</small>}</span></button>;
 }
 
-export function MenuCalle({ cerrar, abrir, enMapa, modoFoto, compartir, salir, posicion, recorrido, tactil }: {
-  cerrar: () => void; abrir: (h: HojaMenu) => void; enMapa: () => void; modoFoto: () => void; compartir: () => void; salir: () => void;
+export function MenuCalle({ cerrar, abrir, enMapa, modoFoto, compartir, salir, posicion, recorrido, tactil, iniciar }: {
+  iniciar: () => void; cerrar: () => void; abrir: (h: HojaMenu) => void; enMapa: () => void; modoFoto: () => void; compartir: () => void; salir: () => void;
   posicion: Punto | null; recorrido: { metros: number; pasos: number; kcal: number }; tactil: boolean;
 }) {
   useEffect(() => {
@@ -27,6 +27,7 @@ export function MenuCalle({ cerrar, abrir, enMapa, modoFoto, compartir, salir, p
       <aside className="calle-menu" role="dialog" aria-modal="true" aria-label="Más opciones" onClick={(e) => e.stopPropagation()}>
         <header className="calle-hoja-cab"><h2>Más opciones</h2><button className="calle-cerrar" onClick={cerrar} aria-label="Cerrar"><Icono n="x" /></button></header>
         <div className="calle-hoja-cuerpo">
+          <button className="calle-btn pri calle-iniciar" onClick={hacer(iniciar)}>Iniciar recorrido</button>
           <Fila icono={<Icono n="pin" t={22} />} titulo="Qué hay cerca" detalle="Farmacias, cajeros, abierto ahora" onClick={hacer(() => abrir("filtros"))} />
           <Fila icono={<Icono n="mapa" t={22} />} titulo="Elegir en el mapa" detalle="Tocá un punto y andá ahí" onClick={hacer(enMapa)} />
           <Fila icono={<Icono n="brujula" t={22} />} titulo="Recorridos" detalle="Paradas reales que avanzan solas" onClick={hacer(() => abrir("recorridos"))} />
