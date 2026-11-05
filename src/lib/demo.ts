@@ -16,6 +16,9 @@ export function crearDemo() {
     contains(k: string, v: any[]) { this.f.push((r) => v.every((x) => (r[k] || []).includes(x))); return this; }
     order(k: string, o?: any) { this.ord.push([k, o?.ascending !== false]); return this; }
     limit(n: number) { this.lim = n; return this; }
+    /* Las pantallas piden por tandas: en la demo alcanza con cortar la lista */
+    range(_de: number, a: number) { this.lim = a + 1; return this; }
+    or() { return this; }
     single() { this.uno = true; return this; }
     maybeSingle() { this.uno = true; return this; }
     insert(o: any) { this.op = "insert"; this.dato = o; return this; }
