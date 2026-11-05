@@ -175,7 +175,7 @@ body:has(.calle) .toast{z-index:122}
 .calle-pisos button{height:60px;border-radius:50%;background:var(--suelo);font-size:18px;font-weight:800;color:var(--tinta);aspect-ratio:1;justify-self:center}
 .calle-pisos button[aria-current]{background:var(--azul);color:#fff}
 .calle-foto{display:block;width:100%;max-height:50dvh;object-fit:contain;border-radius:16px;background:#000}
-.calle-fondo.lateral{justify-content:flex-end;align-items:stretch}
+.calle-fondo-lado{justify-content:flex-end;align-items:stretch}
 .calle-menu{width:min(380px,90%);height:100%;display:flex;flex-direction:column;background:var(--hoja);padding-top:var(--st);padding-bottom:var(--sb);padding-right:env(safe-area-inset-right,0px);animation:calle-lado .28s var(--hoja-curva) both;will-change:transform}
 .calle-menu-btn{position:relative}
 .calle-numeros{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:6px}
@@ -268,7 +268,7 @@ body:has(.calle) .toast{z-index:122}
   .calle-ayuda,.calle-aviso,.calle-llegada{top:calc(var(--st) + 170px)}
   .calle-hoja{border-radius:28px;margin-bottom:24px}
   .calle-fondo{align-items:center}
-  .calle-fondo.lateral{align-items:stretch}
+  .calle-fondo-lado{align-items:stretch}
 }
 
 @keyframes calle-entra{from{transform:translateY(8px) scale(.97)}}

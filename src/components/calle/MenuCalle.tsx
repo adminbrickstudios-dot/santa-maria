@@ -23,7 +23,7 @@ export function MenuCalle({ cerrar, abrir, enMapa, modoFoto, compartir, salir, p
   }, [cerrar]);
   const hacer = (f: () => void) => () => { cerrar(); f(); };
   return (
-    <div className="calle-fondo lateral" onClick={cerrar} role="presentation">
+    <div className="calle-fondo calle-fondo-lado" onClick={cerrar} role="presentation">
       <aside className="calle-menu" role="dialog" aria-modal="true" aria-label="Más opciones" onClick={(e) => e.stopPropagation()}>
         <header className="calle-hoja-cab"><h2>Más opciones</h2><button className="calle-cerrar" onClick={cerrar} aria-label="Cerrar"><Icono n="x" /></button></header>
         <div className="calle-hoja-cuerpo">
