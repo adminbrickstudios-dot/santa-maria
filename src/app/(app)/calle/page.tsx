@@ -24,6 +24,7 @@ function Calle() {
   const prefs = s.perfil.preferencias ?? {};
   return <>
     <CalleVista lat={num(q.get("lat"), -90, 90, LAT)} lon={num(q.get("lon"), -180, 180, LON)} puntoPedido={q.has("lat") && q.has("lon")} hora={hora ? num(hora, 0, 24, 12) : null}
+      calidadFija={process.env.NEXT_PUBLIC_DEMO && q.has("cal") ? num(q.get("cal"), 0, 3, 1) : undefined}
       lugares={prefs.calle?.lugares} mandar={setEnvio}
       guardarLugares={(l) => { void sb.from("perfiles").update({ preferencias: { ...prefs, calle: { ...prefs.calle, lugares: l } } }).eq("id", s.perfil.id); }} />
     {envio && <MandarA texto={envio.texto} adjunto={envio.adjunto} cerrar={() => setEnvio(null)} />}

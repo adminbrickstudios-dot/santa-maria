@@ -10,3 +10,5 @@ const ctx = self as unknown as Canal;
 const nucleo = new Nucleo();
 
 ctx.onmessage = (e) => { atender(nucleo, e.data, (m, t) => ctx.postMessage(m, t)); };
+/* El bundler arranca el worker de forma asíncrona: lo que llegue antes de este punto se perdería */
+ctx.postMessage({ id: 0, t: "listo" });

@@ -22,9 +22,11 @@ interface Espera { ok: (v: unknown) => void; mal: (e: Error) => void; progreso?:
 
 export function crearCliente(crear?: () => Worker): ClienteCiudad {
   const esperas = new Map<number, Espera>();
-  let sec = 0, w: Worker | null = null, local: Promise<(p: PedidoCiudad) => void> | null = null;
+  let sec = 0, w: Worker | null = null, local: Promise<(p: PedidoCiudad) => void> | null = null, listo = false;
+  const cola: PedidoCiudad[] = [];
 
   const oir = (m: RespuestaCiudad) => {
+    if (m.t === "listo") { listo = true; for (const p of cola.splice(0)) w?.postMessage(p); return; }
     const e = esperas.get(m.id);
     if (!e) return;
     if (m.t === "progreso") { e.progreso?.(m.f); return; }
@@ -38,16 +40,26 @@ export function crearCliente(crear?: () => Worker): ClienteCiudad {
     });
     return local;
   };
+  /* Si el worker no arranca, lo que estaba esperando pasa al hilo principal */
+  const caido = () => {
+    w?.terminate();
+    w = null;
+    const p = cola.splice(0);
+    if (p.length) void respaldo().then((f) => p.forEach(f));
+  };
   try {
     w = crear ? crear() : new Worker(new URL("./ciudad.worker.ts", import.meta.url), { type: "module" });
     w.onmessage = (e: MessageEvent<RespuestaCiudad>) => oir(e.data);
-    w.onerror = () => { w?.terminate(); w = null; };
+    w.onerror = caido;
+    setTimeout(() => { if (!listo) caido(); }, 12000);
   } catch { w = null; }
 
   const pedir = <T>(p: SinId<PedidoCiudad>, progreso?: (f: number) => void) => new Promise<T>((ok, mal) => {
     const id = ++sec, msg = { ...p, id } as PedidoCiudad;
     esperas.set(id, { ok: ok as (v: unknown) => void, mal, progreso });
-    if (w) w.postMessage(msg); else void respaldo().then((f) => f(msg));
+    if (w && listo) w.postMessage(msg);
+    else if (w) cola.push(msg);
+    else void respaldo().then((f) => f(msg));
   });
 
   return {

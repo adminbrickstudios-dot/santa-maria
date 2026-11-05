@@ -149,7 +149,7 @@ function mostrador(a: Armado, x: number, z: number, w: number, frente: number[],
   t.translate(x - w * 0.2, 1.14, z + 0.12);
   p.push({ geo: t, color: hex("#D9A441") });
   a.mostrador = { x, z: z + 0.9 };
-  a.textos.push({ texto: letrero, x, y: Math.min(a.H - 0.5, 2.3), z: z - 0.34, ry: 0, ancho: Math.min(w, 2.4) });
+  a.textos.push({ texto: letrero, x, y: 0.66, z: z + 0.36, ry: 0, ancho: Math.min(w - 0.4, 2.4) });
 }
 
 function escenaFarmacia(a: Armado) {

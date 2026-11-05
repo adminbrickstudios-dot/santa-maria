@@ -14,6 +14,7 @@ export type PedidoCiudad = { id: number } & (
 );
 
 export type RespuestaCiudad =
+  | { id: number; t: "listo" }
   | { id: number; t: "ok"; r: unknown }
   | { id: number; t: "error"; mensaje: string }
   | { id: number; t: "progreso"; f: number };

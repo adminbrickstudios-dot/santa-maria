@@ -24,7 +24,7 @@ body:has(.calle) .toast{z-index:122}
 
 .calle-busca{flex:1;min-width:0;height:56px;border-radius:20px;display:flex;align-items:center;gap:2px;padding:0 6px;position:relative;z-index:5}
 .calle-busca.abierta{background:var(--hoja);-webkit-backdrop-filter:none;backdrop-filter:none}
-.calle .calle-busca input{flex:1;min-width:0;width:auto;height:100%;border:0;border-radius:0;padding:0;margin:0;background:none;box-shadow:none;outline:0;font:inherit;font-size:18px;font-weight:700;color:var(--tinta);-webkit-appearance:none;appearance:none}
+.calle .calle-busca input{flex:1;min-width:0;width:auto;min-height:0;height:100%;border-radius:0!important;padding:0;margin:0;background:none!important;box-shadow:none;outline:0;font:inherit;font-size:18px;font-weight:700;color:var(--tinta);-webkit-appearance:none;appearance:none}
 .calle-busca input::placeholder{color:var(--tinta2);opacity:1;font-weight:700}
 .calle-busca input::-webkit-search-cancel-button{display:none}
 .calle-busca-ic{width:44px;height:44px;display:grid;place-items:center;flex:none;color:var(--tinta2)}
@@ -130,7 +130,7 @@ body:has(.calle) .toast{z-index:122}
 .calle-interior>.calle-joy{pointer-events:none}
 
 /* Hojas: opacas, suben de abajo. Acostado, salen del costado derecho */
-.calle-fondo{position:absolute;inset:0;background:rgba(10,16,24,.34);display:flex;align-items:flex-end;justify-content:center;z-index:6;animation:calle-oscurece .18s ease both}
+.calle-fondo{position:absolute;inset:0;background:rgba(10,16,24,.34);display:flex;align-items:flex-end;justify-content:center;z-index:10;animation:calle-oscurece .18s ease both}
 .calle-hoja{position:relative;width:100%;max-width:560px;max-height:calc(100% - var(--st) - 24px);display:flex;flex-direction:column;background:var(--hoja);border-radius:28px 28px 0 0;padding-bottom:var(--sb);animation:calle-sube .3s var(--hoja-curva) both;will-change:transform}
 .calle-hoja.chica{margin-bottom:0}
 .calle-hoja-cab{position:relative;flex:none;padding:18px 66px 8px 20px;min-height:66px}
@@ -232,13 +232,12 @@ body:has(.calle) .toast{z-index:122}
   .calle-cerca{left:var(--sl);right:auto;width:340px;bottom:calc(var(--sb) + 28px)}
   .calle-int-acc{left:auto;right:var(--sr);bottom:calc(var(--sb) + 28px);width:280px;grid-template-columns:1fr;margin:0}
   .calle-ayuda,.calle-aviso,.calle-llegada{top:calc(var(--st) + 170px)}
-  .calle-tarjeta{left:50%;right:auto;transform:translateX(-50%);width:520px;margin:0}
   .calle-hoja{border-radius:28px;margin-bottom:24px}
   .calle-fondo{align-items:center}
   .calle-fondo.lateral{align-items:stretch}
 }
 
-@keyframes calle-entra{from{opacity:0;transform:translateY(8px) scale(.97)}}
+@keyframes calle-entra{from{transform:translateY(8px) scale(.97)}}
 @keyframes calle-sube{from{transform:translateY(105%)}}
 @keyframes calle-lado{from{transform:translateX(105%)}}
 @keyframes calle-oscurece{from{opacity:0}}

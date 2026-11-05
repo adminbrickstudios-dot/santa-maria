@@ -519,7 +519,8 @@ export class Motor {
     const antes = this.modo;
     this.modo = m;
     if (this.inter || this.azotea) return;
-    if (m !== "volar" && antes === "volar") this.iniciarBajada();
+    if (m === "volar") this.tomarControl();
+    else if (antes === "volar") this.iniciarBajada();
     this.op.eventos.viaje?.(this.estadoViaje());
   }
 

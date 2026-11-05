@@ -85,7 +85,7 @@ export function crearAzotea(anillo: number[] | null, cx: number, cz: number, rad
   const pos: number[] = [], idx: number[] = [], n = pts.length / 2;
   for (let i = 0; i < n; i++) {
     const x = pts[2 * i], z = pts[2 * i + 1];
-    pos.push(x, y, z, x, y + 1.05, z);
+    pos.push(x, y, z, x, y + 0.95, z);
     const j = (i + 1) % n;
     idx.push(i * 2, i * 2 + 1, j * 2, i * 2 + 1, j * 2 + 1, j * 2);
   }
