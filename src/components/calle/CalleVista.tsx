@@ -462,13 +462,20 @@ function Calle({ lat, lon, hora, puntoPedido, proveedorTiles, proveedorLugar, cr
   }
   /* Al llegar a una parada queda unos segundos y sigue sola */
   const enParada = !!paseo && !viaje?.activo && !viaje?.volando && !calculando;
+  const armada = useRef(false);
   useEffect(() => {
-    if (!enParada) { setCuenta(0); return; }
+    if (!enParada) { armada.current = false; setCuenta(0); return; }
+    armada.current = true;
     setCuenta(9);
     const t = setInterval(() => setCuenta((c) => Math.max(0, c - 1)), 1000);
     return () => clearInterval(t);
   }, [enParada, paseo?.i]);
-  useEffect(() => { if (enParada && cuenta === 1) { const t = setTimeout(siguienteParada, 900); return () => clearTimeout(t); } });
+  useEffect(() => {
+    if (!armada.current || !enParada || cuenta !== 0) return;
+    armada.current = false;
+    siguienteParada();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cuenta]);
   const destinoDeParada = (p: Parada): Destino => ({ nombre: p.nombre, lat: p.lat, lon: p.lon, direccion: p.direccion, categoria: describirCategoria(p.categoria).nombre, categoriaCruda: p.categoria });
   function siguienteParada() {
     if (!paseo) return;
